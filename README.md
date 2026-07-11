@@ -3,13 +3,16 @@
 運動醫學／復健文獻的系統性回顧、統合分析與臨床指引索引，供公開閱覽。
 可依 **部位 / 臨床主題 / 族群** 三種方式瀏覽，標示期刊影響係數（IF 近似值）與免費全文。
 
-線上：<https://keanu77.github.io/review.sportsmedicine/>
+線上：<https://review.sportsmedicine.tw>（Cloudflare Pages）
+備援鏡像：<https://keanu77.github.io/review.sportsmedicine/>（GitHub Pages）
 
 ## 技術
 
 - Vite + React + TypeScript + Tailwind CSS
 - 純靜態站，無後端。資料為建置時打包的 `public/data/reviews-index.json`
-- 部署：GitHub Actions → GitHub Pages（見 `.github/workflows/deploy.yml`）
+- 主要部署：Cloudflare Pages（Git 整合，push 即自動 build+deploy，綁 `review.sportsmedicine.tw`）
+- 備援部署：GitHub Actions → GitHub Pages（見 `.github/workflows/deploy.yml`）
+- Node 版本由 `.node-version` 釘定（給 Cloudflare 建置環境）
 
 ## 本機開發
 
