@@ -4,3 +4,5 @@ dist-ssr
 *.local
 .DS_Store
 .vite
+# Vite 建置時產生的暫存 config 檔
+*.timestamp-*.mjs
