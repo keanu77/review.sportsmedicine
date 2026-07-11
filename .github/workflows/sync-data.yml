@@ -1,0 +1,49 @@
+name: Monthly data sync
+
+# 每月自上游公開 URL 同步 reviews-index.json，commit 回 repo。
+# 部署本身由 Cloudflare Pages Git 整合負責——這個 commit 的 push 會自動觸發
+# Cloudflare 重建，故本 workflow 不需要 build/deploy，也不需任何 token/secret。
+#
+# 上游 monorepo 於每月 28 日重生資料並部署到 app.sportsmedicine.tw，
+# 故 1 日拉取可取得最新月度資料，留有部署緩衝。
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 1 * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: data-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # 從上游公開 URL 拉最新資料；curl 失敗（上游暫時不可用）時保留現有檔案，不失敗收場。
+      - name: Refresh reviews data from upstream
+        run: |
+          if curl -fsSL --max-time 60 https://app.sportsmedicine.tw/data/reviews-index.json -o /tmp/reviews.json \
+            && node -e 'JSON.parse(require("fs").readFileSync("/tmp/reviews.json","utf8"))'; then
+            mv /tmp/reviews.json public/data/reviews-index.json
+            echo "✅ 已從上游刷新資料"
+          else
+            echo "⚠️ 上游拉取失敗或非合法 JSON，保留已 commit 的資料"
+          fi
+
+      # 有變更才 commit+push；push 會觸發 Cloudflare Pages 自動重建。
+      - name: Commit refreshed data
+        run: |
+          if ! git diff --quiet -- public/data/reviews-index.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add public/data/reviews-index.json
+            git commit -m "chore(data): 每月同步 reviews-index.json（自上游）"
+            git push
+          else
+            echo "資料無變更，略過 commit"
+          fi
