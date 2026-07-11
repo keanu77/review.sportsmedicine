@@ -4,10 +4,15 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # 每月 1 日 03:00 UTC（台灣 11:00）自上游公開 URL 同步最新資料。
+  # 上游 monorepo 於每月 28 日重生 reviews-index.json 並部署到 app.sportsmedicine.tw，
+  # 故 1 日拉取可取得最新月度資料，留有部署緩衝。
+  schedule:
+    - cron: "0 3 1 * *"
 
-# 允許 GITHUB_TOKEN 部署到 Pages
+# 允許 GITHUB_TOKEN 部署 Pages，並在排程時 commit 回同步後的資料
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -24,6 +29,34 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      # 僅在排程/手動時，從上游公開 URL 刷新資料（正常 push 用 repo 內版本，可預測）。
+      # curl 失敗（上游暫時不可用）時保留已 commit 的資料，不讓部署中斷。
+      - name: Refresh reviews data from upstream
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          if curl -fsSL --max-time 60 https://app.sportsmedicine.tw/data/reviews-index.json -o /tmp/reviews.json \
+            && node -e 'JSON.parse(require("fs").readFileSync("/tmp/reviews.json","utf8"))'; then
+            mv /tmp/reviews.json public/data/reviews-index.json
+            echo "✅ 已從上游刷新資料"
+          else
+            echo "⚠️ 上游拉取失敗或非合法 JSON，保留已 commit 的資料"
+          fi
+
+      # 排程刷新後若資料有變，commit 回 repo 保持記錄同步（GITHUB_TOKEN 的 push 不會再觸發本 workflow）
+      - name: Commit refreshed data
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          if ! git diff --quiet -- public/data/reviews-index.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add public/data/reviews-index.json
+            git commit -m "chore(data): 每月同步 reviews-index.json（自上游）"
+            git push
+          else
+            echo "資料無變更，略過 commit"
+          fi
+
       - name: Install
         run: npm ci
       - name: Typecheck

@@ -25,7 +25,12 @@ npm run typecheck  # 型別檢查
 
 `public/data/reviews-index.json`（本站唯一資料）由上游的
 RSS/知識庫 monorepo 產生（`scripts/reviews-index-*`：KB 抽取 + PubMed 補充 +
-Crossref 期刊名解析 + IF 表），每月自動同步一次到本 repo。
+Crossref 期刊名解析 + IF 表），發布於公開 URL
+`https://app.sportsmedicine.tw/data/reviews-index.json`。
+
+本站的部署 workflow（`.github/workflows/deploy.yml`）每月 1 日自該公開 URL
+自動拉取最新資料、commit 回本 repo 並重新部署（不需任何跨 repo token）。
+也可在 Actions 頁手動觸發（workflow_dispatch）即時同步。
 
 - 資料本質：IF 為 **近似值**（Clarivate JCR ~2023），僅供參考、逐年變動。
 - 免費全文為啟發式判定（依來源網域），非逐篇 Unpaywall 驗證；引用前請循原文與 DOI。
