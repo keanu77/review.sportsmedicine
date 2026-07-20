@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "如果你在著作、投影片或網站中引用本專案，請依下列資訊標註。"
+title: "運動醫學 Review 索引"
+authors:
+  - family-names: "吳"
+    given-names: "易澄"
+    alias: "keanu77"
+url: "https://review.sportsmedicine.tw/"
+repository-code: "https://github.com/keanu77/review.sportsmedicine"
