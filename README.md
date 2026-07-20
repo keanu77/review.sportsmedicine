@@ -3,7 +3,7 @@
 運動醫學／復健文獻的系統性回顧、統合分析與臨床指引索引，供公開閱覽。
 可依 **部位 / 臨床主題 / 族群** 三種方式瀏覽，標示期刊影響係數（IF 近似值）與免費全文。
 
-線上：<https://review.sportsmedicine.tw>（Cloudflare Pages）
+線上：<https://review.sportsmedicine.tw/>（Cloudflare Pages）
 
 ## 技術
 
