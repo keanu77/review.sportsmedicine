@@ -43,6 +43,18 @@ export interface ReviewsData {
   items: Item[];
 }
 
+/**
+ * 中文摘要疊加層 public/data/summaries.json。
+ * 獨立成一個檔是因為 reviews-index.json 每月會被上游整檔覆蓋，
+ * 摘要寫回去下次同步就消失。鍵為正規化標題。
+ */
+export interface SummariesData {
+  generatedAt: string | null;
+  model: string;
+  count: number;
+  summaries: Record<string, string>;
+}
+
 export interface NewItemsData {
   /** 上游本批次的資料日期（YYYY-MM-DD） */
   batch: string | null;

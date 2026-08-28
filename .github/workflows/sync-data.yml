@@ -39,7 +39,7 @@ jobs:
             else
               node scripts/build-new-items.mjs /tmp/prev.json public/data/reviews-index.json public/data/new-items.json
               echo "✅ 已從上游刷新資料並更新本月新增清單"
-              echo "ℹ️  新增文獻的中文摘要需在本機補：npm run summarize（依賴本機 ollama，CI runner 沒有）"
+              echo "ℹ️  新文獻的中文摘要需在本機補：npm run summaries（依賴本機 ollama，CI runner 沒有）"
             fi
           else
             echo "⚠️ 上游拉取失敗或非合法 JSON，保留已 commit 的資料"

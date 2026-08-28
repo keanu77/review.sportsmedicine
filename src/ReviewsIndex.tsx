@@ -3,7 +3,7 @@ import NewThisMonth from "./NewThisMonth";
 import ReviewRow from "./ReviewRow";
 import { toneByIndex, toneOf } from "./regionGroups";
 import { matchesQuery, suggestTerms, tokenize } from "./search";
-import type { Axis, Item, ReviewsData } from "./types";
+import type { Axis, Item, ReviewsData, SummariesData } from "./types";
 import { useUrlState } from "./useUrlState";
 
 // ---------------------------------------------------------------------------
@@ -111,6 +111,7 @@ interface AxisGroup {
 
 export default function ReviewsIndex() {
   const [data, setData] = useState<ReviewsData | null>(null);
+  const [summaries, setSummaries] = useState<Record<string, string>>({});
   const [err, setErr] = useState<string | null>(null);
   const [view, setView] = useUrlState();
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -130,6 +131,7 @@ export default function ReviewsIndex() {
   const hasQuery = tokens.length > 0;
 
   useEffect(() => {
+    // 兩份資料平行取，摘要疊加層缺漏或損毀不影響主索引。
     fetch(`${import.meta.env.BASE_URL}data/reviews-index.json`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -137,17 +139,38 @@ export default function ReviewsIndex() {
       })
       .then((d: ReviewsData) => setData(d))
       .catch((e) => setErr(String(e.message || e)));
+
+    fetch(`${import.meta.env.BASE_URL}data/summaries.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: SummariesData | null) => {
+        if (d && d.summaries) setSummaries(d.summaries);
+      })
+      .catch(() => {
+        /* 摘要是加值資訊，載入失敗就沿用資料本身的 tldr */
+      });
   }, []);
 
   useEffect(() => setOpen(new Set()), [axis]);
 
-  const filtered: Item[] = useMemo(() => {
+  // 疊加層優先於資料自帶的 tldr——後者多數只複述標題、讀不出結論。
+  // 在過濾之前合併，搜尋才吃得到新摘要的內容。
+  const merged: Item[] = useMemo(() => {
     if (!data) return [];
-    return data.items.filter((it) => {
-      if (freeOnly && !it.free) return false;
-      return matchesQuery(it, tokens);
+    if (!Object.keys(summaries).length) return data.items;
+    return data.items.map((it) => {
+      const summary = summaries[paperKey(it)];
+      return summary ? { ...it, tldr: summary, tldrSource: "local-llm" } : it;
     });
-  }, [data, tokens, freeOnly]);
+  }, [data, summaries]);
+
+  const filtered: Item[] = useMemo(
+    () =>
+      merged.filter((it) => {
+        if (freeOnly && !it.free) return false;
+        return matchesQuery(it, tokens);
+      }),
+    [merged, tokens, freeOnly],
+  );
 
   /** 搜尋模式的平坦結果，已去重。 */
   const flatResults = useMemo(
@@ -197,17 +220,14 @@ export default function ReviewsIndex() {
     };
   }, [filtered, groups, hasQuery]);
 
-  const totalUnique = useMemo(
-    () => (data ? uniqueItems(data.items).length : 0),
-    [data],
-  );
+  const totalUnique = useMemo(() => uniqueItems(merged).length, [merged]);
 
   const suggestions = useMemo(
     () =>
       data && hasQuery && flatResults.length === 0
-        ? suggestTerms(data.items, deferredQ)
+        ? suggestTerms(merged, deferredQ)
         : [],
-    [data, hasQuery, flatResults.length, deferredQ],
+    [merged, hasQuery, flatResults.length, deferredQ],
   );
 
   const toggle = (key: string) =>
