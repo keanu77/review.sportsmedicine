@@ -129,6 +129,7 @@ for (const name of Object.keys(selected)) {
 // ---------------------------------------------------------------- PubMed
 async function fetchAbstracts(pmids) {
   const byPmid = new Map();
+  const titles = new Map();
   for (let i = 0; i < pmids.length; i += 150) {
     const batch = pmids.slice(i, i + 150);
     const url =
@@ -139,18 +140,25 @@ async function fetchAbstracts(pmids) {
       for (const article of xml.split("<PubmedArticle>").slice(1)) {
         const pmid = article.match(/<PMID[^>]*>(\d+)<\/PMID>/)?.[1];
         if (!pmid) continue;
+        const title = (article.match(/<ArticleTitle[^>]*>([\s\S]*?)<\/ArticleTitle>/)?.[1] ?? "")
+          .replace(/<[^>]+>/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
         const parts = [...article.matchAll(/<AbstractText[^>]*>([\s\S]*?)<\/AbstractText>/g)].map((m) =>
           m[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim(),
         );
         const text = parts.join(" ").trim();
-        if (text) byPmid.set(pmid, text);
+        if (text) {
+          byPmid.set(pmid, text);
+          titles.set(pmid, title);
+        }
       }
     } catch (e) {
       console.log(`  ⚠️ efetch 批次失敗（${e.message}）`);
     }
     await sleep(NCBI_GAP);
   }
-  return byPmid;
+  return { byPmid, titles };
 }
 
 // ---------------------------------------------------------------- 判定
@@ -201,7 +209,7 @@ for (const [name, spec] of Object.entries(selected)) {
   if (!candidates.length) continue;
 
   const needPmid = candidates.map((p) => p.item.pmid ?? pmidCache[p.key]).filter(Boolean);
-  const abstracts = await fetchAbstracts(needPmid);
+  const { byPmid: abstracts, titles } = await fetchAbstracts(needPmid);
   console.log(`  取得摘要 ${abstracts.size} 篇`);
 
   let yes = 0;
@@ -211,7 +219,15 @@ for (const [name, spec] of Object.entries(selected)) {
   for (const [i, p] of candidates.entries()) {
     const pmid = p.item.pmid ?? pmidCache[p.key];
     // 沒有摘要時退回中文摘要；兩者皆無就跳過，不靠標題硬猜
-    const evidence = (pmid && abstracts.get(pmid)) || summaries[p.key] || p.item.tldr;
+    // PMID 不是資料自帶的就要確認抓回來的是同一篇——反查有可能配到別的文獻，
+    // 拿錯摘要會直接導致分類錯誤。對不上就退回中文摘要，不用那份摘要原文。
+    let abstract = pmid ? abstracts.get(pmid) : undefined;
+    if (abstract && !p.item.pmid) {
+      const a = titleKey(titles.get(pmid) ?? "");
+      const b = titleKey(p.item.title);
+      if (!a.startsWith(b.slice(0, 40)) && !b.startsWith(a.slice(0, 40))) abstract = undefined;
+    }
+    const evidence = abstract || summaries[p.key] || p.item.tldr;
     if (!evidence) {
       unknown++;
       continue;

@@ -13,7 +13,8 @@
     "summaries": "node scripts/build-summaries.mjs",
     "feed": "node scripts/build-feed.mjs",
     "test:smoke": "playwright test",
-    "tags": "node scripts/build-tags.mjs"
+    "tags": "node scripts/build-tags.mjs",
+    "audit:summaries": "node scripts/audit-summaries.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

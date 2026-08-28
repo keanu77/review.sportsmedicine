@@ -104,6 +104,7 @@ async function resolvePmids() {
       }
       continue;
     }
+
     const doi = doiOf(p.item.url);
     let ids = [];
     if (doi) {
@@ -118,7 +119,6 @@ async function resolvePmids() {
       lookups++;
     }
     p.pmid = ids[0] ?? null;
-    p.needsTitleCheck = !doi || !ids.length;
     pmidCache[p.key] = p.pmid;
     if (p.pmid) resolved++;
     if (lookups % 25 === 0) {
@@ -238,8 +238,12 @@ for (const p of withPmid) {
     skipped++;
     continue;
   }
-  // 標題反查來的必須確認是同一篇，否則寧可不寫
-  if (p.needsTitleCheck) {
+  // 只要 PMID 不是資料自帶的，就必須確認抓回來的是同一篇，否則寧可不寫。
+  //
+  // 這裡不能只驗「這一輪剛反查到的」——快取命中時解析迴圈會直接 continue，
+  // 旗標根本不會被設到，於是反查來的 PMID 一路沒驗證。實測 557 篇反查結果裡
+  // 有 24 篇配到完全不同的文獻（游泳者肩痛 → 上海生態系統模擬）。
+  if (!p.item.pmid) {
     const a = titleKey(record.title);
     const b = titleKey(p.item.title);
     if (!a.startsWith(b.slice(0, 40)) && !b.startsWith(a.slice(0, 40))) {
