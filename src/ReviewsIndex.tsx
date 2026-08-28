@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useId, useMemo, useState } from "react";
 import NewThisMonth from "./NewThisMonth";
 import ReviewRow from "./ReviewRow";
-import { groupOf, toneByIndex } from "./regionGroups";
+import { toneByIndex, toneOf } from "./regionGroups";
 import { matchesQuery, suggestTerms, tokenize } from "./search";
 import type { Axis, Item, ReviewsData } from "./types";
 import { useUrlState } from "./useUrlState";
@@ -377,7 +377,7 @@ export default function ReviewsIndex() {
             {groups.map((g, i) => {
               // 部位軸的顏色代表解剖大類；其餘兩軸沒有對應，顏色純為裝飾（見 regionGroups.ts）
               const tone =
-                axis === "region" ? groupOf(g.key) : toneByIndex(i);
+                axis === "region" ? toneOf(g.key) : toneByIndex(i);
               return (
                 <a
                   key={g.key}
@@ -513,7 +513,7 @@ function AxisSection({
   open: Set<string>;
   onToggle: (key: string) => void;
 }) {
-  const tone = axis === "region" ? groupOf(group.key) : toneByIndex(index);
+  const tone = axis === "region" ? toneOf(group.key) : toneByIndex(index);
   return (
     <section id={`grp-${encodeURIComponent(group.key)}`} className="scroll-mt-4 sm:scroll-mt-40">
       <div
