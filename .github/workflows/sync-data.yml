@@ -25,12 +25,21 @@ jobs:
       - uses: actions/checkout@v4
 
       # 從上游公開 URL 拉最新資料；curl 失敗（上游暫時不可用）時保留現有檔案，不失敗收場。
+      # 上游是固定容量的滾動視窗（每月有新增也有汰除），且項目沒有收錄日期欄位，
+      # 因此「本月新增」必須在覆寫前先留下舊快照，事後比對得出。
       - name: Refresh reviews data from upstream
         run: |
+          cp public/data/reviews-index.json /tmp/prev.json
           if curl -fsSL --max-time 60 https://app.sportsmedicine.tw/data/reviews-index.json -o /tmp/reviews.json \
             && node -e 'JSON.parse(require("fs").readFileSync("/tmp/reviews.json","utf8"))'; then
             mv /tmp/reviews.json public/data/reviews-index.json
-            echo "✅ 已從上游刷新資料"
+            # 資料真的有變才重算，否則會用一份空清單蓋掉上一批的新增紀錄、並產生無意義 commit。
+            if git diff --quiet -- public/data/reviews-index.json; then
+              echo "✅ 上游資料與現有版本相同，保留既有新增清單"
+            else
+              node scripts/build-new-items.mjs /tmp/prev.json public/data/reviews-index.json public/data/new-items.json
+              echo "✅ 已從上游刷新資料並更新本月新增清單"
+            fi
           else
             echo "⚠️ 上游拉取失敗或非合法 JSON，保留已 commit 的資料"
           fi
@@ -38,11 +47,11 @@ jobs:
       # 有變更才 commit+push；push 會觸發 Cloudflare Pages 自動重建。
       - name: Commit refreshed data
         run: |
-          if ! git diff --quiet -- public/data/reviews-index.json; then
+          if ! git diff --quiet -- public/data/; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add public/data/reviews-index.json
-            git commit -m "chore(data): 每月同步 reviews-index.json（自上游）"
+            git add public/data/reviews-index.json public/data/new-items.json
+            git commit -m "chore(data): 每月同步 reviews-index.json 與本月新增清單（自上游）"
             git push
           else
             echo "資料無變更，略過 commit"

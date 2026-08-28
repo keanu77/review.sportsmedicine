@@ -1,45 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import NewThisMonth from "./NewThisMonth";
+import ReviewRow from "./ReviewRow";
+import type { Axis, Item, ReviewsData } from "./types";
 
 // ---------------------------------------------------------------------------
 // 運動醫學 Review 索引（獨立公開頁）
 // 資料：public/data/reviews-index.json（RSS monorepo 的 scripts/reviews-index-* 產生後同步過來）
 // 三種分類軸：依部位 / 依臨床主題 / 依族群。前端動態依所選軸分組 → 疾病 → review 卡。
 // ---------------------------------------------------------------------------
-
-type Axis = "region" | "theme" | "population";
-
-interface Item {
-  title: string;
-  year: number | null;
-  url: string;
-  source: string;
-  tldr: string | null;
-  free: boolean;
-  freeUrl?: string | null;
-  journal?: string | null;
-  pmid?: string | null;
-  impactFactor?: number | null;
-  origin?: "kb" | "pubmed";
-  region: string;
-  disease: string;
-  themes: string[];
-  populations: string[];
-}
-interface AxisKey {
-  key: string;
-  count: number;
-}
-interface ReviewsData {
-  meta: {
-    updated: string;
-    total: number;
-    freeCount: number;
-    ifJcrYear?: string;
-    note?: string;
-  };
-  axes: { region: AxisKey[]; theme: AxisKey[]; population: AxisKey[] };
-  items: Item[];
-}
 
 const AXIS_LABEL: Record<Axis, string> = {
   region: "依部位",
@@ -90,24 +58,6 @@ function colorOf(key: string): string {
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
   return PALETTE[h % PALETTE.length];
-}
-
-function LinkIcon() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      className="inline h-3.5 w-3.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M14 5h5v5" />
-      <path d="M19 5 11 13" />
-      <path d="M18 14v4a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4" />
-    </svg>
-  );
 }
 
 interface DiseaseGroup {
@@ -267,6 +217,9 @@ export default function ReviewsIndex() {
         )}
       </header>
 
+      {/* 本月新增文獻（資料檔缺漏時自動不顯示） */}
+      <NewThisMonth jcrYear={jcrYear} />
+
       {/* Toolbar */}
       <div className="sticky top-0 z-10 space-y-3 rounded-lg border border-slate-200 bg-white/90 p-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/90">
         {/* 分類軸切換 */}
@@ -403,59 +356,12 @@ export default function ReviewsIndex() {
                       {d.items
                         .slice()
                         .sort(sortByIntervalThenIF)
-                        .map((r, i) => (
-                          <li key={i} className="px-3 py-2.5">
-                            <div className="flex items-start gap-2">
-                              {r.year && (
-                                <span className="mt-0.5 shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs tabular-nums text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                  {r.year}
-                                </span>
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <a
-                                  href={r.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm font-medium text-sky-700 hover:underline dark:text-sky-400"
-                                >
-                                  {r.title}
-                                </a>
-                                {r.tldr && (
-                                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                                    {r.tldr}
-                                  </p>
-                                )}
-                                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-                                    {r.source}
-                                  </span>
-                                  {typeof r.impactFactor === "number" && (
-                                    <span
-                                      className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
-                                      title={`期刊影響係數（近似，Clarivate JCR ${jcrYear}）`}
-                                    >
-                                      IF≈{r.impactFactor}
-                                    </span>
-                                  )}
-                                  {r.origin === "pubmed" && (
-                                    <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-                                      PubMed{r.pmid ? ` ${r.pmid}` : ""}
-                                    </span>
-                                  )}
-                                  {r.free && (
-                                    <a
-                                      href={r.freeUrl || r.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400"
-                                    >
-                                      🔓 免費全文 <LinkIcon />
-                                    </a>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </li>
+                        .map((r) => (
+                          <ReviewRow
+                            key={`${r.url}::${r.title}`}
+                            item={r}
+                            jcrYear={jcrYear}
+                          />
                         ))}
                     </ul>
                   )}

@@ -29,7 +29,7 @@ npm run typecheck  # 型別檢查
 > 產生 `reviews-index.json` 的後端資料管線（知識庫抽取、hybrid 檢索、LLM 摘要、
 > PubMed/Crossref 增補、IF 對應）**不在此 repo**，本站僅消費最終產出的靜態 JSON。
 
-`public/data/reviews-index.json`（本站唯一資料）由上游的
+`public/data/reviews-index.json`（主索引資料）由上游的
 RSS/知識庫 monorepo 產生（`scripts/reviews-index-*`：KB 抽取 + PubMed 補充 +
 Crossref 期刊名解析 + IF 表），發布於公開 URL
 `https://app.sportsmedicine.tw/data/reviews-index.json`。
@@ -37,6 +37,20 @@ Crossref 期刊名解析 + IF 表），發布於公開 URL
 本站的同步 workflow（`.github/workflows/sync-data.yml`）每月 1 日自該公開 URL
 自動拉取最新資料、commit 回本 repo；該 commit 的 push 會觸發 Cloudflare Pages
 自動重建（不需任何跨 repo token）。也可在 Actions 頁手動觸發（workflow_dispatch）即時同步。
+
+### 本月新增文獻
+
+上游是**固定容量的滾動視窗**（每月有新增也有汰除），且項目本身沒有收錄日期欄位，
+因此「本月新增」無法從資料直接讀出，只能比對同步前後兩份快照。同步 workflow 會在覆寫前
+留下舊快照，刷新後執行：
+
+```bash
+node scripts/build-new-items.mjs <舊快照> <新資料> public/data/new-items.json
+```
+
+產出 `public/data/new-items.json`（批次日期 + 逐篇新增清單，已去除同一篇文獻依多個疾病
+重複列出的情形），由首頁最上方的「本月新增文獻」區塊讀取。該檔不存在或載入失敗時，
+區塊靜默不顯示，不影響主索引。上游資料與現有版本相同時不重算，以免用空清單覆蓋上一批紀錄。
 
 - 資料本質：IF 為 **近似值**（Clarivate JCR ~2023），僅供參考、逐年變動。
 - 免費全文為啟發式判定（依來源網域），非逐篇 Unpaywall 驗證；引用前請循原文與 DOI。
