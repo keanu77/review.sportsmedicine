@@ -470,7 +470,7 @@ export default function ReviewsIndex() {
                       href={r.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block truncate py-1 text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand-dark"
+                      className="block truncate py-1.5 text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand-dark"
                     >
                       <span lang="en">{r.title}</span>
                     </a>

@@ -7,3 +7,5 @@ dist-ssr
 # Vite 建置時產生的暫存 config 檔
 *.timestamp-*.mjs
 public/data/.pmid-cache.json
+test-results
+playwright-report

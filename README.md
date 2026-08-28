@@ -104,6 +104,34 @@ npm run summarize          # 預設 qwen3.8:27b-mlx，可用 --model 指定
 
 這一步**依賴本機 ollama，GitHub Actions runner 上沒有**，因此每月同步後需要在本機補跑一次。
 
+## Smoke Test
+
+```bash
+npm run test:smoke        # 自動 build → 起 preview → 跑 20 項
+npx playwright test --ui  # 互動式除錯
+```
+
+跑在 **preview build（`dist/`）而不是 dev server**——部署的是前者。
+`reuseExistingServer` 刻意設為 `false`：沿用本機還開著的 preview 會測到**舊的 dist**，
+改壞程式碼照樣全綠，假綠燈比沒有測試更危險。
+
+每條斷言都對應一個**實際發生過的**回歸，不是為了覆蓋率而寫：
+
+| 檔案 | 涵蓋 |
+|------|------|
+| `search.spec.ts` | ACL 命中中文病名文獻（曾 22 篇）、RTP/RED-S/IJSPT（曾 0 篇）、`at` 不炸開（曾 846/911）、單一漢字可檢索、URL 狀態、無結果復原路徑 |
+| `data-integrity.spec.ts` | 篇數不隨分類軸改變（曾 911/1,291/918）、PubMed 不在主題／族群軸消失（曾 237 篇）、摘要疊加層載入、證據類型標示、站台檔案 200 |
+| `tools.spec.ts` | 複製引用內容含 PMID/DOI、BibTeX 跳脫 LaTeX 特殊字元、收藏落地 localStorage、`/` 捷徑 |
+| `a11y.spec.ts` | 全頁文字對比達 WCAG AA（瀏覽與搜尋兩種狀態）、landmark 與 skip link、手風琴按鈕全帶 `aria-expanded`／`aria-controls`、觸控目標 ≥24px |
+
+**寫這類測試的兩個坑**（都在建立過程中實際踩到）：
+
+1. `expect.poll(() => locator.count()).toBeLessThan(n)` 會**假通過**——poll 重試到成立為止，
+   而結果未 render 時 count 是 0，任何上界斷言在初始空狀態必然為真。
+   改成等結果計數文字出現再讀數字。
+2. 「掃描整頁、期望找不到問題」形式的檢查（對比度、觸控目標）在**空白頁面上必然通過**。
+   每個都要先 `waitForContent` 等資料渲染完成才掃。
+
 ## 臨床使用者功能
 
 - **複製引用**（`src/citation.ts`）：每筆文獻可複製 Vancouver 一行或 BibTeX。

@@ -100,7 +100,7 @@ export default function ReviewRow({
             target="_blank"
             rel="noopener noreferrer"
             onClick={onOpen}
-            className="text-base font-semibold leading-snug text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-ink-dark dark:focus-visible:ring-brand-dark"
+            className="inline-block py-1 text-base font-semibold leading-snug text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-ink-dark dark:focus-visible:ring-brand-dark"
           >
             <span lang="en">{item.title}</span>
             <span className="sr-only">（另開新分頁）</span>
