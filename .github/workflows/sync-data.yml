@@ -38,8 +38,10 @@ jobs:
               echo "✅ 上游資料與現有版本相同，保留既有新增清單"
             else
               node scripts/build-new-items.mjs /tmp/prev.json public/data/reviews-index.json public/data/new-items.json
-              echo "✅ 已從上游刷新資料並更新本月新增清單"
-              echo "ℹ️  新文獻的中文摘要需在本機補：npm run summaries（依賴本機 ollama，CI runner 沒有）"
+              # feed 先產一版（此時尚無中文摘要）；本機補完摘要後再跑一次 npm run feed 會帶上摘要。
+              node scripts/build-feed.mjs
+              echo "✅ 已從上游刷新資料、更新本月新增清單與 Atom feed"
+              echo "ℹ️  新文獻的中文摘要需在本機補：npm run summaries && npm run feed（依賴本機 ollama，CI runner 沒有）"
             fi
           else
             echo "⚠️ 上游拉取失敗或非合法 JSON，保留已 commit 的資料"
@@ -48,10 +50,10 @@ jobs:
       # 有變更才 commit+push；push 會觸發 Cloudflare Pages 自動重建。
       - name: Commit refreshed data
         run: |
-          if ! git diff --quiet -- public/data/; then
+          if ! git diff --quiet -- public/data/ public/feed.xml; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add public/data/reviews-index.json public/data/new-items.json
+            git add public/data/reviews-index.json public/data/new-items.json public/feed.xml
             git commit -m "chore(data): 每月同步 reviews-index.json 與本月新增清單（自上游）"
             git push
           else

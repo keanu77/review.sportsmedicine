@@ -1,0 +1,291 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xml:lang="zh-Hant">
+  <title>運動醫學 Review 索引 — 每月新增文獻</title>
+  <subtitle>系統性回顧、統合分析與臨床指引，每月同步。</subtitle>
+  <link href="https://review.sportsmedicine.tw/feed.xml" rel="self"/>
+  <link href="https://review.sportsmedicine.tw/"/>
+  <id>https://review.sportsmedicine.tw/</id>
+  <updated>2026-08-28T00:00:00Z</updated>
+  <author><name>運動醫學科 吳易澄醫師</name><uri>https://sportsmedicine.tw/</uri></author>
+  <rights>書目 metadata 著作權屬各原始出版者；本 feed 僅供教育與研究參考，不構成診療建議。</rights>
+  <entry>
+    <title>Hydrodilatation for adhesive capsulitis: a systematic review exploring efficacy and optimal technique</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42527106/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42527106</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>水擴張治療黏連性肩關節囊炎之系統性回顧顯示，相較於類固醇注射或物理治療，其臨床改善證據有限，且最佳注射體積與次數仍未定論。
+
+肩 · 肩痛</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Understanding Anterior Cruciate Ligament Adaptation: Structural, Mechanical, and Healing Considerations</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42566134/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42566134</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>敘述性回顧指出ACL為機械感應組織，其適應受負載、性別及成熟度影響，整合阻力訓練可增強韌帶韌性並降低受傷風險。
+
+膝 · 前十字韌帶損傷</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Glucagon-like peptide-1 receptor agonists are associated with improved 90-day outcomes after total hip and knee arthroplasty : a systematic review and meta-analysis</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42538001/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42538001</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示GLP-1受體激動劑或可降低全髖膝置換術90天併發症及再住院率，但證據品質極低。
+
+膝 · 全膝關節置換術</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Arthroscopic Labral Repair Versus Debridement for Femoroacetabular Impingement: A Systematic Review and Meta-analysis of 2730 Hips</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42578456/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42578456</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示，股髖撞擊症關節鏡下盂唇修復較清創能顯著降低全髖置換風險及長期疼痛，但功能分數結果因研究設計不同而不一致。
+
+髖與鼠蹊 · 股骨髖臼夾擠症候群 · 髖關節鏡手術 · 全髖關節置換術</summary>
+    <category term="髖與鼠蹊"/>
+  </entry>
+  <entry>
+    <title>Intra-articular Orthobiologics Show Statistically but Not Clinically Meaningful Improvements Compared With Viscosupplementation in Knee Osteoarthritis: A Network Meta-analysis of Randomized Controlled Trials</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42524752/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42524752</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>網際網路統合分析顯示，膝骨關節炎使用正交生物學注射雖統計顯著優於透明質酸，但未達臨床重要差異，且影像學結果不一致。
+
+膝 · 膝骨關節炎</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Medial Quadriceps Tendon-Femoral Ligament Reconstruction Offers Favorable Clinical Outcomes and Low Complication Rates for Recurrent Patellar Instability: A Systematic Review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42592956/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42592956</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示，MQTFLR結合MPFLR治療復發性髌骨不穩，功能分數佳、再脫位率低，且併發症少於單獨手術。
+
+膝 · 髕骨不穩定</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Positive Response to Preoperative Intra-articular Anesthetic Injection Suggests Favorable Outcomes After Hip Arthroscopy in Patients With Femoroacetabular Impingement Syndrome: A Systematic Review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42638273/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42638273</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示，股髖撞擊症術前關節內麻醉注射反應正向者術後結果較佳，但負向反應無法預測不良結果，證據有限。
+
+髖與鼠蹊 · 股骨髖臼夾擠症候群 · 髖關節鏡手術</summary>
+    <category term="髖與鼠蹊"/>
+  </entry>
+  <entry>
+    <title>Isolated Hip Arthroscopy Provides Comparable Mid- to Long-Term Outcomes in Borderline Hip Dysplasia and Normal Hips: A Systematic Review and Meta-analysis</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42636291/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42636291</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示，邊緣性髖關節發育不良患者接受單純髖關節鏡術後，其中長期臨床結果、翻修率及髖關節存活率與正常組無顯著差異。
+
+髖與鼠蹊 · 髖關節鏡手術 · 髖關節發育不良</summary>
+    <category term="髖與鼠蹊"/>
+  </entry>
+  <entry>
+    <title>Hip Arthroscopy in Adults Aged 40 or Older Produces Clinically Meaningful Symptom Improvement but Carries a Substantial Risk of Conversion to Total Hip Arthroplasty: A Systematic Review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42587266/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42587266</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>四十歲以上髖關節鏡術後症狀顯著改善，但轉全髖置換率達5%至21%，且大於四十五歲者功能較差，併發症率低。
+
+髖與鼠蹊 · 髖關節鏡手術 · 全髖關節置換術</summary>
+    <category term="髖與鼠蹊"/>
+  </entry>
+  <entry>
+    <title>Complications after anterior closing-wedge high tibial osteotomy in anterior cruciate ligament reconstruction: A state-of-the-art technical review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42605955/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42605955</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>前傾斜角增高ACL重建併行前側閉合楔形高脛骨截骨術併發症報告不一致，證據有限，需個體化規劃以減低風險。
+
+膝 · 前十字韌帶損傷</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Rectus femoris tendon autograft yields comparable early outcomes to hamstring tendon autograft, but evidence remains limited: A systematic review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42573112/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42573112</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示股直肌肌腱與半腱肌肌腱重建前十字韌帶早期結果相當，但僅四項異質性研究，證據有限，尚不建議常規用於初次重建。
+
+膝 · 前十字韌帶損傷</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Younger age and platelet-rich plasma characteristics influence short-term outcomes in knee osteoarthritis, but independent effects remain uncertain: A systematic review with meta-analysis and meta-regression of placebo-controlled randomised trials</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42605960/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42605960</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>膝骨關節炎PRP注射優於安慰劑，年輕、高血小板及富白細胞型短期效果佳，但證據確信度極低，各因素獨立效應仍不確定。
+
+膝 · 膝骨關節炎</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Autologous adipose-derived mesenchymal stromal cell injection for knee osteoarthritis improves pain and function without a clear increase in adverse events: A systematic review and meta-analysis of randomized controlled trials</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42573097/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42573097</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>六項隨機對照試驗顯示自體脂肪幹細胞注射改善膝骨關節炎疼痛與功能，不良事件未顯著增加，但證據異質性高且缺乏結構性改善。
+
+膝 · 膝骨關節炎</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Promises and limitations of deep learning for predicting knee osteoarthritis progression from medical imaging: A systematic review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42545888/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42545888</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統回顧顯示深度學習預測膝骨關節炎進展具概念驗證，但外部驗證效能下降且方法學風險高，臨床應用前仍需標準化定義與多中心驗證。
+
+膝 · 膝骨關節炎</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Medial meniscus posterior root repair with concomitant centralization does not demonstrate superior reduction of meniscal extrusion or improved clinical outcomes compared with isolated repair: A systematic review and meta-analysis</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42646642/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42646642</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示，內側半月板後根修復加中央化未顯著改善外翻或臨床結果，證據異質性高，需更多隨機對照試驗。
+
+膝 · 全膝關節置換術</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Age- and time-specific management of traumatic anterior shoulder instability: The 2024 ESSKA-ESA Formal Consensus. Part 2: Treatment and return to sports</title>
+    <link href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13418412/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42340356</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>2024 ESSKA-ESA共識提供創傷性前肩關節不穩治療與重返運動建議，強調依年齡、復發狀態及骨損傷個別化決策，證據等級多為中低。
+
+肩 · 肩關節前向不穩定</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Spin in Systematic Reviews on Patch-Augmented Rotator Cuff Repair: Prevalence, Predictors, and Methodological Implications</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42595080/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42595080</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>評估十六篇肩袖修補補強系統性回顧，發現八成摘要存在結論偏倚，且方法學缺陷與偏倚程度相關，提醒臨床審慎解讀。
+
+肩 · 肩痛</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Risk Factors for instability and dislocation after reverse total shoulder arthroplasty: a systematic review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42567473/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42567473</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧指出反轉肩關節置換後不穩定風險因素包括年輕、阿片類藥物濫用及未修復肩胛下肌，主要機制為壓力喪失，但證據僅供假說生成。
+
+肩 · 反式全肩關節置換術</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Short Term Results of Structural Bone Grafting of Glenoid Defects in Reverse Total Shoulder Arthroplasty: A Systematic Review/Meta-analysis of Implant Design and Graft Characteristics</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42532463/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42532463</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示自體與異體骨移植融合率均高，但翻修手術基座鬆脫及再手術率顯著高於初術，長期效果待證。
+
+肩 · 反式全肩關節置換術</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Preserving the Native ACL: A Scoping Review of Bridge-Enhanced Repair in Preclinical and Clinical Models</title>
+    <link href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13506971/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42634479</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>BEAR修復前交叉韌帶的範圍性回顧顯示，其功能結果與重建相當且能保留原生解剖，但長期耐久性與軟骨保護證據有限，仍需更多研究。
+
+膝 · 前十字韌帶損傷</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Global Prevalence of Adolescent Idiopathic Scoliosis Between 1975 and 2025: A Systematic Review and Meta-analysis</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42561101/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42561101</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>青少年特發性脊柱側彎全球患病率約1.26%，Cobb角≥20°者0.28%，受溫度及篩檢方式影響，結果不一致。
+
+胸椎 · 青少年特發性脊柱側彎</summary>
+    <category term="胸椎"/>
+  </entry>
+  <entry>
+    <title>Thoracolumbar fascia ultrasound and elastography biomarkers in low back pain: a systematic review of associations and responsiveness to intervention</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42645548/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42645548</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示非特異性下背痛者胸腰筋膜超聲指標與對照組有差異但結果不一致，介入反應證據初步，臨床實用性未定。
+
+腰椎 · 下背痛</summary>
+    <category term="腰椎"/>
+  </entry>
+  <entry>
+    <title>Anterior Cruciate Ligament Reconstruction With or Without Lateral Extra-articular Tenodesis: A Systematic Review and Meta-analysis of Comparative Outcomes From Randomized Controlled Trials</title>
+    <link href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13498808/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42633011</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>十項隨機對照試驗顯示，前十字韌帶重建加側副腱固定術顯著降低移植物失敗率並改善旋轉穩定性，但對前向鬆弛及運動回歸率無顯著差異。
+
+膝 · 前十字韌帶損傷</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Reconstruction After an Anterior Cruciate Ligament Injury Does Not Reduce the Osteoarthritis Risk But Lowers the Total Knee Arthroplasty Rate: A Systematic Review and Meta-analysis</title>
+    <link href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13424783/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42539917</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示前十字韌帶重建未降低放射學骨關節炎風險，但顯著減少全膝關節置換率。
+
+膝 · 膝骨關節炎 · 全膝關節置換術</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Complications Related to Arthroscopic Isolated Posterior Cruciate Ligament Reconstruction: A Systematic Review and Meta-analysis of 4162 Patients</title>
+    <link href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13448001/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42568750</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示孤立後十字韌帶重建併發症率約14.8%，以持續疼痛、殘留鬆弛及關節纖維化為主，單雙束及移植物類型無顯著差異，但結果具異質性。
+
+膝 · 後十字韌帶損傷</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Rotator Cuff Reconstruction Using Biceps Tendon Autograft Versus Acellular Dermal Allograft: A Systematic Review and Meta-analysis of Clinical Outcomes</title>
+    <link href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13504094/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42643770</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示，巨大型旋轉肌袖修復中，二頭肌腱自體與無細胞真皮異體移植物功能改善相當，但證據存在異質性。
+
+肩 · 旋轉肌袖撕裂</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>How to Manage the Spinoglenoid Notch Cyst: A Systematic Review and Meta-analysis</title>
+    <link href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13438244/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42558894</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示鏡下減壓合併唇脣修復囊腫復發率最低，但證據等級低且偏倚風險中等，大型囊腫仍建議開放手術。
+
+肩 · 肩痛</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Prevalence and Incidence of Isthmic Spondylolisthesis in Children and Adolescents: A Systematic Review</title>
+    <link href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13447990/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42568699</id>
+    <updated>2026-08-28T00:00:00Z</updated>
+    <summary>系統性回顧顯示青少年椎弓崩解盛行率約3.4%，運動參與者較高，但診斷方法影響結果，發病率數據不足。
+
+腰椎 · 下背痛</summary>
+    <category term="腰椎"/>
+  </entry>
+</feed>

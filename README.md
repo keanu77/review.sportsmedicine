@@ -104,6 +104,22 @@ npm run summarize          # 預設 qwen3.8:27b-mlx，可用 --model 指定
 
 這一步**依賴本機 ollama，GitHub Actions runner 上沒有**，因此每月同步後需要在本機補跑一次。
 
+## 臨床使用者功能
+
+- **複製引用**（`src/citation.ts`）：每筆文獻可複製 Vancouver 一行或 BibTeX。
+  資料沒有作者欄位，所以省略作者段而非編造；`source` 若是來源網域
+  （`jsams.org`）也不當期刊名寫進引用。BibTeX 會跳脫 LaTeX 特殊字元。
+- **收藏與最近瀏覽**（`src/useLibrary.ts`）：存 `localStorage`，只留在這台裝置、
+  不會同步。每個存取都包 try/catch——無痕視窗與封鎖網站資料的瀏覽器會直接丟例外。
+- **鍵盤捷徑**：`/` 或 `⌘K` 聚焦搜尋、`Esc` 清除。
+- **Atom feed**：`public/feed.xml`，由 `npm run feed` 自 `new-items.json` 產生。
+  刻意獨立於 `build-new-items`——feed 的 `<summary>` 要帶中文摘要，而摘要是後一步才補上的。
+  正確順序：`build-new-items` → `summaries` → `feed`。
+- **列印**：哪些元素不印用 Tailwind `print:` variant 標在元件上，`index.css` 只放
+  無法用 utility 表達的全域規則（外連網址攤開、單筆文獻不跨頁切斷）。
+- **站台檔案**：`favicon.svg` / `favicon-32.png` / `apple-touch-icon.png` /
+  `og-image.png`（1200×630）/ `robots.txt` / `sitemap.xml` / `_headers`（CSP 等安全標頭）。
+
 ## 檢索與標示的實作邊界
 
 - **搜尋**（`src/search.ts` + `src/aliases.ts`）比對標題、病名、中文摘要、期刊、PMID、

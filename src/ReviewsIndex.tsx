@@ -1,9 +1,10 @@
-import { useDeferredValue, useEffect, useId, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
 import NewThisMonth from "./NewThisMonth";
 import ReviewRow from "./ReviewRow";
 import { toneByIndex, toneOf } from "./regionGroups";
 import { matchesQuery, suggestTerms, tokenize } from "./search";
 import type { Axis, Item, ReviewsData, SummariesData } from "./types";
+import { useLibrary } from "./useLibrary";
 import { useUrlState } from "./useUrlState";
 
 // ---------------------------------------------------------------------------
@@ -115,6 +116,9 @@ export default function ReviewsIndex() {
   const [err, setErr] = useState<string | null>(null);
   const [view, setView] = useUrlState();
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [showStarred, setShowStarred] = useState(false);
+  const { stars, recent, toggleStar, markRead, clearRecent } = useLibrary();
+  const searchRef = useRef<HTMLInputElement>(null);
   const searchId = useId();
 
   const axis = (["region", "theme", "population"] as const).includes(
@@ -152,6 +156,25 @@ export default function ReviewsIndex() {
 
   useEffect(() => setOpen(new Set()), [axis]);
 
+  // 鍵盤捷徑：/ 或 ⌘K 聚焦搜尋、Esc 清除。PubMed 重度使用者的肌肉記憶。
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      const typing =
+        el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+      if ((e.key === "/" && !typing) || (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey))) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+      } else if (e.key === "Escape" && typing) {
+        setView({ q: "" });
+        searchRef.current?.blur();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [setView]);
+
   // 疊加層優先於資料自帶的 tldr——後者多數只複述標題、讀不出結論。
   // 在過濾之前合併，搜尋才吃得到新摘要的內容。
   const merged: Item[] = useMemo(() => {
@@ -163,14 +186,24 @@ export default function ReviewsIndex() {
     });
   }, [data, summaries]);
 
+  const starSet = useMemo(() => new Set(stars), [stars]);
+
   const filtered: Item[] = useMemo(
     () =>
       merged.filter((it) => {
         if (freeOnly && !it.free) return false;
+        if (showStarred && !starSet.has(paperKey(it))) return false;
         return matchesQuery(it, tokens);
       }),
-    [merged, tokens, freeOnly],
+    [merged, tokens, freeOnly, showStarred, starSet],
   );
+
+  // 最近瀏覽：以唯一文獻為單位，保持點擊當下的順序
+  const recentItems = useMemo(() => {
+    if (!recent.length) return [];
+    const byKey = new Map(uniqueItems(merged).map((i) => [paperKey(i), i]));
+    return recent.map((k) => byKey.get(k)).filter((i): i is Item => Boolean(i)).slice(0, 5);
+  }, [recent, merged]);
 
   /** 搜尋模式的平坦結果，已去重。 */
   const flatResults = useMemo(
@@ -262,10 +295,10 @@ export default function ReviewsIndex() {
   return (
     <div className="space-y-5">
       {/* Hero：品牌漸層底 + 右上光暈，資訊由上而下是「這是什麼 → 規模 → 直接開始找」 */}
-      <header className="relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-wash-from via-surface to-wash-to p-6 dark:border-line-dark dark:from-surface-dark dark:via-surface-dark dark:to-surface-altdark sm:p-8">
+      <header className="relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-wash-from via-surface to-wash-to p-6 dark:border-line-dark dark:from-surface-dark dark:via-surface-dark dark:to-surface-altdark sm:p-8 print:rounded-none print:border-0 print:bg-none print:p-0">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-wash-edge opacity-70 blur-3xl dark:bg-brand/20"
+          className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-wash-edge opacity-70 blur-3xl dark:bg-brand/20 print:hidden"
         />
         <div className="relative">
           <p className="text-xs font-semibold tracking-[0.18em] text-brand dark:text-brand-dark">
@@ -294,7 +327,7 @@ export default function ReviewsIndex() {
             />
           </dl>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 print:hidden">
             <span className="text-xs font-medium text-muted dark:text-muted-dark">
               熱門檢索
             </span>
@@ -320,7 +353,7 @@ export default function ReviewsIndex() {
       <NewThisMonth jcrYear={jcrYear} />
 
       {/* Toolbar：行動裝置不 sticky，避免動態高度的工具列遮住錨點目標 */}
-      <div className="z-10 space-y-3 rounded-lg border border-line bg-surface/95 p-3 backdrop-blur dark:border-line-dark dark:bg-surface-dark/95 sm:sticky sm:top-0">
+      <div className="z-10 space-y-3 rounded-lg border border-line bg-surface/95 p-3 backdrop-blur dark:border-line-dark dark:bg-surface-dark/95 sm:sticky sm:top-0 print:hidden">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1">
             <label
@@ -328,9 +361,13 @@ export default function ReviewsIndex() {
               className="mb-1 block text-xs font-medium text-body dark:text-body-dark"
             >
               搜尋文獻
+              <kbd className="ml-2 hidden rounded border border-line px-1 font-sans text-[10px] font-normal text-muted dark:border-line-dark dark:text-muted-dark sm:inline">
+                /
+              </kbd>
             </label>
             <input
               id={searchId}
+              ref={searchRef}
               type="search"
               value={view.q}
               onChange={(e) => setView({ q: e.target.value })}
@@ -338,15 +375,28 @@ export default function ReviewsIndex() {
               className="min-h-11 w-full rounded-md border border-linestrong bg-surface px-3 text-sm text-ink placeholder:text-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-linestrong-dark dark:bg-surface-altdark dark:text-ink-dark dark:placeholder:text-muted-dark dark:focus-visible:ring-brand-dark"
             />
           </div>
-          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm text-body dark:text-body-dark">
-            <input
-              type="checkbox"
-              checked={freeOnly}
-              onChange={(e) => setView({ free: e.target.checked })}
-              className="h-5 w-5 rounded accent-brand-strong"
-            />
-            只顯示免費全文
-          </label>
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm text-body dark:text-body-dark">
+              <input
+                type="checkbox"
+                checked={freeOnly}
+                onChange={(e) => setView({ free: e.target.checked })}
+                className="h-5 w-5 rounded accent-brand-strong"
+              />
+              只顯示免費全文
+            </label>
+            {stars.length > 0 && (
+              <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm text-body dark:text-body-dark">
+                <input
+                  type="checkbox"
+                  checked={showStarred}
+                  onChange={(e) => setShowStarred(e.target.checked)}
+                  className="h-5 w-5 rounded accent-brand-strong"
+                />
+                只看收藏（{stars.length}）
+              </label>
+            )}
+          </div>
         </div>
 
         {!hasQuery && (
@@ -388,12 +438,49 @@ export default function ReviewsIndex() {
           freeOnly={freeOnly}
           suggestions={suggestions}
           jcrYear={jcrYear}
+          starSet={starSet}
+          onToggleStar={toggleStar}
+          onOpen={markRead}
           onClear={() => setView({ q: "" })}
           onClearFree={() => setView({ free: false })}
         />
       ) : (
         <>
-          <nav aria-label="分類快速導覽" className="flex flex-wrap gap-2">
+          {recentItems.length > 0 && (
+            <section
+              aria-label="最近瀏覽"
+              className="rounded-lg border border-line bg-surface px-3 py-2 dark:border-line-dark dark:bg-surface-dark print:hidden"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-xs font-semibold text-muted dark:text-muted-dark">
+                  最近瀏覽
+                </h2>
+                <button
+                  type="button"
+                  onClick={clearRecent}
+                  className="cursor-pointer rounded px-2 py-1 text-xs text-muted hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-muted-dark dark:hover:text-brand-dark"
+                >
+                  清除
+                </button>
+              </div>
+              <ul className="mt-1 space-y-1">
+                {recentItems.map((r) => (
+                  <li key={paperKey(r)} className="text-sm">
+                    <a
+                      href={r.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block truncate py-1 text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand-dark"
+                    >
+                      <span lang="en">{r.title}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <nav aria-label="分類快速導覽" className="flex flex-wrap gap-2 print:hidden">
             {groups.map((g, i) => {
               // 部位軸的顏色代表解剖大類；其餘兩軸沒有對應，顏色純為裝飾（見 regionGroups.ts）
               const tone =
@@ -439,6 +526,9 @@ export default function ReviewsIndex() {
               jcrYear={jcrYear}
               open={open}
               onToggle={toggle}
+              starSet={starSet}
+              onToggleStar={toggleStar}
+              onOpen={markRead}
             />
           ))}
         </>
@@ -456,6 +546,9 @@ function SearchResults({
   freeOnly,
   suggestions,
   jcrYear,
+  starSet,
+  onToggleStar,
+  onOpen,
   onClear,
   onClearFree,
 }: {
@@ -465,6 +558,9 @@ function SearchResults({
   freeOnly: boolean;
   suggestions: string[];
   jcrYear: string;
+  starSet: Set<string>;
+  onToggleStar: (key: string) => void;
+  onOpen: (key: string) => void;
   onClear: () => void;
   onClearFree: () => void;
 }) {
@@ -511,7 +607,15 @@ function SearchResults({
       </p>
       <ul className="divide-y divide-line rounded-lg border border-line bg-surface dark:divide-line-dark dark:border-line-dark dark:bg-surface-dark">
         {results.map((r) => (
-          <ReviewRow key={paperKey(r)} item={r} jcrYear={jcrYear} showTaxonomy />
+          <ReviewRow
+            key={paperKey(r)}
+            item={r}
+            jcrYear={jcrYear}
+            showTaxonomy
+            starred={starSet.has(paperKey(r))}
+            onToggleStar={() => onToggleStar(paperKey(r))}
+            onOpen={() => onOpen(paperKey(r))}
+          />
         ))}
       </ul>
     </section>
@@ -525,6 +629,9 @@ function AxisSection({
   jcrYear,
   open,
   onToggle,
+  starSet,
+  onToggleStar,
+  onOpen,
 }: {
   group: AxisGroup;
   index: number;
@@ -532,6 +639,9 @@ function AxisSection({
   jcrYear: string;
   open: Set<string>;
   onToggle: (key: string) => void;
+  starSet: Set<string>;
+  onToggleStar: (key: string) => void;
+  onOpen: (key: string) => void;
 }) {
   const tone = axis === "region" ? toneOf(group.key) : toneByIndex(index);
   return (
@@ -581,7 +691,7 @@ function AxisSection({
                     {d.items.length} 篇
                     <svg
                       viewBox="0 0 24 24"
-                      className={`h-4 w-4 transition-transform ${isOpen ? "rotate-90" : ""}`}
+                      className={`h-4 w-4 transition-transform print:hidden ${isOpen ? "rotate-90" : ""}`}
                       fill="none"
                       stroke="currentColor"
                       strokeWidth="2.2"
@@ -607,6 +717,9 @@ function AxisSection({
                           key={`${r.url}::${r.title}`}
                           item={r}
                           jcrYear={jcrYear}
+                          starred={starSet.has(paperKey(r))}
+                          onToggleStar={() => onToggleStar(paperKey(r))}
+                          onOpen={() => onOpen(paperKey(r))}
                         />
                       ))}
                   </ul>

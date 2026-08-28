@@ -1,0 +1,17 @@
+# Cloudflare Pages 回應標頭。
+# 這是純靜態站，沒有表單、沒有登入、沒有第三方腳本（字體來自 Google Fonts）。
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), interest-cohort=()
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; base-uri 'self'; form-action 'none'; frame-ancestors 'none'
+
+# 建置產物帶內容雜湊，可長期快取
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 資料檔每月更新，走 revalidation
+/data/*
+  Cache-Control: public, max-age=0, must-revalidate

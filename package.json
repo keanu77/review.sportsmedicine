@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "summarize": "node scripts/summarize-new-items.mjs public/data/new-items.json",
-    "summaries": "node scripts/build-summaries.mjs"
+    "summaries": "node scripts/build-summaries.mjs",
+    "feed": "node scripts/build-feed.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

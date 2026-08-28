@@ -1,3 +1,5 @@
+import { useState } from "react";
+import { copyText, toBibTeX, toVancouver } from "./citation";
 import { isStrongEvidence, studyTypeLabel, studyTypeOf } from "./studyType";
 import type { Item } from "./types";
 
@@ -28,6 +30,24 @@ function ExternalIcon() {
   );
 }
 
+function StarIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-3.5 w-3.5"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z" />
+    </svg>
+  );
+}
+
 const ACTION_CLASS =
   "inline-flex min-h-[2rem] items-center gap-1 rounded px-2 py-1 text-xs font-medium " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
@@ -36,11 +56,27 @@ export default function ReviewRow({
   item,
   jcrYear,
   showTaxonomy = false,
+  starred = false,
+  onToggleStar,
+  onOpen,
 }: {
   item: Item;
   jcrYear: string;
   showTaxonomy?: boolean;
+  starred?: boolean;
+  onToggleStar?: () => void;
+  onOpen?: () => void;
 }) {
+  const [copied, setCopied] = useState<"vancouver" | "bibtex" | null>(null);
+
+  const copy = async (format: "vancouver" | "bibtex") => {
+    const text = format === "vancouver" ? toVancouver(item) : toBibTeX(item);
+    if (await copyText(text)) {
+      setCopied(format);
+      window.setTimeout(() => setCopied(null), 2000);
+    }
+  };
+
   const diseases = (item.diseases?.length ? item.diseases : [item.disease]).filter(
     Boolean,
   );
@@ -63,6 +99,7 @@ export default function ReviewRow({
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={onOpen}
             className="text-base font-semibold leading-snug text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-ink-dark dark:focus-visible:ring-brand-dark"
           >
             <span lang="en">{item.title}</span>
@@ -110,7 +147,7 @@ export default function ReviewRow({
             )}
           </p>
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 print:hidden">
             {item.free && (
               <a
                 href={item.freeUrl || item.url}
@@ -127,11 +164,43 @@ export default function ReviewRow({
                 href={pubmedUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={onOpen}
                 className={`${ACTION_CLASS} border border-linestrong text-body hover:bg-surface-alt focus-visible:ring-brand dark:border-linestrong-dark dark:text-body-dark dark:hover:bg-surface-altdark`}
               >
                 PubMed <ExternalIcon />
                 <span className="sr-only">（另開新分頁）</span>
               </a>
+            )}
+
+            <button
+              type="button"
+              onClick={() => copy("vancouver")}
+              className={`${ACTION_CLASS} cursor-pointer border border-linestrong text-body hover:bg-surface-alt focus-visible:ring-brand dark:border-linestrong-dark dark:text-body-dark dark:hover:bg-surface-altdark`}
+            >
+              {copied === "vancouver" ? "已複製" : "複製引用"}
+            </button>
+            <button
+              type="button"
+              onClick={() => copy("bibtex")}
+              className={`${ACTION_CLASS} cursor-pointer border border-linestrong text-body hover:bg-surface-alt focus-visible:ring-brand dark:border-linestrong-dark dark:text-body-dark dark:hover:bg-surface-altdark`}
+            >
+              {copied === "bibtex" ? "已複製" : "BibTeX"}
+            </button>
+
+            {onToggleStar && (
+              <button
+                type="button"
+                onClick={onToggleStar}
+                aria-pressed={starred}
+                className={`${ACTION_CLASS} cursor-pointer border focus-visible:ring-brand ${
+                  starred
+                    ? "border-brand bg-brand/10 text-brand dark:border-brand-dark dark:text-brand-dark"
+                    : "border-linestrong text-body hover:bg-surface-alt dark:border-linestrong-dark dark:text-body-dark dark:hover:bg-surface-altdark"
+                }`}
+              >
+                <StarIcon filled={starred} />
+                {starred ? "已收藏" : "收藏"}
+              </button>
             )}
           </div>
         </div>

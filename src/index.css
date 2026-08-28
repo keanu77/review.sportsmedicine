@@ -33,3 +33,27 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* 列印：教學門診會印一頁「某部位近年 SR」當討論清單。
+   哪些元素不印是用 Tailwind 的 print: variant 標在元件上（就近可讀），
+   這裡只放無法用 utility 表達的全域規則。 */
+@media print {
+  body {
+    background: #fff;
+  }
+
+  /* 外連網址攤開，紙本才能回溯原文；站內錨點沒有列印價值 */
+  a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    font-size: 9px;
+    font-weight: 400;
+    color: #444;
+    word-break: break-all;
+  }
+
+  /* 只讓單筆文獻不被跨頁切斷。套在 section 上會讓整個結果區塊被當成
+     不可分割，第一頁因此留下大片空白。 */
+  li {
+    break-inside: avoid;
+  }
+}

@@ -1,0 +1,6 @@
+# 運動醫學 Review 索引 — https://review.sportsmedicine.tw/
+User-agent: *
+Allow: /
+
+# 資料檔開放抓取，但沒有獨立頁面可索引
+Sitemap: https://review.sportsmedicine.tw/sitemap.xml

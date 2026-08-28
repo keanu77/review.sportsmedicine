@@ -65,7 +65,7 @@ export default function NewThisMonth({ jcrYear }: { jcrYear: string }) {
           </span>
           <svg
             viewBox="0 0 24 24"
-            className={`h-5 w-5 shrink-0 text-brand transition-transform dark:text-brand-dark ${
+            className={`h-5 w-5 shrink-0 text-brand transition-transform dark:text-brand-dark print:hidden ${
               expanded ? "rotate-90" : ""
             }`}
             fill="none"
