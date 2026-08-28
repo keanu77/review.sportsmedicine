@@ -3,7 +3,7 @@ import NewThisMonth from "./NewThisMonth";
 import ReviewRow from "./ReviewRow";
 import { toneByIndex, toneOf } from "./regionGroups";
 import { matchesQuery, suggestTerms, tokenize } from "./search";
-import type { Axis, Item, ReviewsData, SummariesData } from "./types";
+import type { Axis, Item, ReviewsData, SummariesData, TagsData } from "./types";
 import { useLibrary } from "./useLibrary";
 import { useUrlState } from "./useUrlState";
 
@@ -113,6 +113,7 @@ interface AxisGroup {
 export default function ReviewsIndex() {
   const [data, setData] = useState<ReviewsData | null>(null);
   const [summaries, setSummaries] = useState<Record<string, string>>({});
+  const [tags, setTags] = useState<TagsData["tags"]>({});
   const [err, setErr] = useState<string | null>(null);
   const [view, setView] = useUrlState();
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -152,6 +153,15 @@ export default function ReviewsIndex() {
       .catch(() => {
         /* 摘要是加值資訊，載入失敗就沿用資料本身的 tldr */
       });
+
+    fetch(`${import.meta.env.BASE_URL}data/tags.json`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: TagsData | null) => {
+        if (d && d.tags) setTags(d.tags);
+      })
+      .catch(() => {
+        /* 標籤是加值資訊，載入失敗就沿用資料本身的分類 */
+      });
   }, []);
 
   useEffect(() => setOpen(new Set()), [axis]);
@@ -176,15 +186,34 @@ export default function ReviewsIndex() {
   }, [setView]);
 
   // 疊加層優先於資料自帶的 tldr——後者多數只複述標題、讀不出結論。
-  // 在過濾之前合併，搜尋才吃得到新摘要的內容。
+  // 在過濾之前合併，搜尋才吃得到新摘要與新標籤的內容。
+  //
+  // 標籤採**聯集**：上游既有的標籤改名為新 label 後保留，再加上分類器確認的。
+  // 不用分類器結果取代上游——對檢索工具而言漏掉一篇相關文獻，比多收一篇無關的嚴重。
   const merged: Item[] = useMemo(() => {
     if (!data) return [];
-    if (!Object.keys(summaries).length) return data.items;
-    return data.items.map((it) => {
-      const summary = summaries[paperKey(it)];
-      return summary ? { ...it, tldr: summary, tldrSource: "local-llm" } : it;
+    const hasSummaries = Object.keys(summaries).length > 0;
+    const tagList = Object.values(tags);
+    if (!hasSummaries && !tagList.length) return data.items;
+
+    return data.items.map((item) => {
+      const key = paperKey(item);
+      const summary = summaries[key];
+      let next = summary ? { ...item, tldr: summary, tldrSource: "local-llm" } : item;
+
+      for (const tag of tagList) {
+        const absorbs = tag.absorbs ?? [];
+        const current = next[tag.axis] ?? [];
+        const renamed = current.map((v) => (absorbs.includes(v) ? tag.label : v));
+        const shouldAdd = tag.keys.includes(key) && !renamed.includes(tag.label);
+        if (shouldAdd || renamed.some((v, i) => v !== current[i])) {
+          const values = shouldAdd ? [...renamed, tag.label] : renamed;
+          next = { ...next, [tag.axis]: [...new Set(values)] };
+        }
+      }
+      return next;
     });
-  }, [data, summaries]);
+  }, [data, summaries, tags]);
 
   const starSet = useMemo(() => new Set(stars), [stars]);
 
@@ -223,7 +252,12 @@ export default function ReviewsIndex() {
       }
     }
 
+    // 部位軸是解剖順序（肩→肘→腕…），必須沿用上游的排列；
+    // 主題與族群軸上游本來就是依篇數遞減，新標籤沒有上游位置，
+    // 直接用實際篇數排才不會讓 78 篇的分類落在 2 篇的「軍事人員」後面。
     const order = data.axes[axis].map((a) => a.key);
+    const byUpstreamOrder = axis === "region";
+
     const result: AxisGroup[] = [];
     for (const [key, dm] of byKey) {
       const diseases: DiseaseGroup[] = [...dm.entries()].map(([disease, items]) => ({
@@ -234,14 +268,22 @@ export default function ReviewsIndex() {
       const total = diseases.reduce((n, d) => n + d.items.length, 0);
       result.push({ key, diseases, total });
     }
+
+    // 缺值桶（未分類主題／未標族群）一律排最後
     const rank = (k: string) => {
       if (k.startsWith("未")) return 1e12;
       const i = order.indexOf(k);
       return i === -1 ? 1e9 : i;
     };
-    result.sort((a, b) => rank(a.key) - rank(b.key) || b.total - a.total);
+    result.sort((a, b) => {
+      const unlabelled = rank(a.key) >= 1e12 || rank(b.key) >= 1e12;
+      if (unlabelled) return rank(a.key) - rank(b.key) || b.total - a.total;
+      return byUpstreamOrder
+        ? rank(a.key) - rank(b.key) || b.total - a.total
+        : b.total - a.total;
+    });
     return result;
-  }, [data, axis, filtered, hasQuery]);
+  }, [data, axis, filtered, hasQuery, tags]);
 
   // 統計一律以唯一文獻計數。切換分類軸不該改變「有幾篇文獻」這件事。
   const stats = useMemo(() => {

@@ -54,6 +54,23 @@ test("證據類型有標示出來", async ({ page }) => {
   await expect(first).toContainText(/系統性回顧|統合分析|指引|共識|範疇回顧/);
 });
 
+test("自訂標籤疊加層有生效", async ({ page }) => {
+  // tags.json 的鍵是正規化標題，對不上時前端會靜默沿用上游分類——
+  // 沒有這條斷言，整批標籤失效不會有人發現。
+  await page.goto("/");
+
+  await page.getByRole("button", { name: /依族群/ }).click();
+  const pediatric = page.getByRole("heading", { name: "兒童・青少年", level: 2 });
+  await expect(pediatric).toBeVisible();
+  // 上游的「青少年」應已被改名吸收，不該兩個桶並存
+  await expect(page.getByRole("heading", { name: "青少年", exact: true, level: 2 })).toHaveCount(0);
+
+  await page.getByRole("button", { name: /依臨床主題/ }).click();
+  await expect(
+    page.getByRole("heading", { name: /再生・增生療法/, level: 2 }),
+  ).toBeVisible();
+});
+
 test("靜態站台檔案都在", async ({ request }) => {
   // 這些檔案缺了不會讓建置失敗，只會讓分享預覽、搜尋引擎與訂閱靜默失效。
   for (const path of [
@@ -65,6 +82,7 @@ test("靜態站台檔案都在", async ({ request }) => {
     "/data/reviews-index.json",
     "/data/summaries.json",
     "/data/new-items.json",
+    "/data/tags.json",
   ]) {
     const res = await request.get(path);
     expect(res.status(), `${path} 應回 200`).toBe(200);

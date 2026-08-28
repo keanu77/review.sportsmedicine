@@ -41,7 +41,7 @@ jobs:
               # feed 先產一版（此時尚無中文摘要）；本機補完摘要後再跑一次 npm run feed 會帶上摘要。
               node scripts/build-feed.mjs
               echo "✅ 已從上游刷新資料、更新本月新增清單與 Atom feed"
-              echo "ℹ️  新文獻的中文摘要需在本機補：npm run summaries && npm run feed（依賴本機 ollama，CI runner 沒有）"
+              echo "ℹ️  新文獻的中文摘要與自訂標籤需在本機補：npm run summaries && npm run tags && npm run feed（依賴本機 ollama，CI runner 沒有）"
             fi
           else
             echo "⚠️ 上游拉取失敗或非合法 JSON，保留已 commit 的資料"

@@ -55,6 +55,27 @@ export interface SummariesData {
   summaries: Record<string, string>;
 }
 
+/**
+ * 自訂標籤疊加層 public/data/tags.json。與 summaries.json 同理獨立成檔——
+ * reviews-index.json 每月被上游整檔覆蓋。
+ */
+export interface TagsData {
+  generatedAt: string | null;
+  model: string;
+  tags: Record<
+    string,
+    {
+      label: string;
+      /** 併進哪一條軸 */
+      axis: "themes" | "populations";
+      /** 這些上游標籤會被改名成 label（達成聯集，不會少收） */
+      absorbs?: string[];
+      keys: string[];
+      count?: number;
+    }
+  >;
+}
+
 export interface NewItemsData {
   /** 上游本批次的資料日期（YYYY-MM-DD） */
   batch: string | null;
