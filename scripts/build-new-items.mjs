@@ -43,7 +43,8 @@ if (!Array.isArray(prev.items) || !Array.isArray(next.items)) {
 function dedupeByUrl(items) {
   const byUrl = new Map();
   for (const item of items) {
-    const key = item.url || titleKey(item);
+    // 用標題當鍵，不用網址——同一篇文獻會同時收錄 DOI 版與出版社版兩個網址。
+    const key = titleKey(item) || item.url;
     const existing = byUrl.get(key);
     if (!existing) {
       byUrl.set(key, { ...item, diseases: [item.disease].filter(Boolean) });

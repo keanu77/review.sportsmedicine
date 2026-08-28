@@ -11,11 +11,28 @@ body {
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
     "Microsoft JhengHei", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.6;
   background: #f8fafc;
 }
 
 @media (prefers-color-scheme: dark) {
   body {
     background: #020617;
+  }
+}
+
+/* 使用者要求減少動態時，平滑捲動與過場一律關閉（WCAG 2.3.3）。 */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

@@ -1,9 +1,14 @@
+import { isStrongEvidence, studyTypeLabel, studyTypeOf } from "./studyType";
 import type { Item } from "./types";
 
-// 單篇文獻列。主索引的疾病展開清單與「本月新增」清單共用同一份樣式。
-// showTaxonomy：脫離分組脈絡時（新增清單）補上部位／主題標籤。
+// 單篇文獻列。主索引的疾病展開清單、搜尋結果與「本月新增」共用。
+//
+// 資訊層級依醫師掃視的順序排：這是不是我要的題目（標題）→ 一句中文主張（tldr）
+// → 哪年、什麼期刊、什麼證據等級（meta 行）→ 能不能打開（動作）。
+// IF 刻意降權成 meta 行末的灰字：它是期刊級的近似值，不是這篇的證據等級，
+// 原本的琥珀色塊比標題還搶眼，等於鼓勵用 IF 選文。
 
-function LinkIcon() {
+function ExternalIcon() {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -13,6 +18,8 @@ function LinkIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
     >
       <path d="M14 5h5v5" />
       <path d="M19 5 11 13" />
@@ -20,6 +27,10 @@ function LinkIcon() {
     </svg>
   );
 }
+
+const ACTION_CLASS =
+  "inline-flex min-h-[2rem] items-center gap-1 rounded px-2 py-1 text-xs font-medium " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1";
 
 export default function ReviewRow({
   item,
@@ -30,13 +41,20 @@ export default function ReviewRow({
   jcrYear: string;
   showTaxonomy?: boolean;
 }) {
-  const diseases = item.diseases?.length ? item.diseases : [item.disease];
+  const diseases = (item.diseases?.length ? item.diseases : [item.disease]).filter(
+    Boolean,
+  );
+  const evidence = studyTypeLabel(item.title);
+  const strong = isStrongEvidence(studyTypeOf(item.title));
+  const pubmedUrl = item.pmid
+    ? `https://pubmed.ncbi.nlm.nih.gov/${item.pmid}/`
+    : null;
 
   return (
-    <li className="px-3 py-2.5">
-      <div className="flex items-start gap-2">
+    <li className="px-3 py-3">
+      <div className="flex items-start gap-3">
         {item.year && (
-          <span className="mt-0.5 shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-xs tabular-nums text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+          <span className="mt-0.5 w-10 shrink-0 text-sm tabular-nums text-slate-600 dark:text-slate-400">
             {item.year}
           </span>
         )}
@@ -45,47 +63,66 @@ export default function ReviewRow({
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-medium text-sky-700 hover:underline dark:text-sky-400"
+            className="text-base font-semibold leading-snug text-slate-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 dark:text-slate-100 dark:focus-visible:ring-sky-400"
           >
-            {item.title}
+            <span lang="en">{item.title}</span>
+            <span className="sr-only">（另開新分頁）</span>
           </a>
+
           {item.tldr && (
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
               {item.tldr}
             </p>
           )}
-          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-            {showTaxonomy && (
-              <span className="rounded bg-sky-50 px-1.5 py-0.5 text-[11px] font-medium text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
-                {item.region}
-                {diseases.filter(Boolean).length > 0 &&
-                  ` · ${diseases.filter(Boolean).join("／")}`}
+
+          {/* meta 行：純文字、無底色，靠分隔點串起來，不與動作競爭視覺權重 */}
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
+            {showTaxonomy && diseases.length > 0 && (
+              <span>
+                {item.region} · {diseases.join("／")}
               </span>
             )}
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
-              {item.source}
-            </span>
+            <span lang="en">{item.source}</span>
+            {evidence &&
+              (strong ? (
+                <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[11px] font-semibold text-white dark:bg-slate-200 dark:text-slate-900">
+                  {evidence}
+                </span>
+              ) : (
+                <span>{evidence}</span>
+              ))}
             {typeof item.impactFactor === "number" && (
-              <span
-                className="rounded bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
-                title={`期刊影響係數（近似，Clarivate JCR ${jcrYear}）`}
-              >
-                IF≈{item.impactFactor}
+              <span className="tabular-nums text-slate-500 dark:text-slate-400">
+                <span aria-hidden="true">IF {item.impactFactor}</span>
+                <span className="sr-only">
+                  期刊影響係數近似值 {item.impactFactor}，Clarivate JCR {jcrYear}，
+                  代表期刊而非本篇的證據等級
+                </span>
               </span>
             )}
-            {item.origin === "pubmed" && (
-              <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[11px] font-medium text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300">
-                PubMed{item.pmid ? ` ${item.pmid}` : ""}
-              </span>
-            )}
+          </p>
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
             {item.free && (
               <a
                 href={item.freeUrl || item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded bg-emerald-50 px-1.5 py-0.5 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-400"
+                className={`${ACTION_CLASS} bg-emerald-700 text-white hover:bg-emerald-800 focus-visible:ring-emerald-700`}
               >
-                🔓 免費全文 <LinkIcon />
+                免費全文 <ExternalIcon />
+                <span className="sr-only">（另開新分頁）</span>
+              </a>
+            )}
+            {pubmedUrl && (
+              <a
+                href={pubmedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`${ACTION_CLASS} border border-slate-300 text-slate-700 hover:bg-slate-100 focus-visible:ring-sky-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800`}
+              >
+                PubMed <ExternalIcon />
+                <span className="sr-only">（另開新分頁）</span>
               </a>
             )}
           </div>
