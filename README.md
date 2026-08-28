@@ -64,7 +64,11 @@ node scripts/build-new-items.mjs <舊快照> <新資料> public/data/new-items.j
   範疇回顧／傘狀回顧／敘述性回顧），涵蓋 91.7%，**未經人工核對**，無法判定則不標示。
 - **唯一文獻計數**：上游同一篇會依多個疾病重複列出，也會同時收錄 DOI 版與出版社版兩個
   網址（41 組）。統計一律以正規化標題去重後計算，切換分類軸不會改變篇數。
-- **色彩**（`src/regionGroups.ts`）只表達解剖大類，且只用於圓點與邊框；文字一律中性色。
+- **色彩與字體**對齊主站 <https://sportsmedicine.tw/>：品牌色相 OKLCH 228（藍青），
+  標題 Barlow Condensed、內文 Inter。色票以語意命名（`ink`／`body`／`muted`／`brand`／
+  `surface`／`line`）定義在 `tailwind.config.js`，每一組明暗值都驗過對比——
+  文字 ≥4.5:1、非文字元件 ≥3:1。分類色只表達解剖大類（5 組同 OKLCH 明度彩度、只換色相），
+  且只用於圓點與邊框；文字一律用中性色。
 - **檢索狀態進 URL**（`src/useUrlState.ts`）：`?q=`、`?axis=`、`?free=1` 可分享與加書籤。
 
 ## 授權

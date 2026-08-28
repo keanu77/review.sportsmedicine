@@ -54,7 +54,7 @@ export default function ReviewRow({
     <li className="px-3 py-3">
       <div className="flex items-start gap-3">
         {item.year && (
-          <span className="mt-0.5 w-10 shrink-0 text-sm tabular-nums text-slate-600 dark:text-slate-400">
+          <span className="mt-0.5 w-10 shrink-0 text-sm tabular-nums text-muted dark:text-muted-dark">
             {item.year}
           </span>
         )}
@@ -63,20 +63,20 @@ export default function ReviewRow({
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-base font-semibold leading-snug text-slate-900 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 dark:text-slate-100 dark:focus-visible:ring-sky-400"
+            className="text-base font-semibold leading-snug text-ink underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-ink-dark dark:focus-visible:ring-brand-dark"
           >
             <span lang="en">{item.title}</span>
             <span className="sr-only">（另開新分頁）</span>
           </a>
 
           {item.tldr && (
-            <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            <p className="mt-1 text-sm leading-relaxed text-body dark:text-body-dark">
               {item.tldr}
             </p>
           )}
 
           {/* meta 行：純文字、無底色，靠分隔點串起來，不與動作競爭視覺權重 */}
-          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600 dark:text-slate-400">
+          <p className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted dark:text-muted-dark">
             {showTaxonomy && diseases.length > 0 && (
               <span>
                 {item.region} · {diseases.join("／")}
@@ -85,14 +85,14 @@ export default function ReviewRow({
             <span lang="en">{item.source}</span>
             {evidence &&
               (strong ? (
-                <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[11px] font-semibold text-white dark:bg-slate-200 dark:text-slate-900">
+                <span className="rounded bg-ink px-1.5 py-0.5 text-[11px] font-semibold text-white dark:bg-ink-dark dark:text-ink">
                   {evidence}
                 </span>
               ) : (
                 <span>{evidence}</span>
               ))}
             {typeof item.impactFactor === "number" && (
-              <span className="tabular-nums text-slate-500 dark:text-slate-400">
+              <span className="tabular-nums text-muted dark:text-muted-dark">
                 <span aria-hidden="true">IF {item.impactFactor}</span>
                 <span className="sr-only">
                   期刊影響係數近似值 {item.impactFactor}，Clarivate JCR {jcrYear}，
@@ -108,7 +108,7 @@ export default function ReviewRow({
                 href={item.freeUrl || item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${ACTION_CLASS} bg-emerald-700 text-white hover:bg-emerald-800 focus-visible:ring-emerald-700`}
+                className={`${ACTION_CLASS} bg-free text-white hover:bg-free/90 focus-visible:ring-free`}
               >
                 免費全文 <ExternalIcon />
                 <span className="sr-only">（另開新分頁）</span>
@@ -119,7 +119,7 @@ export default function ReviewRow({
                 href={pubmedUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={`${ACTION_CLASS} border border-slate-300 text-slate-700 hover:bg-slate-100 focus-visible:ring-sky-700 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800`}
+                className={`${ACTION_CLASS} border border-linestrong text-body hover:bg-surface-alt focus-visible:ring-brand dark:border-linestrong-dark dark:text-body-dark dark:hover:bg-surface-altdark`}
               >
                 PubMed <ExternalIcon />
                 <span className="sr-only">（另開新分頁）</span>

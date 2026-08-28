@@ -229,7 +229,7 @@ export default function ReviewsIndex() {
   }
   if (!data)
     return (
-      <div role="status" aria-live="polite" className="p-8 text-slate-600 dark:text-slate-300">
+      <div role="status" aria-live="polite" className="p-8 text-body dark:text-body-dark">
         載入分類資料中…
       </div>
     );
@@ -239,11 +239,11 @@ export default function ReviewsIndex() {
   return (
     <div className="space-y-5">
       {/* Hero */}
-      <header className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+      <header className="rounded-xl border border-line bg-surface p-5 dark:border-line-dark dark:bg-surface-dark">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink dark:text-ink-dark">
           運動醫學 Review 索引
         </h1>
-        <p className="mt-2 max-w-3xl text-sm text-slate-700 dark:text-slate-300">
+        <p className="mt-2 max-w-3xl text-sm text-body dark:text-body-dark">
           從知識庫的運動醫學／復健文獻，加上 PubMed
           權威期刊（BJSM、AJSM、JOSPT、KSSTA、Cochrane…）
           的近年綜述，篩出系統性回顧、統合分析與臨床指引，可依
@@ -260,7 +260,7 @@ export default function ReviewsIndex() {
             />
           )}
           {data.meta.updated && (
-            <span className="text-xs text-slate-600 dark:text-slate-400">
+            <span className="text-xs text-muted dark:text-muted-dark">
               更新：{data.meta.updated}
             </span>
           )}
@@ -270,12 +270,12 @@ export default function ReviewsIndex() {
       <NewThisMonth jcrYear={jcrYear} />
 
       {/* Toolbar：行動裝置不 sticky，避免動態高度的工具列遮住錨點目標 */}
-      <div className="z-10 space-y-3 rounded-lg border border-slate-200 bg-white/95 p-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:sticky sm:top-0">
+      <div className="z-10 space-y-3 rounded-lg border border-line bg-surface/95 p-3 backdrop-blur dark:border-line-dark dark:bg-surface-dark/95 sm:sticky sm:top-0">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1">
             <label
               htmlFor={searchId}
-              className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
+              className="mb-1 block text-xs font-medium text-body dark:text-body-dark"
             >
               搜尋文獻
             </label>
@@ -285,15 +285,15 @@ export default function ReviewsIndex() {
               value={view.q}
               onChange={(e) => setView({ q: e.target.value })}
               placeholder="病名、縮寫或期刊，例：ACL、PRP、RTP、冰凍肩、BJSM"
-              className="min-h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-500 focus-visible:border-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus-visible:ring-sky-400"
+              className="min-h-11 w-full rounded-md border border-linestrong bg-surface px-3 text-sm text-ink placeholder:text-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-linestrong-dark dark:bg-surface-altdark dark:text-ink-dark dark:placeholder:text-muted-dark dark:focus-visible:ring-brand-dark"
             />
           </div>
-          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm text-slate-800 dark:text-slate-200">
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm text-body dark:text-body-dark">
             <input
               type="checkbox"
               checked={freeOnly}
               onChange={(e) => setView({ free: e.target.checked })}
-              className="h-5 w-5 rounded accent-emerald-700"
+              className="h-5 w-5 rounded accent-brand-strong"
             />
             只顯示免費全文
           </label>
@@ -302,17 +302,17 @@ export default function ReviewsIndex() {
         {!hasQuery && (
           <fieldset className="flex flex-wrap items-center gap-2">
             <legend className="sr-only">分類方式</legend>
-            <span className="text-xs text-slate-700 dark:text-slate-300">分類方式</span>
+            <span className="text-xs text-body dark:text-body-dark">分類方式</span>
             {(Object.keys(AXIS_LABEL) as Axis[]).map((a) => (
               <button
                 key={a}
                 type="button"
                 aria-pressed={axis === a}
                 onClick={() => setView({ axis: a })}
-                className={`min-h-11 cursor-pointer rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 ${
+                className={`min-h-11 cursor-pointer rounded-full px-4 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                   axis === a
-                    ? "bg-sky-700 text-white"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                    ? "bg-brand-strong text-white"
+                    : "bg-surface-alt text-body hover:bg-line dark:bg-surface-altdark dark:text-body-dark dark:hover:bg-line-dark"
                 }`}
               >
                 {axis === a && <span aria-hidden="true">✓ </span>}
@@ -350,7 +350,7 @@ export default function ReviewsIndex() {
                 <a
                   key={g.key}
                   href={`#grp-${encodeURIComponent(g.key)}`}
-                  className="flex min-h-[2.25rem] items-center gap-1.5 rounded-full border border-slate-300 px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                  className="flex min-h-[2.25rem] items-center gap-1.5 rounded-full border border-linestrong px-3 text-sm font-medium text-body transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-linestrong-dark dark:text-body-dark dark:hover:bg-surface-altdark"
                 >
                   <span
                     aria-hidden="true"
@@ -363,7 +363,7 @@ export default function ReviewsIndex() {
                     }
                   />
                   {g.key}
-                  <span className="tabular-nums text-slate-600 dark:text-slate-400">
+                  <span className="tabular-nums text-muted dark:text-muted-dark">
                     {g.total}
                   </span>
                 </a>
@@ -372,7 +372,7 @@ export default function ReviewsIndex() {
           </nav>
 
           {groups.length === 0 && (
-            <div className="rounded-lg border border-slate-200 p-8 text-center text-slate-700 dark:border-slate-800 dark:text-slate-300">
+            <div className="rounded-lg border border-line p-8 text-center text-body dark:border-line-dark dark:text-body-dark">
               目前沒有符合條件的項目
               {freeOnly && "（已篩選：只看免費全文）"}
             </div>
@@ -417,12 +417,12 @@ function SearchResults({
 }) {
   if (results.length === 0) {
     return (
-      <div className="rounded-lg border border-slate-200 p-6 dark:border-slate-800">
-        <p className="text-slate-800 dark:text-slate-200">
+      <div className="rounded-lg border border-line p-6 dark:border-line-dark">
+        <p className="text-body dark:text-body-dark">
           找不到「{query}」的文獻。
         </p>
         {suggestions.length > 0 && (
-          <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+          <p className="mt-2 text-sm text-body dark:text-body-dark">
             你是不是要找：{suggestions.join(" · ")}
           </p>
         )}
@@ -430,7 +430,7 @@ function SearchResults({
           <button
             type="button"
             onClick={onClear}
-            className="min-h-11 cursor-pointer rounded-md border border-slate-300 px-4 text-sm font-medium text-slate-800 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="min-h-11 cursor-pointer rounded-md border border-linestrong px-4 text-sm font-medium text-body hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-linestrong-dark dark:text-body-dark dark:hover:bg-surface-altdark"
           >
             清除搜尋
           </button>
@@ -438,7 +438,7 @@ function SearchResults({
             <button
               type="button"
               onClick={onClearFree}
-              className="min-h-11 cursor-pointer rounded-md border border-slate-300 px-4 text-sm font-medium text-slate-800 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-700 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="min-h-11 cursor-pointer rounded-md border border-linestrong px-4 text-sm font-medium text-body hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-linestrong-dark dark:text-body-dark dark:hover:bg-surface-altdark"
             >
               取消「只看免費全文」
             </button>
@@ -450,13 +450,13 @@ function SearchResults({
 
   return (
     <section aria-label="搜尋結果">
-      <p className="mb-2 text-sm text-slate-700 dark:text-slate-300">
-        <span className="font-semibold tabular-nums text-slate-900 dark:text-white">
+      <p className="mb-2 text-sm text-body dark:text-body-dark">
+        <span className="font-semibold tabular-nums text-ink dark:text-ink-dark">
           {results.length}
         </span>{" "}
         / {total} 篇符合「{query}」{freeOnly && "（限免費全文）"} · 依年份新到舊
       </p>
-      <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+      <ul className="divide-y divide-line rounded-lg border border-line bg-surface dark:divide-line-dark dark:border-line-dark dark:bg-surface-dark">
         {results.map((r) => (
           <ReviewRow key={paperKey(r)} item={r} jcrYear={jcrYear} showTaxonomy />
         ))}
@@ -481,16 +481,16 @@ function AxisSection({
   const g = groupOf(group.key);
   return (
     <section id={`grp-${encodeURIComponent(group.key)}`} className="scroll-mt-4 sm:scroll-mt-40">
-      <div className="mb-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 dark:border-slate-800 dark:bg-slate-800/60">
+      <div className="mb-2 flex items-center gap-2 rounded-lg border border-line bg-surface-alt px-3 py-2 dark:border-line-dark dark:bg-surface-altdark">
         <span
           aria-hidden="true"
           className="h-3 w-3 rounded-full bg-[var(--dot)] dark:bg-[var(--dot-dark)]"
           style={{ "--dot": g.light, "--dot-dark": g.dark } as React.CSSProperties}
         />
-        <h2 className="text-base font-bold text-slate-900 dark:text-white">
+        <h2 className="text-base font-bold text-ink dark:text-ink-dark">
           {group.key}
         </h2>
-        <span className="text-xs text-slate-600 dark:text-slate-400">
+        <span className="text-xs text-muted dark:text-muted-dark">
           {group.diseases.length} 個主題 · {group.total} 篇
         </span>
       </div>
@@ -502,7 +502,7 @@ function AxisSection({
           const panelId = `panel-${encodeURIComponent(key)}`;
           const buttonId = `btn-${encodeURIComponent(key)}`;
           return (
-            <li key={key} className="rounded-lg border border-slate-200 dark:border-slate-800">
+            <li key={key} className="rounded-lg border border-line dark:border-line-dark">
               <h3>
                 <button
                   id={buttonId}
@@ -510,13 +510,13 @@ function AxisSection({
                   onClick={() => onToggle(key)}
                   aria-expanded={isOpen}
                   aria-controls={panelId}
-                  className="flex min-h-11 w-full cursor-pointer items-center justify-between px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sky-700"
+                  className="flex min-h-11 w-full cursor-pointer items-center justify-between px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
                   style={{ borderLeft: `3px solid ${g.light}` }}
                 >
-                  <span className="font-medium text-slate-900 dark:text-slate-100">
+                  <span className="font-medium text-ink dark:text-ink-dark">
                     {d.disease}
                   </span>
-                  <span className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                  <span className="flex items-center gap-2 text-xs text-muted dark:text-muted-dark">
                     {d.items.length} 篇
                     <svg
                       viewBox="0 0 24 24"
@@ -537,7 +537,7 @@ function AxisSection({
 
               <div id={panelId} aria-labelledby={buttonId} hidden={!isOpen}>
                 {isOpen && (
-                  <ul className="divide-y divide-slate-100 border-t border-slate-100 dark:divide-slate-800 dark:border-slate-800">
+                  <ul className="divide-y divide-line border-t border-line dark:divide-line-dark dark:border-line-dark">
                     {d.items
                       .slice()
                       .sort(sortByIntervalThenIF)
@@ -561,8 +561,8 @@ function AxisSection({
 
 function Footer({ jcrYear }: { jcrYear: string }) {
   return (
-    <footer className="space-y-1 border-t border-slate-200 pt-4 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-400">
-      <p className="font-medium text-slate-700 dark:text-slate-300">
+    <footer className="space-y-1 border-t border-line pt-4 text-xs text-muted dark:border-line-dark dark:text-muted-dark">
+      <p className="font-medium text-body dark:text-body-dark">
         本索引僅供教育與研究參考，不構成診療建議。AI 摘要與分類可能有誤，引用前請回溯原始文獻與 DOI。
       </p>
       <p>
@@ -584,11 +584,11 @@ function Stat({ n, label, accent }: { n: number; label: string; accent?: boolean
   return (
     <div>
       <div
-        className={`text-2xl font-bold tabular-nums ${accent ? "text-emerald-700 dark:text-emerald-400" : "text-slate-900 dark:text-white"}`}
+        className={`font-display text-3xl font-bold tabular-nums ${accent ? "text-free dark:text-free-dark" : "text-ink dark:text-ink-dark"}`}
       >
         {n.toLocaleString("en-US")}
       </div>
-      <div className="text-xs text-slate-600 dark:text-slate-400">{label}</div>
+      <div className="text-xs text-muted dark:text-muted-dark">{label}</div>
     </div>
   );
 }

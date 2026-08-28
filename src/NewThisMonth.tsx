@@ -41,7 +41,7 @@ export default function NewThisMonth({ jcrYear }: { jcrYear: string }) {
   return (
     <section
       aria-labelledby={headingId}
-      className="rounded-lg border border-emerald-300 bg-emerald-50/60 dark:border-emerald-800 dark:bg-emerald-950/20"
+      className="rounded-lg border border-line bg-surface-alt dark:border-line-dark dark:bg-surface-altdark"
     >
       <h2 id={headingId}>
         <button
@@ -49,23 +49,23 @@ export default function NewThisMonth({ jcrYear }: { jcrYear: string }) {
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
           aria-controls={panelId}
-          className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-700 dark:focus-visible:ring-emerald-400"
+          className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand dark:focus-visible:ring-brand-dark"
         >
           <span className="min-w-0">
-            <span className="text-base font-bold text-emerald-900 dark:text-emerald-200">
+            <span className="text-base font-bold text-ink dark:text-ink-dark">
               {monthLabel(data.batch)}
             </span>
-            <span className="ml-2 rounded-full bg-emerald-700 px-2 py-0.5 text-xs font-semibold tabular-nums text-white">
+            <span className="ml-2 rounded-full bg-brand-strong px-2 py-0.5 text-xs font-semibold tabular-nums text-white">
               {data.count}
             </span>
-            <span className="mt-0.5 block text-xs text-emerald-900/80 dark:text-emerald-300/80">
+            <span className="mt-0.5 block text-xs text-muted dark:text-muted-dark">
               {data.batch ?? "—"} 批次
               {data.previousBatch && ` · 相對前次（${data.previousBatch}）新增`}
             </span>
           </span>
           <svg
             viewBox="0 0 24 24"
-            className={`h-5 w-5 shrink-0 text-emerald-800 transition-transform dark:text-emerald-400 ${
+            className={`h-5 w-5 shrink-0 text-brand transition-transform dark:text-brand-dark ${
               expanded ? "rotate-90" : ""
             }`}
             fill="none"
@@ -84,11 +84,11 @@ export default function NewThisMonth({ jcrYear }: { jcrYear: string }) {
       <div id={panelId} hidden={!expanded}>
         {expanded &&
           (data.count === 0 ? (
-            <p className="border-t border-emerald-300 px-4 py-3 text-sm text-emerald-900 dark:border-emerald-800 dark:text-emerald-300">
+            <p className="border-t border-line px-4 py-3 text-sm text-body dark:border-line-dark dark:text-body-dark">
               本批次沒有新增文獻。
             </p>
           ) : (
-            <ul className="divide-y divide-emerald-100 border-t border-emerald-300 bg-white dark:divide-slate-800 dark:border-emerald-800 dark:bg-slate-900">
+            <ul className="divide-y divide-line border-t border-line bg-surface dark:divide-line-dark dark:border-line-dark dark:bg-surface-dark">
               {data.items.map((item) => (
                 <ReviewRow
                   key={item.url || item.title}

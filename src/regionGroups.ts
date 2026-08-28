@@ -5,7 +5,9 @@
 // 「色盲可分辨的填色」設計，不是文字對比，11 色中有 6 色在淺色底達不到 4.5:1。
 //
 // 改法：色彩只表達「解剖大類」（5 組，固定對應），且只用在圓點與邊框這類非文字元件；
-// 文字一律用中性色，對比自然達標。明暗兩套色值都驗過 ≥3:1（WCAG 1.4.11 非文字對比）。
+// 文字一律用中性色，對比自然達標。五組色與主站 sportsmedicine.tw 同一套 OKLCH
+// 明度／彩度（L 0.53 / C 0.12 淺、L 0.78 / C 0.11 深），只換色相，因此彼此
+// 視覺權重相等、可辨識，又與品牌色相 228 同調。明暗兩套都驗過 ≥3:1（WCAG 1.4.11）。
 
 export interface RegionGroup {
   label: string;
@@ -19,26 +21,26 @@ export interface RegionGroup {
 export const REGION_GROUPS: RegionGroup[] = [
   {
     label: "上肢",
-    light: "#0369a1",
-    dark: "#7dd3fc",
+    light: "#0078a2",
+    dark: "#62c5ef",
     regions: ["肩", "肘", "腕與手"],
   },
   {
     label: "下肢",
-    light: "#15803d",
-    dark: "#86efac",
+    light: "#008053",
+    dark: "#73cd9f",
     regions: ["髖與鼠蹊", "膝", "踝與足"],
   },
   {
     label: "脊椎與頭頸",
-    light: "#b45309",
-    dark: "#fcd34d",
+    light: "#a3522a",
+    dark: "#f2a07c",
     regions: ["頸椎", "胸椎", "腰椎", "頭頸／腦震盪"],
   },
   {
     label: "全身與內科",
-    light: "#7e22ce",
-    dark: "#d8b4fe",
+    light: "#775aa6",
+    dark: "#c2a7f4",
     regions: [
       "高齡・肌少・骨骼健康",
       "代謝・營養・內分泌",
@@ -52,8 +54,8 @@ export const REGION_GROUPS: RegionGroup[] = [
   },
   {
     label: "方法與實務",
-    light: "#475569",
-    dark: "#cbd5e1",
+    light: "#626e76",
+    dark: "#acb9c3",
     regions: [
       "訓練方法與運動處方",
       "傷害流行病學・預防・篩檢",
