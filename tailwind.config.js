@@ -20,18 +20,20 @@ export default {
           dark: "#061e27",
           altdark: "#102731",
         },
-        // 標題
-        ink: { DEFAULT: "#002b3d", dark: "#eff7fa" },
+        // 標題（比主站的 #002b3d 提亮一階，避免整頁過重）
+        ink: { DEFAULT: "#00445e", dark: "#eff7fa" },
         // 內文
-        body: { DEFAULT: "#464e55", dark: "#b7c7ce" },
+        body: { DEFAULT: "#4e5a62", dark: "#b7c7ce" },
         // 次要說明文字
         muted: { DEFAULT: "#616a71", dark: "#95a8b1" },
         // 品牌色：連結與強調
         brand: {
           DEFAULT: "#0078a2",
-          strong: "#006288", // 實心底，配白字 6.77:1
+          strong: "#0078a2", // 實心底，配白字 4.99:1
           dark: "#62c5ef",
         },
+        // Hero 漸層與裝飾用的品牌淺階
+        wash: { from: "#f5fbfe", to: "#e2f3fc", edge: "#d1edfb" },
         // 分隔線：line 為裝飾性，linestrong 為元件邊界（達 3:1）
         line: { DEFAULT: "#cae2ee", dark: "#1e3946" },
         linestrong: { DEFAULT: "#608798", dark: "#527889" },

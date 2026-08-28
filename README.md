@@ -55,6 +55,23 @@ node scripts/build-new-items.mjs <舊快照> <新資料> public/data/new-items.j
 - 資料本質：IF 為 **近似值**（Clarivate JCR ~2023），僅供參考、逐年變動。
 - 免費全文為啟發式判定（依來源網域），非逐篇 Unpaywall 驗證；引用前請循原文與 DOI。
 
+### 本月新增文獻的中文摘要
+
+上游的 PubMed 文獻沒有中文摘要（`tldr` 為空），卡片上只剩一行中位 127 字元的英文長標題。
+`scripts/summarize-new-items.mjs` 從 PubMed 取回**摘要原文**，交給本機 ollama 模型
+濃縮成一句繁體中文：
+
+```bash
+npm run summarize          # 預設 qwen3.8:27b-mlx，可用 --model 指定
+```
+
+只用標題生成等於改寫標題、不會增加資訊量，所以**取不到摘要就不寫**。產出前有機械檢查，
+不通過就整篇捨棄而非硬寫：禁止療效絕對化語句（保證／治癒／完全預防…）、
+禁止出現摘要原文查無實據的數字（防止模型自行生出效果量）、中文字須佔多數、長度上限。
+通過的項目標記 `tldrSource: "local-llm"`，UI 上顯示「AI 摘要」，頁尾一併揭露。
+
+這一步**依賴本機 ollama，GitHub Actions runner 上沒有**，因此每月同步後需要在本機補跑一次。
+
 ## 檢索與標示的實作邊界
 
 - **搜尋**（`src/search.ts` + `src/aliases.ts`）比對標題、病名、中文摘要、期刊、PMID、

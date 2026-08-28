@@ -1,7 +1,7 @@
 import { useDeferredValue, useEffect, useId, useMemo, useState } from "react";
 import NewThisMonth from "./NewThisMonth";
 import ReviewRow from "./ReviewRow";
-import { groupOf } from "./regionGroups";
+import { groupOf, toneByIndex } from "./regionGroups";
 import { matchesQuery, suggestTerms, tokenize } from "./search";
 import type { Axis, Item, ReviewsData } from "./types";
 import { useUrlState } from "./useUrlState";
@@ -15,6 +15,9 @@ import { useUrlState } from "./useUrlState";
 //  - 搜尋模式（有查詢）：平坦列表直接列出命中文獻。手風琴適合 2–5 筆補充內容，
 //    不適合當搜尋結果——原本搜尋後只看到一條收合的「膝 · 69 篇」，還要再點一次。
 // ---------------------------------------------------------------------------
+
+// 熱門檢索：都經過別名表展開，點下去就能看到中英文獻一起命中
+const QUICK_SEARCHES = ["ACL", "PRP", "RTP", "腦震盪", "冰凍肩", "肌少症"];
 
 const AXIS_LABEL: Record<Axis, string> = {
   region: "依部位",
@@ -238,32 +241,59 @@ export default function ReviewsIndex() {
 
   return (
     <div className="space-y-5">
-      {/* Hero */}
-      <header className="rounded-xl border border-line bg-surface p-5 dark:border-line-dark dark:bg-surface-dark">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink dark:text-ink-dark">
-          運動醫學 Review 索引
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm text-body dark:text-body-dark">
-          從知識庫的運動醫學／復健文獻，加上 PubMed
-          權威期刊（BJSM、AJSM、JOSPT、KSSTA、Cochrane…）
-          的近年綜述，篩出系統性回顧、統合分析與臨床指引，可依
-          <span className="font-medium">部位、臨床主題、族群</span>
-          三種方式瀏覽。
-        </p>
-        <div className="mt-4 flex flex-wrap items-baseline gap-x-6 gap-y-2">
-          <Stat n={stats.reviewCount} label={hasQuery ? "篇符合" : "篇文獻"} />
-          <Stat n={stats.freeCount} label="免費全文" accent />
-          {!hasQuery && (
-            <Stat
-              n={stats.groupCount}
-              label={AXIS_LABEL[axis].replace("依", "") + "分類"}
+      {/* Hero：品牌漸層底 + 右上光暈，資訊由上而下是「這是什麼 → 規模 → 直接開始找」 */}
+      <header className="relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-wash-from via-surface to-wash-to p-6 dark:border-line-dark dark:from-surface-dark dark:via-surface-dark dark:to-surface-altdark sm:p-8">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-wash-edge opacity-70 blur-3xl dark:bg-brand/20"
+        />
+        <div className="relative">
+          <p className="text-xs font-semibold tracking-[0.18em] text-brand dark:text-brand-dark">
+            SPORTS MEDICINE · REVIEW INDEX
+          </p>
+          <h1 className="mt-2 font-display text-4xl font-bold tracking-tight text-ink dark:text-ink-dark sm:text-5xl">
+            運動醫學 Review 索引
+          </h1>
+          <p className="mt-1 text-base font-medium text-brand dark:text-brand-dark">
+            系統性回顧 · 統合分析 · 臨床指引
+          </p>
+          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-body dark:text-body-dark">
+            從知識庫的運動醫學／復健文獻，加上 PubMed
+            權威期刊（BJSM、AJSM、JOSPT、KSSTA、Cochrane…）的近年綜述，
+            可依<span className="font-semibold">部位、臨床主題、族群</span>瀏覽。
+          </p>
+
+          {/* 數據帶：分格呈現，與說明文字明確分層 */}
+          <dl className="mt-6 grid max-w-xl grid-cols-3 overflow-hidden rounded-xl border border-line bg-surface/80 dark:border-line-dark dark:bg-surface-dark/60">
+            <StatCell n={stats.reviewCount} label={hasQuery ? "篇符合" : "篇文獻"} />
+            <StatCell n={stats.freeCount} label="免費全文" accent />
+            <StatCell
+              n={hasQuery ? flatResults.length : stats.groupCount}
+              label={hasQuery ? "篇結果" : AXIS_LABEL[axis].replace("依", "") + "分類"}
+              last
             />
-          )}
-          {data.meta.updated && (
-            <span className="text-xs text-muted dark:text-muted-dark">
-              更新：{data.meta.updated}
+          </dl>
+
+          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="text-xs font-medium text-muted dark:text-muted-dark">
+              熱門檢索
             </span>
-          )}
+            {QUICK_SEARCHES.map((term) => (
+              <button
+                key={term}
+                type="button"
+                onClick={() => setView({ q: term })}
+                className="cursor-pointer rounded-full border border-brand/30 bg-surface/70 px-3 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-brand-dark/40 dark:bg-surface-dark/50 dark:text-brand-dark dark:hover:bg-brand-dark dark:hover:text-ink"
+              >
+                {term}
+              </button>
+            ))}
+            {data.meta.updated && (
+              <span className="ml-auto text-xs text-muted dark:text-muted-dark">
+                更新：{data.meta.updated}
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
@@ -344,28 +374,30 @@ export default function ReviewsIndex() {
       ) : (
         <>
           <nav aria-label="分類快速導覽" className="flex flex-wrap gap-2">
-            {groups.map((g) => {
-              const group = groupOf(g.key);
+            {groups.map((g, i) => {
+              // 部位軸的顏色代表解剖大類；其餘兩軸沒有對應，顏色純為裝飾（見 regionGroups.ts）
+              const tone =
+                axis === "region" ? groupOf(g.key) : toneByIndex(i);
               return (
                 <a
                   key={g.key}
                   href={`#grp-${encodeURIComponent(g.key)}`}
-                  className="flex min-h-[2.25rem] items-center gap-1.5 rounded-full border border-linestrong px-3 text-sm font-medium text-body transition-colors hover:bg-surface-alt focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-linestrong-dark dark:text-body-dark dark:hover:bg-surface-altdark"
+                  className="flex min-h-[2.25rem] items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  style={
+                    {
+                      background: tone.light.bg,
+                      borderColor: tone.light.border,
+                      color: tone.light.text,
+                      "--dot": tone.light.dot,
+                    } as React.CSSProperties
+                  }
                 >
                   <span
                     aria-hidden="true"
-                    className="h-2.5 w-2.5 rounded-full bg-[var(--dot)] dark:bg-[var(--dot-dark)]"
-                    style={
-                      {
-                        "--dot": group.light,
-                        "--dot-dark": group.dark,
-                      } as React.CSSProperties
-                    }
+                    className="h-2.5 w-2.5 rounded-full bg-[var(--dot)]"
                   />
                   {g.key}
-                  <span className="tabular-nums text-muted dark:text-muted-dark">
-                    {g.total}
-                  </span>
+                  <span className="tabular-nums opacity-70">{g.total}</span>
                 </a>
               );
             })}
@@ -378,10 +410,11 @@ export default function ReviewsIndex() {
             </div>
           )}
 
-          {groups.map((g) => (
+          {groups.map((g, i) => (
             <AxisSection
               key={g.key}
               group={g}
+              index={i}
               axis={axis}
               jcrYear={jcrYear}
               open={open}
@@ -467,30 +500,38 @@ function SearchResults({
 
 function AxisSection({
   group,
+  index,
   axis,
   jcrYear,
   open,
   onToggle,
 }: {
   group: AxisGroup;
+  index: number;
   axis: Axis;
   jcrYear: string;
   open: Set<string>;
   onToggle: (key: string) => void;
 }) {
-  const g = groupOf(group.key);
+  const tone = axis === "region" ? groupOf(group.key) : toneByIndex(index);
   return (
     <section id={`grp-${encodeURIComponent(group.key)}`} className="scroll-mt-4 sm:scroll-mt-40">
-      <div className="mb-2 flex items-center gap-2 rounded-lg border border-line bg-surface-alt px-3 py-2 dark:border-line-dark dark:bg-surface-altdark">
+      <div
+        className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2"
+        style={{
+          background: tone.light.bg,
+          borderColor: tone.light.border,
+        }}
+      >
         <span
           aria-hidden="true"
-          className="h-3 w-3 rounded-full bg-[var(--dot)] dark:bg-[var(--dot-dark)]"
-          style={{ "--dot": g.light, "--dot-dark": g.dark } as React.CSSProperties}
+          className="h-3 w-3 rounded-full"
+          style={{ background: tone.light.dot }}
         />
-        <h2 className="text-base font-bold text-ink dark:text-ink-dark">
+        <h2 className="text-base font-bold" style={{ color: tone.light.text }}>
           {group.key}
         </h2>
-        <span className="text-xs text-muted dark:text-muted-dark">
+        <span className="text-xs opacity-80" style={{ color: tone.light.text }}>
           {group.diseases.length} 個主題 · {group.total} 篇
         </span>
       </div>
@@ -511,7 +552,7 @@ function AxisSection({
                   aria-expanded={isOpen}
                   aria-controls={panelId}
                   className="flex min-h-11 w-full cursor-pointer items-center justify-between px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
-                  style={{ borderLeft: `3px solid ${g.light}` }}
+                  style={{ borderLeft: `3px solid ${tone.light.dot}` }}
                 >
                   <span className="font-medium text-ink dark:text-ink-dark">
                     {d.disease}
@@ -567,7 +608,8 @@ function Footer({ jcrYear }: { jcrYear: string }) {
       </p>
       <p>
         證據類型由標題自動推導（系統性回顧／統合分析／指引／共識…），未經人工核對；
-        少數文獻無法判定則不標示。
+        少數文獻無法判定則不標示。標示「AI 摘要」者，該句由本機語言模型自 PubMed
+        摘要原文濃縮而成，同樣未經人工核對，臨床判讀請以原始文獻為準。
       </p>
       <p>
         免費全文為啟發式判定（依來源網域是否開放取用），非逐篇 Unpaywall 驗證。
@@ -580,15 +622,30 @@ function Footer({ jcrYear }: { jcrYear: string }) {
   );
 }
 
-function Stat({ n, label, accent }: { n: number; label: string; accent?: boolean }) {
+function StatCell({
+  n,
+  label,
+  accent,
+  last,
+}: {
+  n: number;
+  label: string;
+  accent?: boolean;
+  last?: boolean;
+}) {
   return (
-    <div>
-      <div
-        className={`font-display text-3xl font-bold tabular-nums ${accent ? "text-free dark:text-free-dark" : "text-ink dark:text-ink-dark"}`}
-      >
-        {n.toLocaleString("en-US")}
-      </div>
-      <div className="text-xs text-muted dark:text-muted-dark">{label}</div>
+    <div
+      className={`px-4 py-3 ${last ? "" : "border-r border-line dark:border-line-dark"}`}
+    >
+      <dt className="sr-only">{label}</dt>
+      <dd>
+        <span
+          className={`block font-display text-3xl font-bold tabular-nums ${accent ? "text-free dark:text-free-dark" : "text-ink dark:text-ink-dark"}`}
+        >
+          {n.toLocaleString("en-US")}
+        </span>
+        <span className="text-xs text-muted dark:text-muted-dark">{label}</span>
+      </dd>
     </div>
   );
 }

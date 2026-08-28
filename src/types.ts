@@ -22,6 +22,8 @@ export interface Item {
   populations: string[];
   /** 僅新增清單有：去重時合併的多個疾病標籤 */
   diseases?: string[];
+  /** 摘要來源。"local-llm" 代表由本機模型自 PubMed 摘要生成，UI 會標示 */
+  tldrSource?: "local-llm" | string;
 }
 
 export interface AxisKey {
@@ -50,4 +52,7 @@ export interface NewItemsData {
   syncedAt: string;
   count: number;
   items: Item[];
+  /** 補摘要的日期與模型，供追溯 */
+  summarizedAt?: string;
+  summaryModel?: string;
 }

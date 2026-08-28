@@ -72,6 +72,14 @@ export default function ReviewRow({
           {item.tldr && (
             <p className="mt-1 text-sm leading-relaxed text-body dark:text-body-dark">
               {item.tldr}
+              {item.tldrSource === "local-llm" && (
+                <span
+                  className="ml-1.5 whitespace-nowrap rounded border border-line px-1 py-px align-middle text-[10px] font-medium text-muted dark:border-line-dark dark:text-muted-dark"
+                  title="本句由本機語言模型自 PubMed 摘要生成，未經人工核對"
+                >
+                  AI 摘要
+                </span>
+              )}
             </p>
           )}
 
