@@ -14,6 +14,11 @@ export interface Item {
   freeUrl?: string | null;
   journal?: string | null;
   pmid?: string | null;
+  pmcid?: string | null;
+  doi?: string | null;
+  authors?: string[] | null;
+  /** Frontend merge aliases; keeps old title bookmarks resolvable after metadata enrichment. */
+  identityAliases?: string[];
   impactFactor?: number | null;
   origin?: "kb" | "pubmed";
   region: string;

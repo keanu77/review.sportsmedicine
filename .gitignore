@@ -9,3 +9,14 @@ dist-ssr
 public/data/.pmid-cache.json
 test-results
 playwright-report
+
+# Private worker state and local Cloudflare credentials
+.wrangler/
+.dev.vars*
+.env*
+!worker/.env.example
+worker-state/
+launchagent-output/
+
+# Personal paper downloads and social materials
+/outputs/

@@ -1,4 +1,8 @@
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
+import { enrichItem } from "./enrich";
+import { canonicalPaperId, paperAliases, uniquePapers } from "./identity";
+import PaperDetails from "./PaperDetails";
+import { studyTypeOf } from "./studyType";
 import NewThisMonth from "./NewThisMonth";
 import ReviewRow from "./ReviewRow";
 import { toneByIndex, toneOf } from "./regionGroups";
@@ -69,36 +73,7 @@ function sortByYear(a: Item, b: Item): number {
 // 「唯一文獻」為單位，否則切換分類軸時首頁數字會從 911 跳到 1,291。
 //
 // 去重鍵用正規化標題而非網址——網址才是會分裂的那個欄位。
-function paperKey(item: Item): string {
-  return item.title.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "") || item.url;
-}
-
-function uniqueItems(items: Item[]): Item[] {
-  const byKey = new Map<string, Item>();
-  for (const item of items) {
-    const key = paperKey(item);
-    const existing = byKey.get(key);
-    if (!existing) {
-      byKey.set(key, { ...item, diseases: [item.disease].filter(Boolean) });
-      continue;
-    }
-    const diseases =
-      item.disease && !existing.diseases?.includes(item.disease)
-        ? [...(existing.diseases ?? []), item.disease]
-        : existing.diseases;
-    // 合併時保留資訊較多的那份：有 PMID、有免費全文連結的優先。
-    byKey.set(key, {
-      ...existing,
-      diseases,
-      pmid: existing.pmid ?? item.pmid,
-      free: existing.free || item.free,
-      freeUrl: existing.freeUrl ?? item.freeUrl,
-      tldr: existing.tldr ?? item.tldr,
-      impactFactor: existing.impactFactor ?? item.impactFactor,
-    });
-  }
-  return [...byKey.values()];
-}
+const uniqueItems = uniquePapers;
 
 interface DiseaseGroup {
   disease: string;
@@ -118,6 +93,12 @@ export default function ReviewsIndex() {
   const [view, setView] = useUrlState();
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [showStarred, setShowStarred] = useState(false);
+  const [paperHash, setPaperHash] = useState(() => window.location.hash);
+  useEffect(() => {
+    const sync = () => setPaperHash(window.location.hash);
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
   const { stars, recent, toggleStar, markRead, clearRecent } = useLibrary();
   const searchRef = useRef<HTMLInputElement>(null);
   const searchId = useId();
@@ -192,45 +173,39 @@ export default function ReviewsIndex() {
   // 不用分類器結果取代上游——對檢索工具而言漏掉一篇相關文獻，比多收一篇無關的嚴重。
   const merged: Item[] = useMemo(() => {
     if (!data) return [];
-    const hasSummaries = Object.keys(summaries).length > 0;
-    const tagList = Object.values(tags);
-    if (!hasSummaries && !tagList.length) return data.items;
-
-    return data.items.map((item) => {
-      const key = paperKey(item);
-      const summary = summaries[key];
-      let next = summary ? { ...item, tldr: summary, tldrSource: "local-llm" } : item;
-
-      for (const tag of tagList) {
-        const absorbs = tag.absorbs ?? [];
-        const current = next[tag.axis] ?? [];
-        const renamed = current.map((v) => (absorbs.includes(v) ? tag.label : v));
-        const shouldAdd = tag.keys.includes(key) && !renamed.includes(tag.label);
-        if (shouldAdd || renamed.some((v, i) => v !== current[i])) {
-          const values = shouldAdd ? [...renamed, tag.label] : renamed;
-          next = { ...next, [tag.axis]: [...new Set(values)] };
-        }
-      }
-      return next;
-    });
+    return data.items.map(item => enrichItem(item, summaries, tags));
   }, [data, summaries, tags]);
 
-  const starSet = useMemo(() => new Set(stars), [stars]);
+  const starSet = useMemo(() => {
+    const saved = new Set(stars);
+    const expanded = new Set<string>();
+    for (const item of merged) {
+      const aliases = paperAliases(item);
+      if (aliases.some(alias => saved.has(alias))) expanded.add(canonicalPaperId(item));
+    }
+    return expanded;
+  }, [stars, merged]);
+  const togglePaper = (key: string) => {
+    const item = merged.find(candidate => canonicalPaperId(candidate) === key) ?? merged.find(candidate => paperAliases(candidate).includes(key));
+    toggleStar(item ? canonicalPaperId(item) : key, item ? paperAliases(item) : [key]);
+  };
 
   const filtered: Item[] = useMemo(
     () =>
       merged.filter((it) => {
+        if (view.year && String(it.year) !== view.year) return false;
+        if (view.type && studyTypeOf(it.title) !== view.type) return false;
         if (freeOnly && !it.free) return false;
-        if (showStarred && !starSet.has(paperKey(it))) return false;
+        if (showStarred && !starSet.has(canonicalPaperId(it))) return false;
         return matchesQuery(it, tokens);
       }),
-    [merged, tokens, freeOnly, showStarred, starSet],
+    [merged, tokens, freeOnly, showStarred, starSet, view.year, view.type],
   );
 
   // 最近瀏覽：以唯一文獻為單位，保持點擊當下的順序
   const recentItems = useMemo(() => {
     if (!recent.length) return [];
-    const byKey = new Map(uniqueItems(merged).map((i) => [paperKey(i), i]));
+    const byKey = new Map(uniqueItems(merged).flatMap(item => paperAliases(item).map(alias => [alias, item] as const)));
     return recent.map((k) => byKey.get(k)).filter((i): i is Item => Boolean(i)).slice(0, 5);
   }, [recent, merged]);
 
@@ -333,6 +308,11 @@ export default function ReviewsIndex() {
     );
 
   const jcrYear = data.meta.ifJcrYear ?? "2023";
+  if (paperHash.startsWith("#paper=")) {
+    let id = paperHash.slice(7);
+    try { id = decodeURIComponent(id); } catch { /* Unknown identifier. */ }
+    return <PaperDetails item={uniqueItems(merged).find(item => paperAliases(item).includes(id))} />;
+  }
 
   return (
     <div className="space-y-5">
@@ -392,7 +372,7 @@ export default function ReviewsIndex() {
         </div>
       </header>
 
-      <NewThisMonth jcrYear={jcrYear} />
+      <NewThisMonth jcrYear={jcrYear} summaries={summaries} tags={tags} starSet={starSet} onToggleStar={togglePaper} onOpen={markRead} />
 
       {/* Toolbar：行動裝置不 sticky，避免動態高度的工具列遮住錨點目標 */}
       <div className="z-10 space-y-3 rounded-lg border border-line bg-surface/95 p-3 backdrop-blur dark:border-line-dark dark:bg-surface-dark/95 sm:sticky sm:top-0 print:hidden">
@@ -427,7 +407,7 @@ export default function ReviewsIndex() {
               />
               只顯示免費全文
             </label>
-            {stars.length > 0 && (
+            {(stars.length > 0 || showStarred) && (
               <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 text-sm text-body dark:text-body-dark">
                 <input
                   type="checkbox"
@@ -440,6 +420,23 @@ export default function ReviewsIndex() {
             )}
           </div>
         </div>
+
+        <div className="flex flex-wrap gap-3">
+          <label className="flex min-w-0 flex-1 items-center gap-2 text-xs sm:flex-none">年份
+            <select aria-label="年份" value={view.year} onChange={e => setView({ year: e.target.value })} className="min-h-11 min-w-0 flex-1 rounded border border-linestrong bg-surface px-2 text-sm dark:bg-surface-altdark dark:border-linestrong-dark">
+              <option value="">所有年份</option>
+              {[...new Set(merged.flatMap(item => item.year ? [item.year] : []))].sort((a, b) => b - a).map(year => <option key={year} value={year}>{year}</option>)}
+            </select>
+          </label>
+          <label className="flex min-w-0 flex-1 items-center gap-2 text-xs sm:flex-none">文體
+            <select aria-label="文體（由標題推測）" value={view.type} onChange={e => setView({ type: e.target.value })} className="min-h-11 min-w-0 flex-1 rounded border border-linestrong bg-surface px-2 text-sm dark:bg-surface-altdark dark:border-linestrong-dark">
+              <option value="">所有文體</option>
+              {["系統性回顧", "統合分析", "傘狀回顧", "範疇回顧", "敘述性回顧", "指引", "共識"].map(type => <option key={type}>{type}</option>)}
+            </select>
+          </label>
+          {(view.year || view.type) && <button type="button" className="min-h-11 rounded px-2 text-sm text-brand dark:text-brand-dark" onClick={() => setView({ year: "", type: "" })}>清除年份與文體</button>}
+        </div>
+        {showStarred && stars.length === 0 && <p role="status" className="text-sm">收藏清單已清空。取消「只看收藏」即可繼續瀏覽。</p>}
 
         {!hasQuery && (
           <fieldset className="flex flex-wrap items-center gap-2">
@@ -481,7 +478,7 @@ export default function ReviewsIndex() {
           suggestions={suggestions}
           jcrYear={jcrYear}
           starSet={starSet}
-          onToggleStar={toggleStar}
+          onToggleStar={togglePaper}
           onOpen={markRead}
           onClear={() => setView({ q: "" })}
           onClearFree={() => setView({ free: false })}
@@ -507,7 +504,7 @@ export default function ReviewsIndex() {
               </div>
               <ul className="mt-1 space-y-1">
                 {recentItems.map((r) => (
-                  <li key={paperKey(r)} className="text-sm">
+                  <li key={canonicalPaperId(r)} className="text-sm">
                     <a
                       href={r.url}
                       target="_blank"
@@ -569,7 +566,7 @@ export default function ReviewsIndex() {
               open={open}
               onToggle={toggle}
               starSet={starSet}
-              onToggleStar={toggleStar}
+              onToggleStar={togglePaper}
               onOpen={markRead}
             />
           ))}
@@ -650,13 +647,13 @@ function SearchResults({
       <ul className="divide-y divide-line rounded-lg border border-line bg-surface dark:divide-line-dark dark:border-line-dark dark:bg-surface-dark">
         {results.map((r) => (
           <ReviewRow
-            key={paperKey(r)}
+            key={canonicalPaperId(r)}
             item={r}
             jcrYear={jcrYear}
             showTaxonomy
-            starred={starSet.has(paperKey(r))}
-            onToggleStar={() => onToggleStar(paperKey(r))}
-            onOpen={() => onOpen(paperKey(r))}
+            starred={starSet.has(canonicalPaperId(r))}
+            onToggleStar={() => onToggleStar(canonicalPaperId(r))}
+            onOpen={() => onOpen(canonicalPaperId(r))}
           />
         ))}
       </ul>
@@ -759,9 +756,9 @@ function AxisSection({
                           key={`${r.url}::${r.title}`}
                           item={r}
                           jcrYear={jcrYear}
-                          starred={starSet.has(paperKey(r))}
-                          onToggleStar={() => onToggleStar(paperKey(r))}
-                          onOpen={() => onOpen(paperKey(r))}
+                          starred={starSet.has(canonicalPaperId(r))}
+                          onToggleStar={() => onToggleStar(canonicalPaperId(r))}
+                          onOpen={() => onOpen(canonicalPaperId(r))}
                         />
                       ))}
                   </ul>
@@ -782,8 +779,8 @@ function Footer({ jcrYear }: { jcrYear: string }) {
         本索引僅供教育與研究參考，不構成診療建議。AI 摘要與分類可能有誤，引用前請回溯原始文獻與 DOI。
       </p>
       <p>
-        證據類型由標題自動推導（系統性回顧／統合分析／指引／共識…），未經人工核對；
-        少數文獻無法判定則不標示。標示「AI 摘要」者，該句由本機語言模型自 PubMed
+        文體由標題自動推導（系統性回顧／統合分析／指引／共識…），未經人工核對；
+        文體不等同證據品質；少數文獻無法判定則不標示。標示「AI 摘要」者，該句由本機語言模型自 PubMed
         摘要原文濃縮而成，同樣未經人工核對，臨床判讀請以原始文獻為準。
       </p>
       <p>

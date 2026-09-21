@@ -60,6 +60,7 @@ test("收藏會存進 localStorage 並出現篩選", async ({ page }) => {
 
 test("斜線捷徑聚焦搜尋框", async ({ page }) => {
   await page.goto("/");
+  await expect(page.getByRole("searchbox")).toBeVisible();
   await page.locator("body").press("/");
   await expect(page.getByRole("searchbox")).toBeFocused();
 });

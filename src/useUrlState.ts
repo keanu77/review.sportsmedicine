@@ -12,9 +12,11 @@ export interface ViewState {
   q: string;
   axis: string;
   free: boolean;
+  year: string;
+  type: string;
 }
 
-const DEFAULTS: ViewState = { q: "", axis: "region", free: false };
+const DEFAULTS: ViewState = { q: "", axis: "region", free: false, year: "", type: "" };
 
 function parse(search: string): ViewState {
   const params = new URLSearchParams(search);
@@ -22,6 +24,8 @@ function parse(search: string): ViewState {
     q: params.get("q") ?? DEFAULTS.q,
     axis: params.get("axis") ?? DEFAULTS.axis,
     free: params.get("free") === "1",
+    year: params.get("year") ?? "",
+    type: params.get("type") ?? "",
   };
 }
 
@@ -30,6 +34,8 @@ function serialize(state: ViewState): string {
   if (state.q.trim()) params.set("q", state.q.trim());
   if (state.axis !== DEFAULTS.axis) params.set("axis", state.axis);
   if (state.free) params.set("free", "1");
+  if (state.year) params.set("year", state.year);
+  if (state.type) params.set("type", state.type);
   const query = params.toString();
   return query ? `?${query}` : window.location.pathname;
 }

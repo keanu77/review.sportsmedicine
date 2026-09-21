@@ -48,9 +48,9 @@ export function useLibrary() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const toggleStar = useCallback((key: string) => {
+  const toggleStar = useCallback((key: string, aliases: string[] = [key]) => {
     setStars((prev) => {
-      const next = prev.includes(key) ? prev.filter((k) => k !== key) : [key, ...prev];
+      const next = prev.some(value => aliases.includes(value)) ? prev.filter(value => !aliases.includes(value)) : [key, ...prev];
       write(STAR_KEY, next);
       return next;
     });

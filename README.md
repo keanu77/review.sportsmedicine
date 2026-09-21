@@ -5,10 +5,27 @@
 
 線上：<https://review.sportsmedicine.tw/>（Cloudflare Pages）
 
+## 個人文獻與社群素材工作台
+
+`/workbench` 可建立 DOI／PMID／PMCID 任務，交由已登入訂閱 CLI 的 Mac 或 Studio 下載及核對公開全文、整理草稿，再由本人確認文字與樣式後製圖。正式使用前需配置 Cloudflare Access、D1、R2 與 worker secret；詳見 [安裝與啟用](docs/worker-setup.md) 及 [實測紀錄](docs/verification-2026-09-21.md)。
+
+- Codex：工作流程整合、結構化初稿與情境圖。Claude：繁中文案與限定語。Gemini：全文、表格與數值對照。Grok：過度推論及可能誤解。這是可配置的任務分工；每次顯示實際執行狀態，未執行不算通過。
+- fb-renew 混合渲染器：把選定文案排為 1080×1080 或 1080×1350 輪播與 1200×630 封面，支持七種配色、兩種版型、寫實／插畫／純文字。照片與中文字排版分離。
+- 私人下載：原文 PDF、筆記及審查紀錄；社群 ZIP 含兩平台文案、圖片、來源、替代文字與重製設定，不包含原始 PDF。
+- API 逐次核對 owner JWT、worker lease、文案版本與上傳雜湊。取消、睡眠過期或不明模型結果需明確重試；不自動發佈社群。
+
+```sh
+npm test                  # backend、worker、frontend 單元測試
+npm run test:renderer     # 真實 Chromium 排版、尺寸與溢出檢查
+npm run test:integration  # worker→API→授權 ZIP，研究模型採測試資料
+npm run test:local-api    # 真實本機 workerd、D1、R2
+npm run worker:doctor     # 本機工具檢查，尚未連接正式任務
+```
+
 ## 技術
 
 - Vite + React + TypeScript + Tailwind CSS
-- 純靜態站，無後端。資料為建置時打包的 `public/data/reviews-index.json`
+- 公開索引使用建置時打包的 `public/data/reviews-index.json`；私人工作台使用 Cloudflare Pages Functions、D1 與私人 R2。
 - 部署：Cloudflare Pages（Git 整合，push 即自動 build+deploy，綁 `review.sportsmedicine.tw`）
 - 每月資料同步：GitHub Actions（見 `.github/workflows/sync-data.yml`）
 - Node 版本由 `.node-version` 釘定（給 Cloudflare 建置環境）
@@ -25,7 +42,7 @@ npm run typecheck  # 型別檢查
 
 ## 資料來源與更新
 
-> **給想學習的人**：這個 repo 只是**前端展示層**（一頁式資料驅動 UI + 部署）。
+> **給想學習的人**：公開索引的資料管線與新加入的私人工作台是不同流程。
 > 產生 `reviews-index.json` 的後端資料管線（知識庫抽取、hybrid 檢索、LLM 摘要、
 > PubMed/Crossref 增補、IF 對應）**不在此 repo**，本站僅消費最終產出的靜態 JSON。
 
@@ -115,7 +132,7 @@ npm run summarize          # 預設 qwen3.8:27b-mlx，可用 --model 指定
 ## Smoke Test
 
 ```bash
-npm run test:smoke        # 自動 build → 起 preview → 跑 20 項
+npm run test:smoke        # 自動 build → 起 preview → 執行公開索引及工作台回歸
 npx playwright test --ui  # 互動式除錯
 ```
 
@@ -194,7 +211,7 @@ npm run tags -- --all             # 全部重判
 - **證據類型**（`src/studyType.ts`）由標題自動推導（系統性回顧／統合分析／指引／共識／
   範疇回顧／傘狀回顧／敘述性回顧），涵蓋 91.7%，**未經人工核對**，無法判定則不標示。
 - **唯一文獻計數**：上游同一篇會依多個疾病重複列出，也會同時收錄 DOI 版與出版社版兩個
-  網址（41 組）。統計一律以正規化標題去重後計算，切換分類軸不會改變篇數。
+  網址（41 組）。統計以文獻識別碼與相容別名去重後計算，切換分類軸不會改變篇數。
 - **色彩與字體**對齊主站 <https://sportsmedicine.tw/>：品牌色相 OKLCH 228（藍青），
   標題 Barlow Condensed、內文 Inter。色票以語意命名（`ink`／`body`／`muted`／`brand`／
   `surface`／`line`）定義在 `tailwind.config.js`，每一組明暗值都驗過對比——

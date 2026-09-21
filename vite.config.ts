@@ -1,10 +1,8 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// 相對 base：同時相容 GitHub Pages 子路徑（/review.sportsmedicine/）
-// 與未來自訂網域根域（review.sportsmedicine.tw/）。
-// 搭配 ReviewsIndex 的 fetch 用 import.meta.env.BASE_URL 取資料。
+// Cloudflare 根網域部署；絕對資產路徑讓 /workbench/ 直接開啟及重新整理正常。
 export default defineConfig({
-  base: "./",
+  base: "/",
   plugins: [react()],
 });

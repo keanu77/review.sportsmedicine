@@ -1,18 +1,11 @@
 // 引用格式化。
 //
-// 資料沒有作者欄位，所以只能組出「無作者」版本的 Vancouver 條目——這是誠實的取捨：
-// 寧可少一個欄位，也不要編造作者。使用者貼進病歷討論或投影片時，
+// 索引若提供作者欄位便納入引用；缺少時省略，不編造作者。使用者貼進病歷討論或投影片時，
 // 標題／期刊／年份／PMID／DOI 已足夠回溯原文。
 
 import type { Item } from "./types";
-
-/** 從各種網址形態裡取出 DOI。 */
-export function doiOf(item: Item): string | null {
-  const m = String(item.url ?? "").match(
-    /(?:doi\.org\/|\/doi\/(?:abs|full|pdf)\/)(10\.\d{4,9}\/\S+)/i,
-  );
-  return m ? decodeURIComponent(m[1]).replace(/[).]+$/, "") : null;
-}
+import { doiOf } from "./identity";
+export { doiOf } from "./identity";
 
 // source 有時是來源網域（jsams.org、journals.sagepub.com）而非期刊名。
 // 把網域當期刊名寫進引用會誤導，寧可缺這個欄位。
@@ -37,7 +30,8 @@ export function toVancouver(item: Item): string {
   const title = item.title.trim().replace(/\.$/, "");
   const journal = journalOf(item);
   const doi = doiOf(item);
-  const parts = [`${title}.`];
+  const authors = (item.authors ?? []).filter(Boolean);
+  const parts = [...(authors.length ? [`${authors.join(", ")}.`] : []), `${title}.`];
   if (journal) parts.push(`${journal}.`);
   if (item.year) parts.push(`${item.year}.`);
   if (item.pmid) parts.push(`PMID: ${item.pmid}.`);
@@ -59,11 +53,12 @@ export function toBibTeX(item: Item): string {
     ["title", `{${escapeBibTeX(item.title.trim())}}`],
   ];
   const journal = journalOf(item);
+  if (item.authors?.length) fields.push(["author", `{${item.authors.map(escapeBibTeX).join(" and ")}}`]);
   if (journal) fields.push(["journal", `{${escapeBibTeX(journal)}}`]);
   if (item.year) fields.push(["year", item.year]);
-  if (doi) fields.push(["doi", `{${doi}}`]);
+  if (doi) fields.push(["doi", `{${escapeBibTeX(doi)}}`]);
   if (item.pmid) fields.push(["pmid", `{${item.pmid}}`]);
-  fields.push(["url", `{${item.freeUrl || item.url}}`]);
+  fields.push(["url", `{${escapeBibTeX(item.freeUrl || item.url)}}`]);
   const body = fields.map(([k, v]) => `  ${k} = ${v},`).join("\n");
   return `@article{pmid${key},\n${body}\n}`;
 }

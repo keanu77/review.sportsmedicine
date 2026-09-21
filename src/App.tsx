@@ -1,7 +1,9 @@
 import ReviewsIndex from "./ReviewsIndex.tsx";
+import Workbench from "./Workbench";
 
 // 公開閱覽站：外層提供 skip link、製作者署名與 main landmark，內容全在 ReviewsIndex。
 export default function App() {
+  const isWorkbench = /^\/workbench(?:\/|$)/.test(window.location.pathname);
   return (
     <div className="min-h-screen bg-page text-body dark:bg-page-dark dark:text-body-dark">
       <a
@@ -11,7 +13,11 @@ export default function App() {
         跳至主要內容
       </a>
 
-      <div className="mx-auto flex max-w-5xl justify-end px-4 pt-3">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-3 px-4 pt-3">
+        <nav aria-label="主要導覽" className="flex flex-wrap gap-2 text-sm">
+          <a href="/" aria-current={!isWorkbench ? "page" : undefined} className="inline-flex min-h-11 items-center rounded px-2 font-medium text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand-dark">公開文獻索引</a>
+          <a href="/workbench/" aria-current={isWorkbench ? "page" : undefined} className="inline-flex min-h-11 items-center rounded px-2 font-medium text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand-dark">私人工作台</a>
+        </nav>
         <a
           href="https://sportsmedicine.tw/"
           target="_blank"
@@ -41,7 +47,7 @@ export default function App() {
       </div>
 
       <main id="main-content" tabIndex={-1} className="mx-auto max-w-5xl px-4 pb-6 focus:outline-none">
-        <ReviewsIndex />
+        {isWorkbench ? <Workbench /> : <ReviewsIndex />}
       </main>
     </div>
   );

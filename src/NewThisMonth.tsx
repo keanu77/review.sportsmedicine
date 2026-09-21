@@ -1,6 +1,8 @@
 import { useEffect, useId, useState } from "react";
 import ReviewRow from "./ReviewRow";
-import type { NewItemsData } from "./types";
+import type { NewItemsData, TagsData } from "./types";
+import { enrichItem } from "./enrich";
+import { canonicalPaperId } from "./identity";
 
 // 「本月新增文獻」——每月同步時由 scripts/build-new-items.mjs 比對前後快照算出。
 //
@@ -15,7 +17,10 @@ function monthLabel(batch: string | null): string {
   return batch.slice(0, 7) === currentMonth ? "本月新增文獻" : "最新新增文獻";
 }
 
-export default function NewThisMonth({ jcrYear }: { jcrYear: string }) {
+export default function NewThisMonth({ jcrYear, summaries, tags, starSet, onToggleStar, onOpen }: {
+  jcrYear: string; summaries: Record<string, string>; tags: TagsData["tags"]; starSet: Set<string>;
+  onToggleStar: (key: string) => void; onOpen: (key: string) => void;
+}) {
   const [data, setData] = useState<NewItemsData | null>(null);
   const [expanded, setExpanded] = useState(false);
   const panelId = useId();
@@ -92,9 +97,12 @@ export default function NewThisMonth({ jcrYear }: { jcrYear: string }) {
               {data.items.map((item) => (
                 <ReviewRow
                   key={item.url || item.title}
-                  item={item}
+                  item={enrichItem(item, summaries, tags)}
                   jcrYear={jcrYear}
                   showTaxonomy
+                  starred={starSet.has(canonicalPaperId(item))}
+                  onToggleStar={() => onToggleStar(canonicalPaperId(item))}
+                  onOpen={() => onOpen(canonicalPaperId(item))}
                 />
               ))}
             </ul>

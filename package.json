@@ -14,9 +14,23 @@
     "feed": "node scripts/build-feed.mjs",
     "test:smoke": "playwright test",
     "tags": "node scripts/build-tags.mjs",
-    "audit:summaries": "node scripts/audit-summaries.mjs"
+    "audit:summaries": "node scripts/audit-summaries.mjs",
+    "worker": "node worker/cli.mjs",
+    "test:server": "node --import tsx --test tests/server/*.test.mjs",
+    "test:worker": "node --test tests/worker/*.test.mjs",
+    "test:renderer": "node --test worker/renderer/*.test.mjs",
+    "test:local-api": "node tests/server/wrangler-smoke.mjs",
+    "test": "npm run test:server && npm run test:worker && npm run test:frontend",
+    "dev:private": "wrangler pages dev dist",
+    "worker:doctor": "node worker/cli.mjs doctor",
+    "test:frontend": "node --import tsx --test tests/frontend/*.test.ts",
+    "test:integration": "node --test tests/integration/*.test.mjs"
   },
   "dependencies": {
+    "fast-xml-parser": "^5.11.1",
+    "fflate": "^0.8.3",
+    "ipaddr.js": "^2.5.0",
+    "jose": "^6.2.12",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -28,7 +42,12 @@
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
+    "tsx": "^4.23.15",
     "typescript": "^5.6.3",
-    "vite": "^5.4.11"
+    "vite": "^5.4.11",
+    "wrangler": "^4.135.0"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

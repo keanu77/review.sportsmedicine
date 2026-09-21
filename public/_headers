@@ -1,5 +1,5 @@
 # Cloudflare Pages 回應標頭。
-# 這是純靜態站，沒有表單、沒有登入、沒有第三方腳本（字體來自 Google Fonts）。
+# 公開索引與私人工作台共用的靜態回應標頭；私人 API 另由 Functions 設定。
 
 /*
   X-Content-Type-Options: nosniff
@@ -15,3 +15,12 @@
 # 資料檔每月更新，走 revalidation
 /data/*
   Cache-Control: public, max-age=0, must-revalidate
+
+# 登入工作台頁面不索引、不共用快取；API 由 Functions 自行設定
+/workbench
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow
+
+/workbench/*
+  Cache-Control: no-store
+  X-Robots-Tag: noindex, nofollow
