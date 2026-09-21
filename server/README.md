@@ -6,6 +6,8 @@ The public Vite site stays public. The two Pages Functions routes authenticate i
 
 `wrangler.jsonc` binds `DB` to D1 `review-private-jobs` and `ARTIFACTS` to private R2 bucket `review-private-artifacts`. The configured D1 ID is the provisioned database. On 2026-09-21, the remote migration check reported no pending migrations and the R2 development URL was disabled. Do not enable public R2 access. A new environment must apply `migrations/0001_private_jobs.sql` through Wrangler.
 
+Production is deployed and the bindings, Access owner login and Mac worker connection have been verified. Its Access team is `sportsmedicine-tw.cloudflareaccess.com`; non-secret values are in `wrangler.jsonc`, while `WORKER_TOKEN` is a production Pages secret. Preview has not been configured for private work. See [the dated verification record](../docs/verification-2026-09-21.md) for the deployment and end-to-end acceptance scope.
+
 Configure these Pages variables/secrets for each environment:
 
 - `ACCESS_TEAM_DOMAIN`: `your-team.cloudflareaccess.com`.

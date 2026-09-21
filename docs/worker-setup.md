@@ -4,6 +4,8 @@
 
 本文與目前 `worker/cli.mjs`、`worker/client.mjs` 和 [API 設定](../server/README.md) 對應。以下指令是操作步驟，文件與 setup 工具本身都不會建立雲端資源、登入帳號或啟動服務。
 
+目前正式站與這台 Mac 已於 2026-09-21 啟用。服務目錄 `/Users/ethanwu/review-worker-service`，LaunchAgent `tw.sportsmedicine.review-worker`，Node `/opt/homebrew/opt/node@24/bin/node`。本機 env 權限 `0600`，與 Cloudflare production secret 配對；不要把內容貼入對話。以下首次安裝步驟供其他機器使用，不要在已啟用的這台 Mac 重複建立或 bootstrap。實際驗收範圍見 [實測紀錄](verification-2026-09-21.md)。
+
 ## 1. 選擇執行機器與 macOS 使用者
 
 先選本機或 Studio 作為主要 worker，在那台機器用**同一個 macOS 使用者**完成 CLI 登入與執行。訂閱存在不表示另一台機器的 CLI 已登入；不要複製登入憑證資料夾代替正常登入。
@@ -90,7 +92,7 @@ env 由 Node `--env-file` 讀取，路徑中的空格請保留引號；**`$HOME`
 
 ### 配置工作台資源
 
-這部分需要 Pages、D1、R2 與 Zero Trust 的管理權限，由管理者在既有專案設定。尚未建立或驗證這些項目，就不能宣稱 worker 已連上正式站。
+正式 production 已完成本節的資源、Access、secret 與部署設定，並以真實 worker 成功連線；preview 未配置私人服務。本節保留為新環境的配置說明。
 
 1. D1 `review-private-jobs` 與私人 R2 bucket `review-private-artifacts` 已建立，`wrangler.jsonc` 已填入真實 D1 ID。保留 binding 名 `DB`／`ARTIFACTS`，R2 不開公開存取。
 2. 套用 `migrations/0001_private_jobs.sql`，例如 `npx wrangler d1 migrations apply DB --remote`。先確認 Wrangler 登入的是正確帳號與環境；本機測試使用 `--local`。
@@ -101,7 +103,7 @@ env 由 Node `--env-file` 讀取，路徑中的空格請保留引號；**`$HOME`
 
 | Pages 變數／secret | 用途 |
 | --- | --- |
-| `ACCESS_TEAM_DOMAIN` | `your-team.cloudflareaccess.com` |
+| `ACCESS_TEAM_DOMAIN` | 本站為 `sportsmedicine-tw.cloudflareaccess.com` |
 | `ACCESS_AUD` | 同一 Access application 的 audience tag |
 | `OWNER_EMAIL` | 唯一允許的擁有者 email |
 | `WORKER_TOKEN` | 至少 32 字元的隨機 bearer secret；不是 Cloudflare API token，也不是模型 API key |

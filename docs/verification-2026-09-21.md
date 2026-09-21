@@ -26,13 +26,25 @@
 
 執行命令與最新測試項目見 package.json、tests/。模型與生圖實際執行用量不納入一般測試套件。
 
-## 已確認的正式服務缺項
+## 正式服務啟用與驗收
 
-VS Code 中斷後重新查核：Cloudflare Pages `review-sportsmedicine` 的網域是 `review.sportsmedicine.tw`，GitHub main 自動部署；production/preview 尚未設定環境變數、D1 或 R2 bindings。D1 `review-private-jobs` 與私人 R2 `review-private-artifacts` 已存在；遠端 migration list 顯示沒有待套用遷移，R2 development URL 關閉。`wrangler.jsonc` 已填真實 D1 ID。
+Cloudflare Pages `review-sportsmedicine` 已由 GitHub main 自動部署至 `review.sportsmedicine.tw`。程式提交 `ba2879a`，正式 deployment `5055f8b0-85cb-4e22-8790-3a3f90ab4a52` 的 build/deploy 均成功（2026-09-21 05:16 UTC）。Production 已核對 5 個設定名稱與 `DB`／`ARTIFACTS` bindings；preview 尚未配置私人服務。D1 `review-private-jobs` 的 migration list 沒有待套用遷移，R2 `review-private-artifacts` development URL 關閉。
 
-已在登入後管理頁確認既有 Zero Trust 團隊網域 `sportsmedicine-tw.cloudflareaccess.com`，既有 4 個應用屬於另一網站，未更動。CLI 的組織設定 403 屬權限不足，並非未開通 Zero Trust。新增工作台 Access 設定時，Cloudflare 管理頁在電子郵件規則編輯器出現 `Maximum call stack size exceeded`；新增 modal、獨立原則頁、既有電子郵件規則頁都重現，切換英文仍相同，已恢復繁體中文。尚未因此新增任何開放規則。
+沿用 Zero Trust 團隊 `sportsmedicine-tw.cloudflareaccess.com`。新增 Access application `sportsmedicine-review-workbench`（`4fa3e76e-b91f-47d9-ab18-7f73499ef076`），保護 `/workbench`、`/workbench/*`、`/api/private/*`；唯一 Allow email 是 `keanu.firefox@gmail.com`。既有 4 個其他網站應用未更動。
 
-尚需：工作台 Access app/audience/唯一 owner policy、Pages bindings、worker secret、正式部署與本人登入實測。Mac 啟動模板已完成，尚未安裝常駐服務。未對外發佈 FB/IG。
+Cloudflare 管理頁的電子郵件規則編輯器持續出現 `Maximum call stack size exceeded`，因此在本人明確批准後，建立僅限本帳戶 Access Apps and Policies 編輯權限的臨時 Token，經官方 API 完成設定。設定驗證後立即撤銷；API 驗證回傳 `401 Invalid API Token`，本機 Token 暫存檔已刪除。`WORKER_TOKEN` 是另外產生的應用程式連線密鑰，僅存於 Pages production secret 與本機 `0600` env，不在 Git 或日誌中。
+
+正式 smoke：公開首頁與實際索引 JSON 為 200；工作台與私人 API 未登入為 Access 302；Pages 原始網域私人 session 及沒有／錯誤 bearer 的 worker API 為 401 JSON 且 no-store。本人已在 Edge 完成 email 驗證碼登入，工作台確認 email 正確並顯示「Mac 已連線」。
+
+Mac 前景 `run --once` 成功連接正式 API，當時回傳「等待網站任務」。LaunchAgent `tw.sportsmedicine.review-worker` 已安裝並啟動，確認 `state = running` 且日誌正常輪詢。私有服務設定位於 `/Users/ethanwu/review-worker-service`，Node 固定為 Homebrew Node 24，PATH 包含 Grok 實際安裝位置。Codex/Claude 訂閱登入、PDF 工具、Chromium 與已完成生圖 proof 通過；probe 原始生成紀錄與 PNG 複製後再次核對 hash，未重新消耗生圖額度。
+
+正式任務 `49c6d0a5-da15-4eb9-bb64-6d441acafcb5` 由本人登入的工作台建立，使用上述跑步文獻。背景 worker 實際重新取得 PDF 並核對相同 SHA-256；本次 Unpaywall 來源未提供 XML，如實記為未取得。Codex 生成新草稿，Claude 回傳 8 項意見、Grok 回傳 5 項意見；Gemini 缺少 CLI 登入，記為 unavailable。
+
+對照 PDF 第 1–2 頁，透過正式 UI 修正骨壓力性損傷情境、生物力學因素範圍、既有框架歸屬、下坡跑加入條件、非線性關係的可能解釋語氣及觀點文章稱呼。草稿由版本 2 儲存為 3，重新載入確認仍保留修改；原始 claims 與模型審查紀錄保留，UI 明示修改後尚未重新查核。再由版本 4 排入製圖，worker 實際生成新情境圖並完成排版、R2 上傳與任務完成。
+
+產物：6 張 1080×1350 圖卡、1 張 1200×630 封面、兩平台文案、來源與替代文字、ZIP。正式頁面 7 張私人圖片均完成載入且尺寸正確，並實際檢視封面與條件語內容頁。所有排版檢查通過；ZIP 共 15 個檔案，沒有原文 PDF，CRC 檢查無錯。大小 3,367,414 bytes，SHA-256 `5da5e3ad40a510d1136165dd9eba6fb4429697b3b21800de0ba5c1ad18609f34`。本機產物在 `/Users/ethanwu/review-worker-service/workspace/49c6d0a5-da15-4eb9-bb64-6d441acafcb5/versions/a25487200d9aefd44fe95c8a/`。
+
+下載驗收界線：正式頁面已顯示完整 ZIP 連結；未登入 ZIP 請求在正式網域為 Access 302、Pages 原始網域為 401 JSON/no-store。瀏覽器自動化未回報附件下載完成事件，一般本機測試 ZIP 也同樣無事件，不能直接判定網站失敗。已請本人確認 Edge 實際下載。隔離診斷伺服器已停止。未對外發佈 FB/IG。
 
 ## 第一版限制
 

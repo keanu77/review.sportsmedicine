@@ -7,7 +7,7 @@
 
 ## 個人文獻與社群素材工作台
 
-`/workbench` 可建立 DOI／PMID／PMCID 任務，交由已登入訂閱 CLI 的 Mac 或 Studio 下載及核對公開全文、整理草稿，再由本人確認文字與樣式後製圖。正式使用前需配置 Cloudflare Access、D1、R2 與 worker secret；詳見 [安裝與啟用](docs/worker-setup.md) 及 [實測紀錄](docs/verification-2026-09-21.md)。
+[/workbench](https://review.sportsmedicine.tw/workbench) 可建立 DOI／PMID／PMCID 任務，交由已登入訂閱 CLI 的 Mac 或 Studio 下載及核對公開全文、整理草稿，再由本人確認文字與樣式後製圖。2026-09-21 正式站已接上 Cloudflare Access、D1、私人 R2 與本機背景 worker；目前只允許擁有者登入。其他機器的安裝方式與實際驗收範圍見 [安裝與啟用](docs/worker-setup.md) 及 [實測紀錄](docs/verification-2026-09-21.md)。
 
 - Codex：工作流程整合、結構化初稿與情境圖。Claude：繁中文案與限定語。Gemini：全文、表格與數值對照。Grok：過度推論及可能誤解。這是可配置的任務分工；每次顯示實際執行狀態，未執行不算通過。
 - fb-renew 混合渲染器：把選定文案排為 1080×1080 或 1080×1350 輪播與 1200×630 封面，支持七種配色、兩種版型、寫實／插畫／純文字。照片與中文字排版分離。
