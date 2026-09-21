@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { Artifact, Design, Draft, Job, JobStatus } from "../shared/contracts";
-import { errorText, fileUrl, privateApi } from "./privateApi";
+import { errorText, fetchArtifact, fileUrl, privateApi } from "./privateApi";
 
 export const STATUS_LABELS: Record<JobStatus, string> = { queued: "排隊中", running: "處理中", needs_review: "待你審閱", completed: "輸出完成", failed: "執行失敗", cancelled: "已取消" };
 const PALETTES: [Design["palette"], string][] = [["blue", "白藍 · 專業"], ["cyan", "青藍"], ["emerald", "翡翠綠"], ["orange-light", "柔橘"], ["gold", "金色"], ["orange", "暖橘"], ["sky", "天空藍"]];
@@ -163,6 +163,42 @@ function Preview({ artifact, jobId }: { artifact: Artifact; jobId: string }) {
   return <figure>{failed ? <div className="wb-notice">預覽無法載入，請重新登入或使用下載連結。</div> : <img src={fileUrl(jobId, artifact, true)} alt={artifact.name} loading="lazy" onError={() => setFailed(true)} />}<figcaption>{artifact.name}</figcaption></figure>;
 }
 function Artifacts({ job, edited }: { job: Job; edited: boolean }) {
+  const [downloading, setDownloading] = useState("");
+  const [downloadError, setDownloadError] = useState("");
+  const [ready, setReady] = useState<{ url: string; name: string; size: number } | null>(null);
+  const active = useRef<AbortController | null>(null);
+  const objectUrl = useRef<string | null>(null);
+  const artifactIds = job.artifacts.map(file => file.id).join("|");
+  useEffect(() => {
+    setDownloading(""); setDownloadError(""); setReady(null);
+    return () => {
+      active.current?.abort(); active.current = null;
+      if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+      objectUrl.current = null;
+    };
+  }, [job.id, artifactIds]);
+
+  const download = async (event: React.MouseEvent<HTMLAnchorElement>, file: Artifact) => {
+    // Preserve ordinary new-tab / save-link actions, but keep normal failures in this page.
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (active.current) return;
+    const controller = new AbortController(); active.current = controller;
+    if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
+    objectUrl.current = null; setReady(null); setDownloadError(""); setDownloading(file.name);
+    try {
+      const blob = await fetchArtifact(job.id, file, controller.signal);
+      if (controller.signal.aborted) return;
+      const url = URL.createObjectURL(blob); objectUrl.current = url;
+      setReady({ url, name: file.name, size: blob.size });
+      const link = document.createElement("a");
+      link.href = url; link.download = file.name;
+      document.body.appendChild(link); link.click(); link.remove();
+      // Keep the URL alive for the browser and an explicit, user-initiated retry.
+    } catch (cause) { if (!controller.signal.aborted) setDownloadError(errorText(cause)); }
+    finally { if (active.current === controller) { active.current = null; setDownloading(""); } }
+  };
+
   if (!job.artifacts.length) return null;
   const images = job.artifacts.filter(file => ["image/png", "image/jpeg"].includes(file.contentType));
   const zip = job.artifacts.find(file => file.contentType === "application/zip" || file.name.toLowerCase().endsWith(".zip"));
@@ -170,9 +206,12 @@ function Artifacts({ job, edited }: { job: Job; edited: boolean }) {
   // freshness without mistaking that normal revision increment for a stale output.
   const hasRenderOutput = Boolean(zip || images.length || job.metadata.render);
   const previousOutput = hasRenderOutput && (edited || job.status !== "completed");
-  return <section className="wb-panel" aria-label="預覽與下載"><div className="wb-section-heading"><h2>預覽與下載</h2>{zip && <a className="wb-button is-primary" href={fileUrl(job.id, zip)} download={zip.name}>{previousOutput ? "下載前次 ZIP" : "下載完整 ZIP"}</a>}</div>
+  return <section className="wb-panel" aria-label="預覽與下載"><div className="wb-section-heading"><h2>預覽與下載</h2>{zip && <a className="wb-button is-primary" href={fileUrl(job.id, zip)} download={zip.name} aria-disabled={Boolean(downloading)} onClick={event => void download(event, zip)}>{downloading === zip.name ? "正在下載 ZIP…" : previousOutput ? "下載前次 ZIP" : "下載完整 ZIP"}</a>}</div>
+    {downloading && <p className="wb-notice" role="status">正在取得 {downloading}，請稍候…</p>}
+    {downloadError && <p className="wb-alert" role="alert">{downloadError}</p>}
+    {ready && <div className="wb-notice" role="status">檔案已就緒（{Math.max(1, Math.round(ready.size / 1024))} KB）。若未自動儲存，請按 <a href={ready.url} download={ready.name}>儲存 {ready.name}</a>，並查看瀏覽器的下載面板。</div>}
     {previousOutput && <p className="wb-notice" role="status">圖卡與 ZIP 為前次輸出，未包含目前文字／設計變更。{job.status === "queued" || job.status === "running" ? "新一輪製作尚未完成。" : "請完成重新製作後，再下載更新素材。"}</p>}
     {images.length > 0 && <div className="wb-previews">{images.map(file => <Preview key={file.id} artifact={file} jobId={job.id} />)}</div>}
-    <ul className="wb-files">{job.artifacts.map(file => <li key={file.id}><a href={fileUrl(job.id, file)} download={file.name}>{file.name}<span aria-hidden="true"> ↓</span></a><span className="wb-small">{Math.max(1, Math.round(file.size / 1024))} KB</span></li>)}</ul>
+    <ul className="wb-files">{job.artifacts.map(file => <li key={file.id}><a href={fileUrl(job.id, file)} download={file.name} aria-disabled={Boolean(downloading)} onClick={event => void download(event, file)}>{file.name}<span aria-hidden="true"> ↓</span></a><span className="wb-small">{Math.max(1, Math.round(file.size / 1024))} KB</span></li>)}</ul>
   </section>;
 }

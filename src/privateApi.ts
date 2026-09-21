@@ -56,3 +56,34 @@ export function errorText(error: unknown): string {
 export function fileUrl(jobId: string, artifact: Pick<Artifact, "id">, inline = false): string {
   return `/api/private/jobs/${encodeURIComponent(jobId)}/files/${encodeURIComponent(artifact.id)}${inline ? "?inline=1" : ""}`;
 }
+
+/** Fetch within the owner session so HTTP/auth failures stay visible in the editor. */
+export async function fetchArtifact(jobId: string, artifact: Artifact, signal?: AbortSignal): Promise<Blob> {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (signal?.aborted) abort(); else signal?.addEventListener("abort", abort, { once: true });
+  const timer = setTimeout(abort, 60000);
+  try {
+    const response = await fetch(fileUrl(jobId, artifact), { credentials: "same-origin", cache: "no-store", signal: controller.signal });
+    if (!response.ok) {
+      throw new PrivateApiError("DOWNLOAD_FAILED", response.status === 404 ? "檔案已更新或不存在，請重新整理工作台後再下載。" : `伺服器無法提供檔案（HTTP ${response.status}）。請稍後再試。`, response.status);
+    }
+    const contentType = response.headers.get("content-type")?.split(";")[0].trim().toLowerCase();
+    if (response.redirected || contentType === "text/html") throw new PrivateApiError("DOWNLOAD_LOGIN", "登入可能已過期，請重新登入工作台後再下載。");
+    if (contentType !== artifact.contentType) throw new PrivateApiError("DOWNLOAD_TYPE", "伺服器回傳的檔案格式不符，請重新整理工作台後再試。");
+    const bytes = await response.arrayBuffer();
+    if (bytes.byteLength !== artifact.size) throw new PrivateApiError("DOWNLOAD_INCOMPLETE", "收到的檔案不完整，請重新下載。");
+    const digest = await crypto.subtle.digest("SHA-256", bytes);
+    const hash = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, "0")).join("");
+    if (hash !== artifact.sha256) throw new PrivateApiError("DOWNLOAD_CHECKSUM", "檔案完整性檢查未通過，請重新下載。");
+    return new Blob([bytes], { type: artifact.contentType });
+  } catch (error) {
+    if (signal?.aborted) throw error;
+    if (controller.signal.aborted) throw new PrivateApiError("DOWNLOAD_TIMEOUT", "下載等候逾時，請檢查連線後再試。");
+    if (error instanceof TypeError) throw new PrivateApiError("DOWNLOAD_NETWORK", "下載連線失敗，請檢查網路或重新登入工作台後再試。");
+    throw error;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener("abort", abort);
+  }
+}

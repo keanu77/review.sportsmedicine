@@ -1,5 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { Job } from "../../shared/contracts";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { strToU8, zipSync } from "fflate";
 
 // API fixtures test browser behavior only; they are not evidence of deployed authentication or real model output.
 function sampleJob(overrides: Partial<Job> = {}): Job {
@@ -42,6 +45,33 @@ async function apiFixture(page: Page, jobs: Job[] = [sampleJob()]) {
   });
   return state;
 }
+
+test("attachment authentication failure is visible without leaving the editor", async ({ page }) => {
+  await apiFixture(page, [sampleJob({ status: "completed", artifacts: [{ id: "zip-test", name: "social.zip", contentType: "application/zip", size: 1200, sha256: "a".repeat(64) }] })]);
+  await page.route("**/files/zip-test", route => route.fulfill({ status: 401, json: { error: { code: "UNAUTHORIZED" } } }));
+  await page.goto("/workbench/");
+  await page.getByLabel("Facebook 貼文").fill("下載失敗仍須保留的文字");
+  await page.getByRole("link", { name: "下載前次 ZIP", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("登入");
+  await expect(page.getByLabel("Facebook 貼文")).toHaveValue("下載失敗仍須保留的文字");
+});
+
+test("a verified ZIP is saved with the expected filename and exact bytes", async ({ page }) => {
+  const bytes = Buffer.from(zipSync({ "post.md": strToU8("Test private social materials") }));
+  const artifact = { id: "zip-test", name: "social-materials.zip", contentType: "application/zip", size: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex") };
+  await apiFixture(page, [sampleJob({ status: "completed", artifacts: [artifact] })]);
+  await page.route("**/files/zip-test", route => route.fulfill({ body: bytes, contentType: artifact.contentType,
+    headers: { "Content-Disposition": 'attachment; filename="social-materials.zip"', "Content-Security-Policy": "default-src 'none'; sandbox", "Cache-Control": "no-store" } }));
+  await page.goto("/workbench/");
+  const saved = page.waitForEvent("download");
+  await page.getByRole("link", { name: "下載完整 ZIP", exact: true }).click();
+  await expect(page.getByRole("status").filter({ hasText: "檔案已就緒" })).toBeVisible();
+  const download = await saved;
+  expect(download.suggestedFilename()).toBe(artifact.name);
+  expect(await download.failure()).toBeNull();
+  expect(await readFile((await download.path())!)).toEqual(bytes);
+  await expect(page.getByRole("link", { name: "儲存 social-materials.zip", exact: true })).toHaveAttribute("href", /^blob:/);
+});
 
 test("static preview honestly reports unavailable private service", async ({ page }) => {
   await page.goto("/workbench/");
