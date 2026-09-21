@@ -94,3 +94,11 @@ test('only transient transfers retry, at most three times; cancellation stops re
   const controller=new AbortController();calls=0;
   await assert.rejects(retryTransfer(async()=>{calls++;controller.abort(new Error('cancelled'));throw Object.assign(new Error('offline'),{code:'ECONNRESET'});},{signal:controller.signal,wait:async()=>{throw new Error('should not wait');}}),/offline/);assert.equal(calls,1);
 });
+
+test('XML-only research uploads actual source files without inventing a PDF artifact',async()=>{
+  const {sourceArtifacts}=await import('../../worker/client.mjs');
+  const xmlOnly={pdfFile:null,xmlFile:'/private/paper.xml',structuredFile:'/private/paper-structured.json',metadataFile:'/private/source.json'};
+  assert.deepEqual(sourceArtifacts(xmlOnly).map(f=>f.name),['paper.xml','paper-structured.json','source.json']);
+  const legacy={pdfFile:'/private/paper.pdf',metadataFile:'/private/source.json'};
+  assert.deepEqual(sourceArtifacts(legacy).map(f=>f.name),['paper.pdf','source.json']);
+});

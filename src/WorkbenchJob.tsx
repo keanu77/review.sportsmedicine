@@ -122,10 +122,19 @@ function SourceMetadata({ metadata }: { metadata: Record<string, unknown> }) {
   if (!Object.keys(paper).length) return null;
   const url = safeUrl(paper.sourceUrl ?? paper.pdfUrl);
   const license = string(paper.license) || string(record(paper.license).name) || string(record(paper.license).url);
-  return <section className="wb-panel"><h2>論文來源</h2><p className="wb-wrap">{string(paper.title)}</p><dl className="wb-metadata">
-    <div><dt>全文狀態</dt><dd>{paper.fullTextVerified === true ? "已取得並核對來源全文" : "尚無完成全文核對的紀錄"}</dd></div>
+  const pdfReason = string(paper.pdfError) || string(record(paper.pdfError).message) || string(paper.pdfStatus);
+  const xmlReason = string(paper.xmlError) || string(record(paper.xmlError).message) || string(paper.xmlStatus);
+  // A verified readable source may be XML-only. Neither verification nor a URL
+  // proves that a PDF was downloaded; legacy jobs deliberately remain unknown.
+  const fullTextState = paper.fullTextAvailable === true ? "全文可讀" : paper.fullTextAvailable === false ? "全文未取得" : paper.fullTextVerified === true ? "原文已驗證（舊任務未記錄檔案取得狀態）" : "未提供全文取得紀錄";
+  const pdfState = paper.pdfAvailable === true ? "PDF 已取得" : paper.pdfAvailable === false ? `PDF 未取得（${pdfReason || "未提供具體原因"}）` : "未提供 PDF 取得紀錄";
+  const xmlState = paper.xmlAvailable === true ? "結構化全文 XML 已取得" : paper.xmlAvailable === false ? `結構化全文 XML 未取得${xmlReason ? `（${xmlReason}）` : ""}` : "未提供 XML 取得紀錄";
+  return <section className="wb-panel" aria-label="論文來源"><h2>論文來源</h2><p className="wb-wrap">{string(paper.title)}</p><dl className="wb-metadata">
+    <div><dt>全文狀態</dt><dd>{fullTextState}</dd></div>
+    <div><dt>PDF</dt><dd>{pdfState}</dd></div>
+    <div><dt>結構化全文</dt><dd>{xmlState}</dd></div>
     <div><dt>識別碼</dt><dd>{[paper.doi, paper.pmid, paper.pmcid].map(string).filter(Boolean).join(" · ") || string(paper.id) || "未提供"}</dd></div>
-    <div><dt>授權</dt><dd>{license || "未提供"}</dd></div>
+    <div><dt>授權</dt><dd>{license || "未取得"}</dd></div>
     <div><dt>來源／版本</dt><dd>{[paper.provider, paper.version].map(string).filter(Boolean).join(" · ") || "未提供"}</dd></div>
     {paper.checkedAt ? <div><dt>查核時間</dt><dd>{string(paper.checkedAt)}</dd></div> : null}
   </dl>{url && <a href={url} target="_blank" rel="noopener noreferrer" className="wb-text-link">開啟原始來源 ↗</a>}{string(paper.citation) && <p className="wb-small wb-wrap">{string(paper.citation)}</p>}</section>;

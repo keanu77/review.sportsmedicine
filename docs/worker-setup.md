@@ -82,11 +82,9 @@ env 由 Node `--env-file` 讀取，路徑中的空格請保留引號；**`$HOME`
 
 ### 第一次開通與費用
 
-使用者目前尚未建立 Zero Trust。先由帳號擁有人開啟 [Cloudflare dashboard](https://dash.cloudflare.com/)，進入 Zero Trust，依 [官方首次開通流程](https://developers.cloudflare.com/learning-paths/clientless-access/initial-setup/create-zero-trust-org/) 設定團隊名稱並選擇 Free。若名稱可用，可使用 `sportsmedicine-review`；實際網域以畫面回傳的 `…cloudflareaccess.com` 為準。首次方案／付款資訊需由帳號擁有人處理；不把 billing 畫面上的私人資料貼到聊天中。
+2026-09-21 已在登入後的 Cloudflare One 管理頁確認：帳號已有 Zero Trust，團隊網域為 `sportsmedicine-tw.cloudflareaccess.com`。沿用既有團隊，不需要重新開通方案。先前 CLI 查詢組織設定的 403 是管理權限不足，不能據此判定團隊不存在。工作台 Access application 的 Allow policy 唯一 email 是 `keanu.firefox@gmail.com`。
 
-目前的管理登入讀取組織設定回應403，尚不能代為完成這一步。完成後記下團隊網域；後續 Access application 可使用 email one-time PIN，Allow policy 唯一 email 是 `keanu.firefox@gmail.com`。
-
-2026-09-21 官方價格：Access Free 最多50人；Functions每日10萬請求及D1免費配額可供小量使用。R2 Standard包含每月10 GB-month與一定操作額度，超量儲存US$0.015/GB-month，操作另按量計價。額度依帳號共用，不能保證此專案永遠零費用；目前沒有新增付費方案，也沒有開通這個專案的遠端資源。模型沿用既有CLI登入及其訂閱用量，不自動改走付費API。
+2026-09-21 查核的官方價格：Access Free 最多50人；Functions每日10萬請求及D1免費配額可供小量使用。R2 Standard包含每月10 GB-month與一定操作額度，超量儲存US$0.015/GB-month，操作另按量計價。額度依帳號共用，不能保證此專案永遠零費用；本專案已在既有帳號建立 D1 與私人 R2，沒有新增付費方案。模型沿用既有CLI登入及其訂閱用量，不自動改走付費API。
 
 來源：[Cloudflare方案](https://www.cloudflare.com/plans/)、[Functions](https://developers.cloudflare.com/pages/functions/pricing/)、[D1](https://developers.cloudflare.com/d1/platform/pricing/)、[R2](https://developers.cloudflare.com/r2/pricing/)。
 
@@ -94,7 +92,7 @@ env 由 Node `--env-file` 讀取，路徑中的空格請保留引號；**`$HOME`
 
 這部分需要 Pages、D1、R2 與 Zero Trust 的管理權限，由管理者在既有專案設定。尚未建立或驗證這些項目，就不能宣稱 worker 已連上正式站。
 
-1. 建立 D1 `review-private-jobs` 與私人 R2 bucket `review-private-artifacts`。在 `wrangler.jsonc` 將零 UUID 換成實際 D1 ID，保留 binding 名 `DB`／`ARTIFACTS`，R2 不開公開存取。
+1. D1 `review-private-jobs` 與私人 R2 bucket `review-private-artifacts` 已建立，`wrangler.jsonc` 已填入真實 D1 ID。保留 binding 名 `DB`／`ARTIFACTS`，R2 不開公開存取。
 2. 套用 `migrations/0001_private_jobs.sql`，例如 `npx wrangler d1 migrations apply DB --remote`。先確認 Wrangler 登入的是正確帳號與環境；本機測試使用 `--local`。
 3. 在 Pages 正式環境設定下表；預覽環境另行設定，避免預覽端點使用不一致的認證。`WORKER_TOKEN` 用 secret 類型，值與本機 env 相同。
 4. 在 Cloudflare Access 建立應用程式，保護 `/workbench`、`/workbench/*`、`/api/private/*`，Allow policy 只允許自己的 email。公開文獻索引保持公開。
@@ -173,7 +171,7 @@ launchctl bootout "gui/$(id -u)" \
 ## 7. 日常工作流程與常見問題
 
 1. 從文獻索引按「製作社群素材」，以 Access 登入自己的工作台，或輸入 DOI／PMID／PMCID 建立研究任務。
-2. worker 尋找可合法取得的原文 PDF，核對文獻身分、擷取全文，產生草稿與可定位的引文；取不到全文時停止，不能把 abstract 冒充全文。
+2. worker 尋找可合法取得的原文 PDF／PMC JATS XML，分別核對身分、下載與保存。分析優先使用 XML 的章節、段落及表格；PDF 仍獨立保存。只有 XML 時可以產生草稿，並顯示 PDF 未取得；兩者皆不可讀時停止，不把 abstract 冒充全文。影像表格不推測數字、不執行 OCR。
 3. 在工作台閱讀研究筆記和各模型查核紀錄，修改並儲存草稿，選配色、版型、圖片形式與比例，再明確要求製圖。
 4. worker 製作並上傳圖片、文案和 ZIP；人工檢視後下載，自行決定如何發佈。沒有自動社群發佈步驟。
 5. 中斷、取消、額度不足或 120 秒租約過期的工作，先檢查既有紀錄，再由工作台明確重試。服務每 30 秒更新 heartbeat；Mac 睡眠可能使租約過期，喚醒不會自動恢復該任務。
@@ -189,4 +187,6 @@ launchctl bootout "gui/$(id -u)" \
 | 已有模型請求紀錄但無結果 | 先檢查私人工作日誌，避免盲目重試。手動 CLI 只有明確加 `--retry`／`--retry-reviews` 才重試相應步驟；網站則由使用者操作重試。 |
 | 標題或卡片爆版 | 調整文字／分頁再重新製圖；渲染器會報錯，不會自動刪掉醫療限定語。 |
 
-安裝文件與本機測試完成後，仍須外部完成：每台機器的 CLI 登入與生圖 probe、真實 Cloudflare 資源與 secret、Access 路徑及 owner policy、正式部署、一次端到端研究→審閱→製圖驗證，以及你自行啟用 LaunchAgent。
+CLI 的 `draft --dir` 會重新核對原始檔雜湊，從原始 XML 重建引用定位；不信任可被改動的 `paper-structured.json`。PDF 文字檔也核對雜湊，舊工作若沒有文字雜湊，會從已核對的原始 PDF 重新擷取。`render` 與 `image-probe` 不再要求存在 `paper.txt`。
+
+安裝文件與本機測試完成後，仍須逐項確認：每台機器的 CLI 登入與生圖 probe、Cloudflare bindings 與 secret、Access 路徑及 owner policy、正式部署、一次端到端研究→審閱→製圖驗證，以及 LaunchAgent 啟用。D1／R2 資源已建立不代表上述驗收全部完成。

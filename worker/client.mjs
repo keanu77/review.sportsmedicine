@@ -44,6 +44,15 @@ export class WorkerAPI {
   }
 }
 
+export function sourceArtifacts(source) {
+  return [
+    ...(source.pdfFile ? [{ path: source.pdfFile, name: 'paper.pdf', contentType: 'application/pdf' }] : []),
+    ...(source.xmlFile ? [{ path: source.xmlFile, name: 'paper.xml', contentType: 'application/xml' }] : []),
+    ...(source.structuredFile ? [{ path: source.structuredFile, name: 'paper-structured.json', contentType: 'application/json' }] : []),
+    { path: source.metadataFile, name: 'source.json', contentType: 'application/json' },
+  ];
+}
+
 export async function processJob(api, claimed, config, { signal, onStage = console.log } = {}) {
   const { job, leaseToken } = claimed;
   safeId(job.id, 'job id');
@@ -77,13 +86,13 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
       const notesFile = path.join(directory, 'research-notes.md');
       await writeFile(notesFile, `${draft.notes}\n\n## 主張與出處\n\n${draft.claims.map(c => `- ${c.text}\n  - ${c.locator}：${c.quote}`).join('\n')}`, { mode: 0o600 });
       result = { draft, metadata: { paper: source.paper, reviews, draftProvider: config.provider } };
-      files = [{ path: source.pdfFile, name: 'paper.pdf', contentType: 'application/pdf' }, { path: source.metadataFile, name: 'source.json', contentType: 'application/json' },
+      files = [...sourceArtifacts(source),
         { path: notesFile, name: 'research-notes.md', contentType: 'text/markdown' }, { path: path.join(directory, 'reviews.json'), name: 'reviews.json', contentType: 'application/json' }];
     } else if (job.phase === 'render') {
       const draft = validateDraft(job.draft), design = validateDesign(job.design);
       if (!job.metadata?.paper?.fullTextVerified) throw new Error('缺少已驗證的全文紀錄');
       await update(design.imageStyle === 'none' ? 'rendering' : 'generating_image');
-      const fingerprint = createHash('sha256').update(JSON.stringify({ draft, design, source: job.metadata.paper.sha256 })).digest('hex').slice(0, 24);
+      const fingerprint = createHash('sha256').update(JSON.stringify({ draft, design, source: { pdf: job.metadata.paper.sha256, xml: job.metadata.paper.xmlSha256 } })).digest('hex').slice(0, 24);
       const directory = path.join(jobDir, 'versions', fingerprint);
       const imageFingerprint = createHash('sha256').update(JSON.stringify({ title: job.metadata.paper.title, palette: design.palette, imageStyle: design.imageStyle })).digest('hex').slice(0, 24);
       const rendered = await renderPackage({ draft, paper: job.metadata.paper, design }, directory, { signal: combined, allowRetry: true, imageDirectory: path.join(jobDir, 'images', imageFingerprint) });

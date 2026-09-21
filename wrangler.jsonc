@@ -7,7 +7,7 @@
     {
       "binding": "DB",
       "database_name": "review-private-jobs",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "e2921083-9191-4237-9e46-c67ca2d6f947",
       "migrations_dir": "migrations"
     }
   ],
@@ -19,5 +19,6 @@
   ],
   "vars": {
     "OWNER_EMAIL": "keanu.firefox@gmail.com"
-  }
+  },
+  "account_id": "1b2892015d15c5b88dcf4d819b5d2cea"
 }

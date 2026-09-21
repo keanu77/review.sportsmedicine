@@ -10,6 +10,7 @@ const types = {
   'text/plain': { extensions: ['txt'], limit: 2 * MB },
   'text/markdown': { extensions: ['md'], limit: 2 * MB },
   'application/json': { extensions: ['json'], limit: 2 * MB },
+  'application/xml': { extensions: ['xml'], limit: 8 * MB },
 };
 export async function readLimited(request, limit) {
   const length = request.headers.get('Content-Length');
@@ -44,11 +45,13 @@ export async function validateUpload(request) {
   if (contentType === 'image/png') valid &&= start(137, 80, 78, 71, 13, 10, 26, 10);
   if (contentType === 'image/jpeg') valid &&= start(255, 216, 255);
   if (contentType === 'application/zip') valid &&= start(80, 75, 3, 4) || start(80, 75, 5, 6);
-  if (contentType.startsWith('text/') || contentType === 'application/json') {
+  if (contentType.startsWith('text/') || ['application/json', 'application/xml'].includes(contentType)) {
     try {
       const decoded = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
       valid &&= !decoded.includes('\0');
       if (contentType === 'application/json') JSON.parse(decoded);
+      // Archive only; never resolve entities or interpret XML on the edge.
+      if (contentType === 'application/xml') valid &&= /<article(?:\s|>)/.test(decoded.slice(0, 8192)) && !/<(?:html|svg)(?:\s|>)/i.test(decoded.slice(0, 8192));
     } catch { valid = false; }
   }
   if (!valid) throw new ApiError(400, 'INVALID_FILE_CONTENT', 'The artifact content does not match its declared type');

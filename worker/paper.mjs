@@ -4,11 +4,12 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { remoteBytes, remoteJSON } from './http.mjs';
 import { runProcess } from './process.mjs';
+import { parseJATS, normalizedTitle, MAX_XML_BYTES, XML_EXTRACTION_VERSION } from './xml.mjs';
 
 const parser = new XMLParser({ ignoreAttributes: false });
 const S3 = 'https://pmc-oa-opendata.s3.amazonaws.com';
 const array = value => value ? Array.isArray(value) ? value : [value] : [];
-export const normalizedTitle = text => String(text).normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
+export { normalizedTitle } from './xml.mjs';
 export function parseIdentifier(value) {
   let input = String(value).trim();
   if (/^https:\/\/(?:dx\.)?doi\.org\//i.test(input)) input = decodeURIComponent(new URL(input).pathname.slice(1));
@@ -42,11 +43,12 @@ async function pmcPaper(pmcid, expected, signal) {
     if (expected.pmid && String(metadata.pmid) !== String(expected.pmid)) continue;
     if (!metadata.is_retracted) versions.push(metadata);
   }
-  const published = versions.filter(x => !x.is_manuscript && x.pdf_url);
-  const candidates = published.length ? published : versions.filter(x => x.pdf_url);
+  const isManuscript = value => value === true || value === 'yes';
+  const published = versions.filter(x => !isManuscript(x.is_manuscript) && (x.pdf_url || x.xml_url));
+  const candidates = published.length ? published : versions.filter(x => x.pdf_url || x.xml_url);
   // PMC explicitly states that the largest numeric version need not be preferred.
   if (candidates.length > 1) throw new Error('PMC 有多個可用全文版本，需先確認欲使用的版本');
-  const chosen = candidates[0] ?? versions[0];
+  const chosen = candidates[0];
   if (!chosen) throw new Error('文章已撤回或全文識別資料不符');
   return { id: `pmc:${pmcid}`, pmcid, pmid: String(chosen.pmid ?? ''), doi: chosen.doi, title: chosen.title,
     citation: chosen.citation, license: chosen.license_code ?? null, version: chosen.version,
@@ -92,7 +94,7 @@ export async function resolvePaper(input, { email = process.env.REVIEW_CONTACT_E
       sourceUrl: location.url_for_landing_page ?? `https://doi.org/${ids.doi}`, provider: 'Unpaywall', checkedAt: new Date().toISOString() };
   }
   if (title && normalizedTitle(title) !== normalizedTitle(paper.title)) throw new Error('索引標題與取得的文獻不一致，請以 DOI／PMID 重新核對');
-  if (!paper.pdfUrl) throw new Error('全文資料存在，但沒有可下載的 PDF');
+  if (!paper.pdfUrl && !paper.xmlUrl) throw new Error('沒有可取得的 PDF 或 XML 全文');
   return paper;
 }
 
@@ -105,24 +107,108 @@ export function verifyPDF(bytes, text, paper) {
   if (text.trim().length < 300) throw new Error('PDF 無可用全文文字，需要 OCR 或人工處理');
 }
 
-export async function downloadPaper(paper, directory, { signal } = {}) {
+// Resume from verified original files. Derived JSON is a convenience export,
+// never the authority for source text or evidence locators.
+export async function loadPaper(directory, { signal } = {}) {
+  signal?.throwIfAborted();
+  const metadataFile = path.join(directory, 'source.json');
+  const paper = JSON.parse(await readFile(metadataFile, 'utf8'));
+  if (paper.fullTextVerified !== true) throw new Error('全文尚未完成來源核對，請先執行 prepare');
+  const hash = value => createHash('sha256').update(value).digest('hex');
+  let structured, text = '', xmlFile = null, pdfFile = null, textFile = null;
+  if (paper.xmlAvailable === true) {
+    xmlFile = path.join(directory, 'paper.xml');
+    const bytes = await readFile(xmlFile);
+    if (!paper.xmlSha256 || hash(bytes) !== paper.xmlSha256) throw new Error('XML 原始檔雜湊不符，請重新取得全文');
+    structured = parseJATS(new TextDecoder('utf-8', { fatal: true }).decode(bytes), paper);
+  }
+  // Earlier PDF-only jobs predate the acquisition flags and text checksum.
+  if (paper.pdfAvailable === true || (paper.pdfAvailable === undefined && paper.sha256)) {
+    pdfFile = path.join(directory, 'paper.pdf');
+    const bytes = await readFile(pdfFile);
+    if (!paper.sha256 || hash(bytes) !== paper.sha256) throw new Error('PDF 原始檔雜湊不符，請重新取得全文');
+    if (paper.textSha256) {
+      textFile = path.join(directory, 'paper.txt');
+      text = await readFile(textFile, 'utf8');
+      if (hash(text) !== paper.textSha256) throw new Error('PDF 文字檔雜湊不符，請重新取得全文');
+    } else {
+      text = (await runProcess('pdftotext', ['-enc', 'UTF-8', pdfFile, '-'], { signal })).stdout;
+    }
+    verifyPDF(bytes, text, paper);
+  }
+  signal?.throwIfAborted();
+  if (!structured && !text) throw new Error('全文沒有可核對的 XML 或 PDF，請先執行 prepare');
+  return { paper, text, metadataFile, pdfFile, textFile, xmlFile,
+    structuredText: structured?.structuredText ?? null, locators: structured?.locators ?? null };
+}
+
+export async function downloadPaper(paper, directory, { signal, fetchBytes = remoteBytes, extractPDF = async (file, options) => (await runProcess('pdftotext', ['-enc', 'UTF-8', file, '-'], options)).stdout } = {}) {
+  signal?.throwIfAborted();
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const metadataFile = path.join(directory, 'source.json'), pdfFile = path.join(directory, 'paper.pdf'), textFile = path.join(directory, 'paper.txt');
-  try {
-    const old = JSON.parse(await readFile(metadataFile, 'utf8'));
-    if (old.id === paper.id && old.pdfUrl === paper.pdfUrl && old.sha256 && old.textExtractionVersion === 1) {
-      const bytes = await readFile(pdfFile), text = await readFile(textFile, 'utf8');
-      if (createHash('sha256').update(bytes).digest('hex') === old.sha256) { verifyPDF(bytes, text, old); return { paper: old, text, pdfFile, textFile, metadataFile }; }
+  const xmlFile = path.join(directory, 'paper.xml'), structuredFile = path.join(directory, 'paper-structured.json');
+  const hash = value => createHash('sha256').update(value).digest('hex');
+  let old = {}; try { old = JSON.parse(await readFile(metadataFile, 'utf8')); } catch {}
+  let text = '', xml, structured, pdfBytes, cachedXML = false, cachedPDF = false;
+  const verified = { ...paper, fullTextAvailable: false, pdfAvailable: false, xmlAvailable: false,
+    pdfStatus: 'unavailable', xmlStatus: 'unavailable', fullTextVerified: false };
+  // Never inherit successful acquisition fields from a previous attempt/source.
+  for (const field of ['sha256', 'xmlSha256', 'textSha256', 'pdfError', 'xmlError', 'downloadedAt', 'xmlDownloadedAt', 'textExtractionVersion', 'xmlExtractionVersion']) delete verified[field];
+  if (paper.xmlUrl) {
+    try {
+      const xmlURL = httpsS3(paper.xmlUrl);
+      if (old.id === paper.id && old.xmlUrl === paper.xmlUrl && old.xmlSha256 && old.xmlExtractionVersion === XML_EXTRACTION_VERSION) {
+        try { const cached = await readFile(xmlFile); if (hash(cached) === old.xmlSha256) { xml = cached; cachedXML = true; } } catch {}
+      }
+      if (!xml) {
+        const downloaded = await fetchBytes(xmlURL, { signal, maxBytes: MAX_XML_BYTES });
+        // Redirects retain the standard HTTP/DNS checks, and XML remains official.
+        if (downloaded.url) httpsS3(downloaded.url);
+        xml = downloaded.bytes;
+      }
+      const decoded = new TextDecoder('utf-8', { fatal: true }).decode(xml);
+      structured = parseJATS(decoded, paper);
+      await writeFile(xmlFile, xml, { mode: 0o600 });
+      await writeFile(structuredFile, JSON.stringify(structured, null, 2), { mode: 0o600 });
+      Object.assign(verified, { xmlAvailable: true, xmlStatus: 'available', xmlSha256: hash(xml), xmlExtractionVersion: XML_EXTRACTION_VERSION, xmlDownloadedAt: cachedXML ? old.xmlDownloadedAt : new Date().toISOString() });
+    } catch (error) {
+      signal?.throwIfAborted();
+      structured = undefined;
+      verified.xmlStatus = /XML|PMC|DTD|entity|include|decode/i.test(error.message) ? 'rejected' : 'unavailable';
+      verified.xmlError = error.message.slice(0, 600);
     }
-  } catch {}
-  const { bytes } = await remoteBytes(paper.pdfUrl, { signal });
-  if (bytes.subarray(0, 5).toString() !== '%PDF-') throw new Error('下載內容不是 PDF');
-  const temporary = path.join(directory, 'paper.download.pdf');
-  await writeFile(temporary, bytes, { mode: 0o600 });
-  const { stdout: text } = await runProcess('pdftotext', ['-enc', 'UTF-8', temporary, '-'], { signal });
-  verifyPDF(bytes, text, paper);
-  const verified = { ...paper, sha256: createHash('sha256').update(bytes).digest('hex'), textExtractionVersion: 1, downloadedAt: new Date().toISOString(), fullTextVerified: true };
-  await rename(temporary, pdfFile); await writeFile(textFile, text, { mode: 0o600 });
+  } else verified.xmlError = '來源沒有提供 XML 全文';
+  if (paper.pdfUrl) {
+    try {
+      if (old.id === paper.id && old.pdfUrl === paper.pdfUrl && old.sha256 && old.textExtractionVersion === 1) {
+        try {
+          const cached = await readFile(pdfFile), cachedText = await readFile(textFile, 'utf8');
+          if (hash(cached) === old.sha256 && (!old.textSha256 || hash(cachedText) === old.textSha256)) { verifyPDF(cached, cachedText, paper); pdfBytes = cached; text = cachedText; cachedPDF = true; }
+        } catch {}
+      }
+      if (!pdfBytes) {
+        const { bytes } = await fetchBytes(paper.pdfUrl, { signal });
+        if (bytes.subarray(0, 5).toString() !== '%PDF-') throw new Error('下載內容不是 PDF');
+        const temporary = path.join(directory, 'paper.download.pdf');
+        await writeFile(temporary, bytes, { mode: 0o600 });
+        text = await extractPDF(temporary, { signal });
+        verifyPDF(bytes, text, paper);
+        await rename(temporary, pdfFile); await writeFile(textFile, text, { mode: 0o600 });
+        pdfBytes = bytes;
+      }
+      Object.assign(verified, { pdfAvailable: true, pdfStatus: 'available', sha256: hash(pdfBytes), textSha256: hash(text), textExtractionVersion: 1, downloadedAt: cachedPDF ? old.downloadedAt : new Date().toISOString() });
+    } catch (error) {
+      signal?.throwIfAborted(); text = '';
+      verified.pdfStatus = /PDF|標題|DOI|OCR/i.test(error.message) ? 'rejected' : 'unavailable';
+      verified.pdfError = error.message.slice(0, 600);
+    }
+  } else verified.pdfError = '全文可讀，但來源沒有提供可下載的 PDF';
+  verified.fullTextAvailable = verified.pdfAvailable || verified.xmlAvailable;
+  verified.fullTextVerified = verified.fullTextAvailable;
+  verified.fullTextFormat = verified.xmlAvailable ? 'xml' : verified.pdfAvailable ? 'pdf' : null;
   await writeFile(metadataFile, JSON.stringify(verified, null, 2), { mode: 0o600 });
-  return { paper: verified, text, pdfFile, textFile, metadataFile };
+  if (!verified.fullTextAvailable) throw Object.assign(new Error(`未取得可驗證全文。XML：${verified.xmlError}；PDF：${verified.pdfError}`), { source: verified });
+  return { paper: verified, text, pdfFile: verified.pdfAvailable ? pdfFile : null, textFile: verified.pdfAvailable ? textFile : null, metadataFile,
+    structuredText: structured?.structuredText ?? null, locators: structured?.locators ?? null,
+    xmlFile: verified.xmlAvailable ? xmlFile : null, structuredFile: verified.xmlAvailable ? structuredFile : null };
 }

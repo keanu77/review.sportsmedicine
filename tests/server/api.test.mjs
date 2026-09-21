@@ -315,3 +315,15 @@ test('reusing a file ID with different contents, names, types or a new attempt i
   assert.equal((await f.upload(job.id, next.leaseToken)).status, 409, 'identical files from an earlier attempt cannot be reused');
   assert.equal(f.objects.size, 1);
 });
+
+test('JATS source archives remain private downloads; HTML cannot masquerade as XML', async t=>{
+  const f=await fixture();t.after(f.close);
+  const job=await f.create(),{leaseToken}=await f.claim();
+  const headers={'X-Lease-Token':leaseToken,'X-File-Name':'paper.xml','Content-Type':'application/xml'};
+  assert.equal((await f.call(`/jobs/${job.id}/files/bad-xml`,{method:'PUT',role:'worker',headers,raw:'<?xml version="1.0"?><html>Login</html>'})).status,400);
+  const xml='<?xml version="1.0"?><article><front><article-meta><article-title>Fixture title</article-title></article-meta></front><body><p>Full text</p></body></article>';
+  assert.equal((await f.call(`/jobs/${job.id}/files/jats`,{method:'PUT',role:'worker',headers,raw:xml})).status,201);
+  assert.equal((await f.complete(job.id,leaseToken,['jats'])).status,200);
+  const download=await f.call(`/jobs/${job.id}/files/jats?inline=1`);assert.equal(download.status,200);assert.match(download.headers.get('Content-Disposition'),/^attachment/);assert.equal(await download.text(),xml);
+  assert.equal((await f.call(`/jobs/${job.id}/files/jats`,{role:'anonymous'})).status,401);
+});

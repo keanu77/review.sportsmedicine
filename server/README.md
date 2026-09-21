@@ -4,7 +4,7 @@ The public Vite site stays public. The two Pages Functions routes authenticate i
 
 ## Configuration
 
-`wrangler.jsonc` binds `DB` to D1 and `ARTIFACTS` to a private R2 bucket. Its zero UUID is a local placeholder; replace it with the provisioned D1 ID before deploying. Do not enable public R2 access. Apply `migrations/0001_private_jobs.sql` through Wrangler.
+`wrangler.jsonc` binds `DB` to D1 `review-private-jobs` and `ARTIFACTS` to private R2 bucket `review-private-artifacts`. The configured D1 ID is the provisioned database. On 2026-09-21, the remote migration check reported no pending migrations and the R2 development URL was disabled. Do not enable public R2 access. A new environment must apply `migrations/0001_private_jobs.sql` through Wrangler.
 
 Configure these Pages variables/secrets for each environment:
 
@@ -35,7 +35,7 @@ For photo or illustration rendering, claim requires `capabilities.imageGeneratio
 
 Artifact IDs must be unique across a job's attempts; use UUIDs for IDs and ordinary safe filenames for names. Retrying an upload within the same live lease/attempt is idempotent when the file ID, filename, type, byte length and SHA-256 all match; a retry returns the existing artifact with HTTP 200 (first creation uses 201). Concurrent identical uploads also converge on one artifact, and the losing unique R2 object is deleted. Different contents or an earlier attempt's file ID return 409. An upload first validates filename, extension, declared type, magic bytes/UTF-8/JSON, bounded byte length and optional `X-Content-SHA256`. The server computes the actual SHA-256 and sends it to R2 for integrity checking. Registration is conditional on the same live lease and attempt quotas. Completion accepts only uploaded file IDs from the active attempt. Uncommitted files cannot be downloaded. Research artifacts stay visible after rendering; a successful rerender replaces the visible render artifact set. Keys and lease internals are never serialized to clients.
 
-Limits: 32 files and 128 MiB per attempt; individual PDF 32 MiB, ZIP 64 MiB, PNG/JPEG 16 MiB, text/Markdown/JSON 2 MiB. Preview is inline only for authenticated image requests with `?inline=1`; other downloads use attachment disposition and all use `nosniff` plus a restrictive CSP.
+Limits: 32 files and 128 MiB per attempt; individual PDF 32 MiB, JATS XML 8 MiB, ZIP 64 MiB, PNG/JPEG 16 MiB, text/Markdown/JSON 2 MiB. XML is archived as a private attachment; the server does not resolve XML entities. Preview is inline only for authenticated image requests with `?inline=1`; other downloads use attachment disposition and all use `nosniff` plus a restrictive CSP.
 
 Abandoned/previous attempt objects remain private for recovery and currently require an operator retention policy. No scheduled cleanup or automatic model retry is included. Storage validation checks basic file signatures, not PDF/ZIP semantic contents; source identity and evidence validation belong to the worker.
 

@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { readFile, mkdir, writeFile, statfs } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { resolvePaper, downloadPaper } from './paper.mjs';
+import { resolvePaper, downloadPaper, loadPaper } from './paper.mjs';
 import { generateDraft } from './draft.mjs';
 import { reviewDraft } from './review.mjs';
 import { renderPackage } from './render.mjs';
@@ -50,15 +50,16 @@ export async function main(args) {
       const input = rest[0]; if (!input || input.startsWith('--')) throw new Error('prepare 需要 DOI／PMID／PMCID');
       const paper = await resolvePaper(input, { signal: controller.signal });
       const source = await downloadPaper(paper, directory, { signal: controller.signal });
-      console.log(JSON.stringify({ title: source.paper.title, directory, pdf: source.pdfFile })); return;
+      console.log(JSON.stringify({ title: source.paper.title, directory, pdf: source.pdfFile, xml: source.xmlFile, fullTextFormat: source.paper.fullTextFormat })); return;
     }
-    const paper = JSON.parse(await readFile(path.join(directory, 'source.json'), 'utf8'));
-    const source = { paper, text: await readFile(path.join(directory, 'paper.txt'), 'utf8') };
     if (command === 'draft') {
+      const source = await loadPaper(directory, { signal: controller.signal });
       const draft = await generateDraft(source, directory, { signal: controller.signal, allowRetry: rest.includes('--retry') });
       const reviews = await reviewDraft(source, draft, directory, { signal: controller.signal, allowRetry: rest.includes('--retry-reviews') });
       console.log(JSON.stringify({ directory, pages: draft.pages.length, reviews: reviews.map(r => ({ provider: r.provider, status: r.status })) })); return;
     }
+    const paper = JSON.parse(await readFile(path.join(directory, 'source.json'), 'utf8'));
+    if (paper.fullTextVerified !== true) throw new Error('全文尚未完成來源核對，請先執行 prepare');
     if (command === 'render') {
       const saved = JSON.parse(await readFile(path.join(directory, 'draft.json'), 'utf8'));
       const design = validateDesign({ palette: option('--palette','blue'), style: option('--style','clinical'), imageStyle: option('--images','photo'), format: option('--format','portrait') });

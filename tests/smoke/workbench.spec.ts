@@ -185,3 +185,53 @@ test("polling adopts remote design updates when unchanged locally and preserves 
   await expect(page.getByText("PMC1234567 · 版本 8")).toBeVisible();
   await expect(palette).toHaveValue("sky");
 });
+
+test("XML-only verified full text never implies an available PDF or an obtained license", async ({ page }) => {
+  const job = sampleJob();
+  job.metadata.paper = { title: "XML-only paper", fullTextVerified: true, fullTextAvailable: true, pdfAvailable: false, xmlAvailable: true,
+    pdfStatus: "unavailable", pdfError: "出版社 PDF 回傳 HTTP 403", xmlStatus: "available", license: null,
+    pdfUrl: "https://example.test/paper.pdf", sourceUrl: "https://pmc.ncbi.nlm.nih.gov/articles/PMC1234567/" };
+  job.draft!.claims = [{ text: "表格中的研究數據", locator: "xml:sec:results/table:1/row:2", quote: "A table cell extracted from XML." }];
+  await apiFixture(page, [job]); await page.goto("/workbench/");
+  const source = page.getByRole("region", { name: "論文來源", exact: true });
+  await expect(source.getByText("全文可讀", { exact: true })).toBeVisible();
+  await expect(source.getByText("PDF 未取得（出版社 PDF 回傳 HTTP 403）", { exact: true })).toBeVisible();
+  await expect(source.getByText("結構化全文 XML 已取得", { exact: true })).toBeVisible();
+  await expect(source.getByText("PDF 已取得", { exact: true })).toHaveCount(0);
+  await expect(source.getByText("未取得", { exact: true })).toBeVisible();
+  await expect(page.getByText("xml:sec:results/table:1/row:2", { exact: true })).toBeVisible();
+});
+
+test("PDF and XML availability are reported independently and page locators stay unchanged", async ({ page }) => {
+  const job = sampleJob();
+  job.metadata.paper = { title: "PDF plus XML paper", fullTextVerified: true, fullTextAvailable: true, pdfAvailable: true, xmlAvailable: true,
+    pdfStatus: "available", xmlStatus: "available", license: "CC BY 4.0" };
+  job.draft!.claims = [{ text: "PDF 研究主張", locator: "p:3", quote: "A source quote on page three." }];
+  await apiFixture(page, [job]); await page.goto("/workbench/");
+  const source = page.getByRole("region", { name: "論文來源", exact: true });
+  await expect(source.getByText("全文可讀", { exact: true })).toBeVisible();
+  await expect(source.getByText("PDF 已取得", { exact: true })).toBeVisible();
+  await expect(source.getByText("結構化全文 XML 已取得", { exact: true })).toBeVisible();
+  await expect(source.getByText("CC BY 4.0", { exact: true })).toBeVisible();
+  await expect(page.getByText("p:3", { exact: true })).toBeVisible();
+});
+
+test("legacy full-text verification does not invent PDF or XML availability", async ({ page }) => {
+  await apiFixture(page); await page.goto("/workbench/");
+  const source = page.getByRole("region", { name: "論文來源", exact: true });
+  await expect(source.getByText("原文已驗證（舊任務未記錄檔案取得狀態）", { exact: true })).toBeVisible();
+  await expect(source.getByText("未提供 PDF 取得紀錄", { exact: true })).toBeVisible();
+  await expect(source.getByText("未提供 XML 取得紀錄", { exact: true })).toBeVisible();
+  await expect(source.getByText("PDF 已取得", { exact: true })).toHaveCount(0);
+});
+
+test("unavailable full text keeps explicit source failures visible", async ({ page }) => {
+  const job = sampleJob();
+  job.metadata.paper = { title: "Unavailable paper", fullTextAvailable: false, fullTextVerified: false, pdfAvailable: false, xmlAvailable: false,
+    pdfStatus: "unavailable", pdfError: "無開放取用 PDF", xmlStatus: "unavailable", xmlError: "PMC 未提供 XML" };
+  await apiFixture(page, [job]); await page.goto("/workbench/");
+  const source = page.getByRole("region", { name: "論文來源", exact: true });
+  await expect(source.getByText("全文未取得", { exact: true })).toBeVisible();
+  await expect(source.getByText("PDF 未取得（無開放取用 PDF）", { exact: true })).toBeVisible();
+  await expect(source.getByText("結構化全文 XML 未取得（PMC 未提供 XML）", { exact: true })).toBeVisible();
+});
