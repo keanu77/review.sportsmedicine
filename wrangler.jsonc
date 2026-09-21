@@ -18,7 +18,9 @@
     }
   ],
   "vars": {
-    "OWNER_EMAIL": "keanu.firefox@gmail.com"
-  },
-  "account_id": "1b2892015d15c5b88dcf4d819b5d2cea"
+    "OWNER_EMAIL": "keanu.firefox@gmail.com",
+    "ACCESS_TEAM_DOMAIN": "sportsmedicine-tw.cloudflareaccess.com",
+    "ACCESS_AUD": "5bb366ab9628c0e7e1bdbc9287911dffad628c811672912226ee4fd34b7b3ff6",
+    "APP_ORIGIN": "https://review.sportsmedicine.tw"
+  }
 }
