@@ -48,7 +48,7 @@ Mac 前景 `run --once` 成功連接正式 API，當時回傳「等待網站任�
 
 下載修正提交 `4eaca6f`，正式 deployment `f9afb3ba-7fa8-469c-b346-adbea1be3c2a` 已於 2026-09-21 07:22:25 UTC 完成。15 項前端單元測試、43 項瀏覽器測試及 production build 通過；瀏覽器測試實際儲存 fixture ZIP，檔名與每個位元組一致。正式公開首頁與索引 JSON 為 200；未登入工作台／API／ZIP 為 Access 302，Pages 原始網域私人端點為 401/no-store，錯誤與缺少 worker bearer 皆為 401。
 
-本人另將正式任務重製為版本 7（Editorial／翡翠綠／插畫），新 ZIP 有 15 個檔案、3,034,885 bytes，SHA-256 `2ca984319d7a075a62a049ff62fd84e3a0cb47eb1e3f8fe4c3224b06b31ce17d`。正式 Edge 點擊新版下載後，頁面完成長度／SHA-256 驗證並顯示「檔案已就緒（2964 KB）」。下載資料夾的 `.crdownload` 實際收到相同大小、相同 SHA-256 的完整 ZIP，15 項 CRC 全部正常；但 Edge 尚未完成最後儲存，因此不能宣稱端到端下載已驗收。已請本人點擊新出現的「儲存 social-materials.zip」回報結果。原先 Edge 直接附件下載失敗的具體原因尚未確定。工具禁止開啟內部下載頁，未繞過此限制或更改瀏覽器保護設定。隔離診斷伺服器已停止，未對外發佈 FB/IG。
+本人另將正式任務重製為版本 7（Editorial／翡翠綠／插畫），新 ZIP 有 15 個檔案、3,034,885 bytes，SHA-256 `2ca984319d7a075a62a049ff62fd84e3a0cb47eb1e3f8fe4c3224b06b31ce17d`。正式 Edge 點擊新版下載後，頁面完成長度／SHA-256 驗證並顯示「檔案已就緒（2964 KB）」。下載資料夾的 `.crdownload` 實際收到相同大小、相同 SHA-256 的完整 ZIP，15 項 CRC 全部正常；之後本人點擊新出現的「儲存 social-materials.zip」，明確確認「可以，已下載完成」。再次核對完成檔 `/Users/ethanwu/Downloads/social-materials.zip`，大小、SHA-256 與 15 項 CRC 均符合，正式端到端下載驗收完成。另存的 `social-materials-v7.zip` 為本機 worker 產物備份，不作為網站下載成功的證據。原先 Edge 直接附件下載失敗的具體原因尚未確定。工具禁止開啟內部下載頁，未繞過此限制或更改瀏覽器保護設定。隔離診斷伺服器已停止，未對外發佈 FB/IG。
 
 ## 第一版限制
 
