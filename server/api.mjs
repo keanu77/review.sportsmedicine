@@ -1,4 +1,4 @@
-import { authenticateOwner, authenticateWorker, requireOrigin } from './auth.mjs';
+import { authenticateOwner, authenticateWorker, requireOrigin, workerCredentials } from './auth.mjs';
 import { ApiError } from './errors.mjs';
 import { createStore, MAX_ATTEMPT_FILES } from './store.mjs';
 import { downloadHeaders, readLimited, validateUpload } from './files.mjs';
@@ -30,16 +30,30 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
     const match = url.pathname.match(/^\/api\/(private|worker)(\/.*)?$/);
     if (!match) throw new ApiError(404, 'NOT_FOUND', 'Unknown API route');
     const role = match[1]; const path = match[2] || '/'; const method = request.method;
-    let owner;
+    let owner, worker;
     if (role === 'private') {
       owner = await authenticateOwner(request, env, keyResolver);
       if (!['GET', 'HEAD'].includes(method)) requireOrigin(request, env);
-    } else await authenticateWorker(request, env);
+    } else {
+      // Historical Pages deployment aliases retain their environment snapshots.
+      // Only the canonical app origin may use worker credentials, including old
+      // deployment snapshots after their custom domain points to a newer build.
+      let canonical;
+      try { canonical = new URL(env.APP_ORIGIN); } catch {}
+      if (!canonical || canonical.origin !== env.APP_ORIGIN || canonical.username || canonical.password
+        || !(canonical.protocol === 'https:' || canonical.protocol === 'http:' && ['127.0.0.1', 'localhost'].includes(canonical.hostname))) throw new ApiError(503, 'WORKER_NOT_CONFIGURED', 'Canonical worker origin is not configured');
+      if (url.origin !== canonical.origin) throw new ApiError(403, 'WORKER_ORIGIN_REJECTED', 'Worker API is available only on its canonical origin');
+      worker = await authenticateWorker(request, env, clock());
+    }
     if (!env.DB) throw new ApiError(503, 'DATABASE_NOT_CONFIGURED', 'Job storage is not configured');
     const store = createStore(env.DB, clock);
     if (role === 'private') {
       await store.expire();
-      if (path === '/session' && method === 'GET') return json({ email: owner.email, worker: await store.presence() });
+      if (path === '/session' && method === 'GET') {
+        let workerCredentialExpiresAt = null;
+        try { workerCredentialExpiresAt = workerCredentials(env)[0].expiresAt; } catch { /* Owner access survives a revoked/misconfigured worker. */ }
+        return json({ email: owner.email, worker: await store.presence(), workerCredentialExpiresAt });
+      }
       if (path === '/jobs') {
         if (method === 'GET') return json({ jobs: await store.list() });
         if (method === 'POST') {
@@ -97,11 +111,12 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         return new Response(object.body, { headers: { ...privateHeaders, ...downloadHeaders(artifact, url.searchParams.get('inline') === '1') } });
       }
     } else {
+      if (path === '/health' && method === 'GET') return json({ ok: true, activeJobs: await store.activeJobs(), credentialExpiresAt: worker.expiresAt });
       if (path === '/claim' && method === 'POST') {
         const data = await body(request);
         const capabilities = data.capabilities ?? {};
         if ((!Array.isArray(capabilities) && (typeof capabilities !== 'object' || !capabilities)) || JSON.stringify(capabilities).length > 16384) throw new ValidationError('capabilities must be a small object or array');
-        return json(await store.claim(safeId(data.workerId, 'workerId'), capabilities));
+        return json({ ...await store.claim(safeId(data.workerId, 'workerId'), capabilities), credentialExpiresAt: worker.expiresAt });
       }
       const filePath = path.match(/^\/jobs\/([^/]+)\/files\/([^/]+)$/);
       if (filePath && method === 'PUT') {

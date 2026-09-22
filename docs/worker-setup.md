@@ -69,7 +69,7 @@ chmod 600 "$REVIEW_SERVICE_DIR/worker.env"
 | 設定 | 填寫方式 |
 | --- | --- |
 | `REVIEW_API_URL` | 網站 HTTPS origin，例如 `https://review.sportsmedicine.tw`；不加 `/api`、query 或帳密。 |
-| `REVIEW_WORKER_TOKEN` | 與 Pages 的 `WORKER_TOKEN` 完全相同，使用密碼管理器產生至少 32 個隨機字元後直接貼入兩處。範本留白，未設定不能啟動。 |
+| `REVIEW_WORKER_TOKEN` | 與 Pages 的 `WORKER_TOKEN` 完全相同，32–512 個 base64url 隨機字元；主憑證最長 90 天。依 [憑證輪替流程](worker-credentials.md) 保存與更新，勿放進命令列。範本留白，未設定不能啟動。 |
 | `REVIEW_WORKSPACE` | 本機可寫的絕對路徑，建議沿用產生的 `workspace`。不要放在公開網站資產目錄。 |
 | `REVIEW_WORKER_ID` | 如 `studio` 或 `macbook`，每台機器用不同英數／連字號名稱。 |
 | `REVIEW_MODEL_PROVIDER` | `codex` 或 `claude`，必須已登入。 |
@@ -106,8 +106,10 @@ env 由 Node `--env-file` 讀取，路徑中的空格請保留引號；**`$HOME`
 | `ACCESS_TEAM_DOMAIN` | 本站為 `sportsmedicine-tw.cloudflareaccess.com` |
 | `ACCESS_AUD` | 同一 Access application 的 audience tag |
 | `OWNER_EMAIL` | 唯一允許的擁有者 email |
-| `WORKER_TOKEN` | 至少 32 字元的隨機 bearer secret；不是 Cloudflare API token，也不是模型 API key |
-| `APP_ORIGIN` | 建議設定正式 origin，限制擁有者修改請求的來源 |
+| `WORKER_TOKEN` | 32–512 個 base64url 字元的隨機 bearer secret；不是 Cloudflare API token，也不是模型 API key |
+| `WORKER_TOKEN_ISSUED_AT`／`WORKER_TOKEN_EXPIRES_AT` | 必填 UTC ISO 時間（含毫秒、結尾 Z）；有效期最長 90 天，由輪替工具保存 |
+| `WORKER_PREVIOUS_TOKEN`／`WORKER_PREVIOUS_TOKEN_EXPIRES_AT` | 輪替時才成對設定；舊 token 重疊最多一小時，完成後移除兩欄 |
+| `APP_ORIGIN` | 必須設定正式 origin；限制擁有者修改來源，且 worker 只能透過此網域連線 |
 
 Function 仍會驗 JWT 簽章、issuer、audience、有效期與 owner email；只有 Access 畫面設定不能取代伺服器驗證。[Cloudflare JWT 驗證說明](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/)
 
@@ -171,6 +173,8 @@ launchctl bootout "gui/$(id -u)" \
 日誌位於 `$REVIEW_SERVICE_DIR/logs/worker.out.log` 與 `worker.err.log`。不要輸出整份 env 來除錯。launchd 範本設 `umask 077` 保護新檔；它沒有內建日誌輪替，使用一段時間後需安排保留期限和磁碟清理。
 
 ## 7. 日常工作流程與常見問題
+
+憑證到期前依 [輪替與撤銷操作文件](worker-credentials.md) 執行 `stage → 部署 → activate → 重啟 → retire → 部署 → verify`；worker 在到期前 14 天提示。`status --env-file` 使用唯讀 health 確認連線與目前任務數，不會領取工作；Pages 設定更新仍須部署才能算完成。
 
 1. 從文獻索引按「製作社群素材」，以 Access 登入自己的工作台，或輸入 DOI／PMID／PMCID 建立研究任務。
 2. worker 尋找可合法取得的原文 PDF／PMC JATS XML，分別核對身分、下載與保存。分析優先使用 XML 的章節、段落及表格；PDF 仍獨立保存。只有 XML 時可以產生草稿，並顯示 PDF 未取得；兩者皆不可讀時停止，不把 abstract 冒充全文。影像表格不推測數字、不執行 OCR。

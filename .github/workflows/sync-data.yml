@@ -4,20 +4,30 @@ name: Monthly data sync
 # Upstream rebuilds on day 28. Preserve the existing snapshot on any failure.
 on:
   workflow_dispatch:
+    inputs:
+      apply_updates:
+        description: Publish verified data after all checks pass
+        required: true
+        type: boolean
+        default: false
   schedule:
     - cron: '17 3 1 * *'
 permissions:
-  contents: write
+  contents: read
 concurrency:
   group: review-monthly-publish
   cancel-in-progress: false
 jobs:
-  sync:
+  verify:
+    permissions:
+      contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
           cache: npm
@@ -40,23 +50,58 @@ jobs:
           npm run build
           npx playwright install --with-deps chromium
           npm run test:smoke -- --workers=2
+          npm audit --audit-level=moderate
       - name: Record monthly public data health
         run: node --import tsx scripts/monthly-report.ts >> "$GITHUB_STEP_SUMMARY"
-      - name: Publish verified data
-        run: |
-          git add public/data/reviews-index.json public/data/new-items.json public/data/bibliography.json public/feed.xml docs/maintenance/
-          if ! git diff --cached --quiet; then
-            git config user.name 'github-actions[bot]'
-            git config user.email 'github-actions[bot]@users.noreply.github.com'
-            git commit -m 'chore(data): verified monthly literature and citation refresh'
-            git push
-          fi
+      - name: Prepare data-only proposal
+        run: node scripts/monthly-bundle.mjs pack sync "$RUNNER_TEMP/proposal/bundle.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: monthly-data-proposal
+          path: ${{ runner.temp }}/proposal/bundle.json
+          if-no-files-found: error
+          retention-days: 7
       - name: Retain verification and failure evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: monthly-data-verification
           path: |
             docs/maintenance/
             test-results/
           retention-days: 90
+  publish:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.apply_updates)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: monthly-data-proposal
+          path: ${{ runner.temp }}/proposal
+      - name: Reject stale proposals
+        env:
+          EXPECTED_BASE: ${{ github.sha }}
+        run: |
+          git fetch --no-tags origin main
+          test "$(git rev-parse origin/main)" = "$EXPECTED_BASE"
+      # No npm installation or execution of code from update artifacts in this job.
+      - name: Validate and commit allowlisted content
+        run: node scripts/monthly-bundle.mjs apply sync "$RUNNER_TEMP/proposal/bundle.json"
+      - name: Publish without persisting credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          export GIT_CONFIG_COUNT=2
+          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w0)"
+          export GIT_CONFIG_KEY_1=core.hooksPath
+          export GIT_CONFIG_VALUE_1=/dev/null
+          git push origin HEAD:refs/heads/main

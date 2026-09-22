@@ -36,7 +36,7 @@ try {
   const now = Date.now();
   const seed = `INSERT INTO jobs (id,input,title,status,phase,stage,revision,design,created_at,updated_at) VALUES ('smoke-job','PMC12345','Local binding smoke','queued','research','queued',1,'{"palette":"blue","style":"clinical","imageStyle":"none","format":"portrait"}',${now},${now});`;
   await command(['d1', 'execute', 'DB', '--local', '--persist-to', scratch, '--command', seed]);
-  processHandle = spawn(process.execPath, [wrangler, 'pages', 'dev', 'public', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', scratch, '--binding', `WORKER_TOKEN=${workerToken}`, '--binding', 'OWNER_EMAIL=owner@example.com', '--binding', 'ACCESS_TEAM_DOMAIN=test.cloudflareaccess.com', '--binding', 'ACCESS_AUD=test-audience', '--log-level', 'warn'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  processHandle = spawn(process.execPath, [wrangler, 'pages', 'dev', 'public', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', scratch, '--binding', `WORKER_TOKEN=${workerToken}`, '--binding', `APP_ORIGIN=${origin}`, '--binding', `WORKER_TOKEN_ISSUED_AT=${new Date(now - 60000).toISOString()}`, '--binding', `WORKER_TOKEN_EXPIRES_AT=${new Date(now + 86400000).toISOString()}`, '--binding', 'OWNER_EMAIL=owner@example.com', '--binding', 'ACCESS_TEAM_DOMAIN=test.cloudflareaccess.com', '--binding', 'ACCESS_AUD=test-audience', '--log-level', 'warn'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
   processHandle.stdout.on('data', (chunk) => { logs += chunk; });
   processHandle.stderr.on('data', (chunk) => { logs += chunk; });
   const until = Date.now() + 45000;

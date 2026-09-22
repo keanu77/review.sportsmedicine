@@ -52,7 +52,7 @@ test("attachment authentication failure is visible without leaving the editor", 
   await page.route("**/files/zip-test", route => route.fulfill({ status: 401, json: { error: { code: "UNAUTHORIZED" } } }));
   await page.goto("/workbench/");
   await page.getByLabel("Facebook 貼文").fill("下載失敗仍須保留的文字");
-  await page.getByRole("link", { name: "下載前次 ZIP", exact: true }).click();
+  await page.getByRole("button", { name: "下載前次 ZIP", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText("登入");
   await expect(page.getByLabel("Facebook 貼文")).toHaveValue("下載失敗仍須保留的文字");
 });
@@ -65,7 +65,7 @@ test("a verified ZIP is saved with the expected filename and exact bytes", async
     headers: { "Content-Disposition": 'attachment; filename="social-materials.zip"', "Content-Security-Policy": "default-src 'none'; sandbox", "Cache-Control": "no-store" } }));
   await page.goto("/workbench/");
   const saved = page.waitForEvent("download");
-  await page.getByRole("link", { name: "下載完整 ZIP", exact: true }).click();
+  await page.getByRole("button", { name: "下載完整 ZIP", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "檔案已就緒" })).toBeVisible();
   const download = await saved;
   expect(download.suggestedFilename()).toBe(artifact.name);
@@ -147,12 +147,12 @@ test("mobile create form is usable at 360px and does not invent a publisher iden
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 });
 
-test("mobile editor fits viewport and download URL remains private", async ({ page }, testInfo) => {
+test("mobile editor fits viewport and private downloads use managed controls", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 360, height: 800 });
   await apiFixture(page, [sampleJob({ status: "completed", artifacts: [{ id: "zip-test", name: "social.zip", contentType: "application/zip", size: 1200, sha256: "a".repeat(64) }] })]);
   await page.goto("/workbench/");
   await page.getByLabel("第 2 頁重點 1 內文").fill("360px 可編輯內文");
-  await expect(page.getByRole("link", { name: "下載前次 ZIP" })).toHaveAttribute("href", "/api/private/jobs/job-test-1/files/zip-test");
+  await expect(page.getByRole("button", { name: "下載前次 ZIP" })).toBeEnabled();
   const box = await page.getByLabel("第 2 頁重點 1 內文").boundingBox();
   expect(box!.width).toBeGreaterThan(180);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -175,18 +175,18 @@ test("completed output remains current after completion increments revision, the
   });
   await apiFixture(page, [job]); await page.goto("/workbench/");
   const downloads = page.getByRole("region", { name: "預覽與下載", exact: true });
-  await expect(downloads.getByRole("link", { name: "下載完整 ZIP", exact: true })).toBeVisible();
+  await expect(downloads.getByRole("button", { name: "下載完整 ZIP", exact: true })).toBeVisible();
   await expect(downloads.getByText(/前次輸出/)).toHaveCount(0);
   await page.getByLabel("色系", { exact: true }).selectOption("emerald");
   await expect(downloads.getByText(/前次輸出，未包含目前文字／設計變更/)).toBeVisible();
   await page.getByLabel("色系", { exact: true }).selectOption("blue");
   await expect(downloads.getByText(/前次輸出/)).toHaveCount(0);
   await page.getByLabel("Facebook 貼文").fill("需要重新輸出的新文案");
-  await expect(downloads.getByRole("link", { name: "下載前次 ZIP", exact: true })).toBeVisible();
+  await expect(downloads.getByRole("button", { name: "下載前次 ZIP", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "儲存文字", exact: true }).click();
   await expect(page.getByText("文字已儲存。可以排入圖文製作。")).toBeVisible();
   await expect(downloads.getByText(/前次輸出，未包含目前文字／設計變更/)).toBeVisible();
-  await expect(downloads.getByRole("link", { name: "下載完整 ZIP", exact: true })).toHaveCount(0);
+  await expect(downloads.getByRole("button", { name: "下載完整 ZIP", exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "確認已核對，製作圖文" }).click();
   await expect(downloads.getByText(/新一輪製作尚未完成/)).toBeVisible();
 });
@@ -198,7 +198,7 @@ test("failed rerender keeps the previous-output warning visible", async ({ page 
   })]);
   await page.goto("/workbench/");
   await expect(page.getByRole("region", { name: "預覽與下載" }).getByText(/前次輸出，未包含目前文字／設計變更/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "下載前次 ZIP", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "下載前次 ZIP", exact: true })).toBeVisible();
 });
 
 test("polling adopts remote design updates when unchanged locally and preserves intentional local edits", async ({ page }) => {
@@ -404,7 +404,7 @@ test('re-review preserves freshness of output matching the current draft', async
   const job = sampleJob({ status: 'needs_review', phase: 'review', revision: 8, draftRevision: 4,
     metadata: { render: { draftRevision: 4 } }, artifacts: [{ id: 'zip-test', name: 'social.zip', contentType: 'application/zip', size: 1200, sha256: 'a'.repeat(64) }] });
   await apiFixture(page, [job]); await page.goto('/workbench/');
-  await expect(page.getByRole('link', { name: '下載完整 ZIP', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: '下載完整 ZIP', exact: true })).toBeVisible();
   await expect(page.getByText(/前次輸出，未包含目前文字/)).toHaveCount(0);
 });
 
@@ -442,4 +442,245 @@ test('an uncertain save failure preserves a later revert through polls and reloa
   await expect(page.getByLabel('Facebook 貼文')).toHaveValue('初始 Facebook 草稿');
   await page.reload(); await expect(page.getByLabel('Facebook 貼文')).toHaveValue('初始 Facebook 草稿');
   await expect(page.getByText(/遠端已更新至版本 3/)).toBeVisible();
+});
+
+test('logout confirmation can be cancelled without losing unsaved recovery', async ({ page }) => {
+  await page.clock.install(); await apiFixture(page); await page.goto('/workbench/');
+  await page.getByLabel('Facebook 貼文').fill('取消登出仍保留的草稿');
+  const before = await page.evaluate(() => Object.fromEntries(Object.entries(localStorage)));
+  page.once('dialog', async dialog => {
+    expect(dialog.type()).toBe('confirm');
+    expect(dialog.message()).toContain('未儲存'); expect(dialog.message()).toContain('伺服器');
+    await dialog.dismiss();
+  });
+  await page.getByRole('button', { name: '登出並清除本機草稿', exact: true }).click();
+  await expect(page.getByLabel('Facebook 貼文')).toHaveValue('取消登出仍保留的草稿');
+  expect(await page.evaluate(() => Object.fromEntries(Object.entries(localStorage)))).toEqual(before);
+  expect(page.url()).toContain('/workbench/');
+});
+
+test('confirmed logout clears private storage, locks other tabs and prevents delayed saves and polling', async ({ page, context }) => {
+  await page.clock.install(); const state = await apiFixture(page); await page.goto('/workbench/');
+  await expect(page.getByLabel('Facebook 貼文')).toBeVisible();
+  const other = await context.newPage(); await other.clock.install(); await apiFixture(other, structuredClone(state.jobs));
+  await other.goto('/workbench/'); await expect(other.getByLabel('Facebook 貼文')).toBeVisible();
+  await other.getByLabel('Facebook 貼文').fill('另一分頁尚未儲存的草稿');
+  let release: () => void = () => {}, arrived = false;
+  await other.route('**/api/private/jobs/*/draft', async route => {
+    arrived = true; await new Promise<void>(resolve => { release = resolve; });
+    await route.fulfill({ json: { job: sampleJob({ revision: 3 }) } }).catch(() => {});
+  });
+  await other.clock.fastForward(1600); await expect.poll(() => arrived).toBe(true);
+  await page.getByLabel('Facebook 貼文').fill('本頁尚未儲存的草稿');
+  for (const tab of [page, other]) await tab.evaluate(() => {
+    localStorage.setItem('review:private-draft:v1:other-owner:stale:doc', '{"draft":"private"}');
+    localStorage.setItem('favorites', '["keep"]'); sessionStorage.setItem('recent', 'keep');
+    sessionStorage.setItem('review:private-draft:v1:other-owner:stale:', 'private-pointer');
+  });
+  await page.route('**/cdn-cgi/access/logout', route => route.fulfill({ contentType: 'text/html', body: '<p>Fixture logout endpoint</p>' }));
+  const requests: string[] = [];
+  context.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/private')) requests.push(request.url()); });
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: '登出並清除本機草稿', exact: true }).click();
+  await expect(page).toHaveURL(/\/cdn-cgi\/access\/logout$/);
+  await expect(other.getByRole('heading', { name: '工作台已鎖定', exact: true })).toBeVisible();
+  await expect(other.getByLabel('Facebook 貼文')).toHaveCount(0);
+  release(); await other.clock.fastForward(60000);
+  await other.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+  for (const tab of [page, other]) {
+    expect(await tab.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('review:private-draft:')))).toEqual([]);
+    expect(await tab.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('review:private-draft:')))).toEqual([]);
+    expect(await tab.evaluate(() => [localStorage.getItem('favorites'), sessionStorage.getItem('recent')])).toEqual(['["keep"]', 'keep']);
+  }
+  expect(requests).toEqual([]);
+  await other.close();
+});
+
+test('entry cleanup removes expired recoveries for unopened projects without deleting fresh crash copies', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('review:private-draft:v1:old-owner:expired:doc', JSON.stringify({ savedAt: Date.now() - 8 * 86400000, draft: 'expired' }));
+    localStorage.setItem('review:private-draft:v1:other-owner:fresh:doc', JSON.stringify({ savedAt: Date.now(), draft: 'fresh' }));
+    localStorage.setItem('favorites', 'keep');
+  });
+  await apiFixture(page); await page.goto('/workbench/'); await expect(page.getByLabel('Facebook 貼文')).toBeVisible();
+  expect(await page.evaluate(() => localStorage.getItem('review:private-draft:v1:old-owner:expired:doc'))).toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('review:private-draft:v1:other-owner:fresh:doc'))).not.toBeNull();
+  expect(await page.evaluate(() => localStorage.getItem('favorites'))).toBe('keep');
+});
+
+for (const quotaFull of [false, true]) test(`a resumed document that missed cross-tab events locks on pageshow before any private request${quotaFull ? ' after quota-full cleanup' : ''}`, async ({ page, context }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, 'BroadcastChannel', { value: undefined });
+    window.addEventListener('storage', event => event.stopImmediatePropagation(), true);
+    window.addEventListener('focus', event => event.stopImmediatePropagation(), true);
+    document.addEventListener('visibilitychange', event => event.stopImmediatePropagation(), true);
+  });
+  await page.clock.install(); await apiFixture(page); await page.goto('/workbench/');
+  await page.getByLabel('Facebook 貼文').fill('休眠中的未儲存草稿');
+  const other = await context.newPage();
+  if (quotaFull) await other.addInitScript(() => {
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function(key, value) {
+      if (this === localStorage && key === 'review:private-logout:v1' && Object.keys(localStorage).some(item => item.startsWith('review:private-draft:'))) throw new DOMException('Fixture storage full', 'QuotaExceededError');
+      return setItem.call(this, key, value);
+    };
+  });
+  await apiFixture(other); await other.goto('/workbench/');
+  await expect(other.getByLabel('Facebook 貼文')).toBeVisible();
+  await other.route('**/cdn-cgi/access/logout', route => route.fulfill({ contentType: 'text/html', body: 'Fixture logout' }));
+  other.once('dialog', dialog => dialog.accept());
+  await other.getByRole('button', { name: '登出並清除本機草稿', exact: true }).click();
+  await expect(other).toHaveURL(/\/cdn-cgi\/access\/logout$/);
+  await expect(page.getByLabel('Facebook 貼文')).toHaveValue('休眠中的未儲存草稿');
+  const requests: string[] = [];
+  page.on('request', request => { if (new URL(request.url()).pathname.startsWith('/api/private')) requests.push(request.url()); });
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
+  await expect(page.getByRole('heading', { name: '工作台已鎖定' })).toBeVisible();
+  await page.clock.fastForward(60000);
+  expect(requests).toEqual([]);
+  expect(await page.evaluate(() => Object.keys(sessionStorage).filter(key => key.startsWith('review:private-draft:')))).toEqual([]);
+  expect(await page.evaluate(() => Object.keys(localStorage).filter(key => key.startsWith('review:private-draft:')))).toEqual([]);
+  await other.close();
+});
+
+test('logout aborts a pending create and revokes ready private download URLs', async ({ page, context }) => {
+  const bytes = Buffer.from(zipSync({ 'post.md': strToU8('Private test download') }));
+  const artifact = { id: 'zip-logout', name: 'logout-fixture.zip', contentType: 'application/zip', size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
+  await page.addInitScript(() => {
+    const revoke = URL.revokeObjectURL.bind(URL);
+    (window as any).revokedPrivateUrls = [];
+    URL.revokeObjectURL = url => { (window as any).revokedPrivateUrls.push(url); revoke(url); };
+  });
+  await page.clock.install(); await apiFixture(page, [sampleJob({ status: 'completed', artifacts: [artifact] })]);
+  await page.route('**/files/zip-logout', route => route.fulfill({ contentType: artifact.contentType, body: bytes }));
+  await page.goto('/workbench/');
+  await page.getByRole('button', { name: '下載完整 ZIP', exact: true }).click();
+  const ready = page.getByRole('link', { name: '儲存 logout-fixture.zip', exact: true });
+  await expect(ready).toBeVisible(); const blobUrl = await ready.getAttribute('href');
+  let arrived = false, release: () => void = () => {};
+  await page.route('**/api/private/jobs', async route => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    arrived = true; await new Promise<void>(resolve => { release = resolve; });
+    await route.fulfill({ json: { job: sampleJob({ id: 'late-created' }) } }).catch(() => {});
+  });
+  await page.getByLabel('DOI、PMID 或 PMCID', { exact: true }).fill('PMC7654321');
+  await page.getByRole('button', { name: '取得全文與草稿' }).click();
+  await expect.poll(() => arrived).toBe(true);
+  const other = await context.newPage(); await apiFixture(other); await other.goto('/workbench/');
+  await other.route('**/cdn-cgi/access/logout', route => route.fulfill({ contentType: 'text/html', body: 'Fixture logout' }));
+  other.once('dialog', dialog => dialog.accept());
+  await other.getByRole('button', { name: '登出並清除本機草稿', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '工作台已鎖定' })).toBeVisible();
+  release(); await page.clock.fastForward(60000);
+  expect(await page.evaluate(() => (window as any).revokedPrivateUrls)).toContain(blobUrl);
+  await expect(page.getByText('任務已加入佇列。', { exact: false })).toHaveCount(0);
+  await expect(page.locator('a[href^="blob:"]')).toHaveCount(0);
+  await other.close();
+});
+
+test('modifier-click artifact downloads use abortable fetch and never expose a native private URL', async ({ page, context }) => {
+  await page.addInitScript(() => {
+    const fetch = window.fetch.bind(window);
+    (window as any).artifactFetchAborted = false;
+    window.fetch = (input, init) => {
+      if (String(input).includes('/files/zip-modifier')) init?.signal?.addEventListener('abort', () => { (window as any).artifactFetchAborted = true; });
+      return fetch(input, init);
+    };
+  });
+  const artifact = { id: 'zip-modifier', name: 'modifier-fixture.zip', contentType: 'application/zip', size: 10, sha256: 'a'.repeat(64) };
+  await apiFixture(page, [sampleJob({ status: 'completed', artifacts: [artifact] })]);
+  let arrived = false, release: () => void = () => {};
+  await page.route('**/files/zip-modifier', async route => {
+    arrived = true; await new Promise<void>(resolve => { release = resolve; });
+    await route.fulfill({ contentType: artifact.contentType, body: 'late bytes' }).catch(() => {});
+  });
+  await page.goto('/workbench/');
+  const controls = page.getByRole('region', { name: '預覽與下載' });
+  await expect(controls.getByRole('button', { name: '下載完整 ZIP', exact: true })).toBeVisible();
+  await expect(controls.locator('a[href^="/api/private/"]')).toHaveCount(0);
+  await controls.getByRole('button', { name: '下載完整 ZIP', exact: true }).click({ modifiers: ['Meta'] });
+  await expect.poll(() => arrived).toBe(true); expect(context.pages()).toHaveLength(1);
+  await expect(page.getByText('正在取得 modifier-fixture.zip，請稍候…')).toBeVisible();
+  const other = await context.newPage(); await apiFixture(other); await other.goto('/workbench/');
+  await other.route('**/cdn-cgi/access/logout', route => route.fulfill({ contentType: 'text/html', body: 'Fixture logout' }));
+  other.once('dialog', dialog => dialog.accept());
+  await other.getByRole('button', { name: '登出並清除本機草稿', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '工作台已鎖定' })).toBeVisible();
+  expect(await page.evaluate(() => (window as any).artifactFetchAborted)).toBe(true);
+  release(); await other.close();
+});
+
+test('private image preview requests are cancelled by logout', async ({ page, context }) => {
+  await page.addInitScript(() => {
+    const fetch = window.fetch.bind(window);
+    (window as any).previewFetchStarted = false;
+    (window as any).previewFetchAborted = false;
+    window.fetch = (input, init) => {
+      if (String(input).includes('/files/preview-pending')) {
+        (window as any).previewFetchStarted = true;
+        init?.signal?.addEventListener('abort', () => { (window as any).previewFetchAborted = true; });
+      }
+      return fetch(input, init);
+    };
+  });
+  const artifact = { id: 'preview-pending', name: 'preview.png', contentType: 'image/png', size: 5, sha256: 'a'.repeat(64) };
+  await apiFixture(page, [sampleJob({ status: 'completed', artifacts: [artifact] })]);
+  let release: () => void = () => {};
+  await page.route('**/files/preview-pending**', async route => {
+    await new Promise<void>(resolve => { release = resolve; });
+    await route.fulfill({ contentType: 'image/png', body: 'later' }).catch(() => {});
+  });
+  await page.goto('/workbench/');
+  await expect.poll(() => page.evaluate(() => (window as any).previewFetchStarted)).toBe(true);
+  const other = await context.newPage(); await apiFixture(other); await other.goto('/workbench/');
+  await other.route('**/cdn-cgi/access/logout', route => route.fulfill({ contentType: 'text/html', body: 'Fixture logout' }));
+  other.once('dialog', dialog => dialog.accept());
+  await other.getByRole('button', { name: '登出並清除本機草稿', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '工作台已鎖定' })).toBeVisible();
+  expect(await page.evaluate(() => (window as any).previewFetchAborted)).toBe(true);
+  release(); await other.close();
+});
+
+test('verified image previews display under the production CSP and revoke Blob URLs on logout', async ({ page, context }) => {
+  const headers = await readFile(new URL('../../public/_headers', import.meta.url), 'utf8');
+  const csp = headers.split('\n').find(line => line.trimStart().startsWith('Content-Security-Policy:'))!.split('Content-Security-Policy:')[1].trim();
+  await page.route('**/workbench/', async route => {
+    const response = await route.fetch();
+    await route.fulfill({ response, headers: { ...response.headers(), 'Content-Security-Policy': csp } });
+  });
+  await page.addInitScript(() => {
+    const revoke = URL.revokeObjectURL.bind(URL);
+    (window as any).revokedPreviews = [];
+    URL.revokeObjectURL = url => { (window as any).revokedPreviews.push(url); revoke(url); };
+  });
+  const bytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64');
+  const artifact = { id: 'preview-verified', name: 'verified.png', contentType: 'image/png', size: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') };
+  await apiFixture(page, [sampleJob({ status: 'completed', artifacts: [artifact] })]);
+  await page.route('**/files/preview-verified', route => route.fulfill({ contentType: artifact.contentType, body: bytes }));
+  await page.goto('/workbench/');
+  const preview = page.getByRole('img', { name: artifact.name, exact: true });
+  await expect(preview).toBeVisible();
+  await preview.scrollIntoViewIfNeeded();
+  await expect.poll(() => preview.evaluate(image => (image as HTMLImageElement).naturalWidth)).toBe(1);
+  const url = await preview.getAttribute('src'); expect(url).toMatch(/^blob:/);
+  const other = await context.newPage(); await apiFixture(other); await other.goto('/workbench/');
+  await other.route('**/cdn-cgi/access/logout', route => route.fulfill({ contentType: 'text/html', body: 'Fixture logout' }));
+  other.once('dialog', dialog => dialog.accept());
+  await other.getByRole('button', { name: '登出並清除本機草稿', exact: true }).click();
+  await expect(page.getByRole('heading', { name: '工作台已鎖定' })).toBeVisible();
+  expect(await page.evaluate(() => (window as any).revokedPreviews)).toContain(url);
+  await expect(preview).toHaveCount(0); await other.close();
+});
+
+for (const days of [14, 15]) test(`connection panel shows worker credential expiry with a warning only within 14 days (${days})`, async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-09-22T00:00:00Z') });
+  await apiFixture(page);
+  const expiresAt = new Date(Date.parse('2026-09-22T00:00:00Z') + days * 86400000).toISOString();
+  await page.route('**/api/private/session', route => route.fulfill({ json: {
+    email: 'owner@example.test', worker: { lastSeen: '2026-09-22T00:00:00Z', capabilities: {} }, workerCredentialExpiresAt: expiresAt,
+  } }));
+  await page.goto('/workbench/');
+  await expect(page.locator('.wb-connection').getByText(/憑證到期/)).toBeVisible();
+  if (days <= 14) await expect(page.locator('.wb-connection').getByText(/14 天內到期，請輪替/)).toBeVisible();
+  else await expect(page.locator('.wb-connection').getByText(/請輪替/)).toHaveCount(0);
 });

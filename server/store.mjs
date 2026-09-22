@@ -95,6 +95,7 @@ export function createStore(db, clock = Date.now) {
         WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, clock(), JSON.stringify({ runId: crypto.randomUUID(), draftRevision: snapshot.revision }), id, revision));
     },
     async list() { return Promise.all((await all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100')).map(serialize)); },
+    async activeJobs() { return (await first("SELECT count(*) AS count FROM jobs WHERE status='running' AND lease_expires_at>?", clock())).count; },
     async presence() {
       const value = await first('SELECT * FROM worker_presence WHERE id=1');
       return value ? { lastSeen: iso(value.last_seen), capabilities: parse(value.capabilities, {}) } : null;

@@ -42,6 +42,8 @@ export async function fixture() {
   let time = Date.now();
   const objects = new Map();
   const env = {
+    APP_ORIGIN: 'https://review.example.com',
+    WORKER_TOKEN_ISSUED_AT: new Date(time - 60000).toISOString(), WORKER_TOKEN_EXPIRES_AT: new Date(time + 89 * 86400000).toISOString(),
     DB: sqliteD1(), OWNER_EMAIL: 'owner@example.com', ACCESS_TEAM_DOMAIN: 'test.cloudflareaccess.com', ACCESS_AUD: 'test-audience', WORKER_TOKEN: '0123456789abcdef0123456789abcdef',
     ARTIFACTS: {
       async put(key, bytes, options) { objects.set(key, { bytes, ...options }); return {}; },

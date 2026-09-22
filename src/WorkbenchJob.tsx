@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import type { Artifact, Design, Draft, Job, JobStatus } from "../shared/contracts";
 import DraftHistory from "./DraftHistory";
 import ReviewPanel from "./ReviewPanel";
-import { readRecovery, writeRecovery, type EditorSnapshot } from "./draftRecovery";
+import { isPrivateSessionActive, readRecovery, writeRecovery, type EditorSnapshot } from "./draftRecovery";
 export type { EditorSnapshot } from "./draftRecovery";
-import { errorText, fetchArtifact, fileUrl, privateApi } from "./privateApi";
+import { errorText, fetchArtifact, privateApi } from "./privateApi";
 
 export const STATUS_LABELS: Record<JobStatus, string> = { queued: "排隊中", running: "處理中", needs_review: "待你審閱", completed: "輸出完成", failed: "執行失敗", cancelled: "已取消" };
 const PALETTES: [Design["palette"], string][] = [["blue", "白藍 · 專業"], ["cyan", "青藍"], ["emerald", "翡翠綠"], ["orange-light", "柔橘"], ["gold", "金色"], ["orange", "暖橘"], ["sky", "天空藍"]];
@@ -38,6 +38,7 @@ export default function WorkbenchJob({ job, onUpdate, cache, owner }: { job: Job
   const editableRef = useRef({ dirty, designDirty });
   editableRef.current = { dirty, designDirty };
   useEffect(() => {
+    if (!isPrivateSessionActive()) return;
     const snapshot = { draft, baseline: pendingDraft.current ?? baseline, revision, design, designBaseline, pendingSave: busy === "draft" || uncertainSave };
     cache.current.set(`${owner}/${job.id}`, snapshot);
     if (owner) setStorageError(writeRecovery(owner, job.id, snapshot, dirty || designDirty || busy === "draft") || "");
@@ -49,13 +50,13 @@ export default function WorkbenchJob({ job, onUpdate, cache, owner }: { job: Job
   }, [job.revision, job.draft, job.design]);
   useEffect(() => () => request.current?.abort(), []);
   useEffect(() => {
-    const beforeUnload = (event: BeforeUnloadEvent) => { if (dirty || designDirty) { event.preventDefault(); event.returnValue = ""; } };
+    const beforeUnload = (event: BeforeUnloadEvent) => { if (isPrivateSessionActive() && (dirty || designDirty)) { event.preventDefault(); event.returnValue = ""; } };
     window.addEventListener("beforeunload", beforeUnload);
     return () => window.removeEventListener("beforeunload", beforeUnload);
   }, [dirty, designDirty]);
 
   const operate = async (action: "draft" | "render" | "cancel" | "retry" | "review") => {
-    if (request.current || busy) return;
+    if (request.current || busy || !isPrivateSessionActive()) return;
     const sentDraft = JSON.stringify(draft);
     if (action === "draft") pendingDraft.current = sentDraft;
     const controller = new AbortController(); request.current = controller;
@@ -65,17 +66,17 @@ export default function WorkbenchJob({ job, onUpdate, cache, owner }: { job: Job
         method: action === "draft" ? "PATCH" : "POST", signal: controller.signal,
         ...(action === "draft" ? { body: { revision, draft, ...(uncertainSave ? { checkpoint: true } : {}) } } : action === "render" ? { body: { revision, design } } : action === "review" ? { body: { revision } } : {}),
       });
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || !isPrivateSessionActive()) return;
       if (action === "draft") { setBaseline(JSON.stringify(result.job.draft)); setDraft(current => JSON.stringify(current) === sentDraft ? result.job.draft : current); setRevision(result.job.revision); setSavedAt(result.job.draftSavedAt || new Date().toISOString()); setSaveBlocked(false); setUncertainSave(false); }
       if (action === "render") { setDesign(result.job.design); setDesignBaseline(JSON.stringify(result.job.design)); }
       onUpdate(result.job);
       setNotice(action === "draft" ? "文字已儲存。可以排入圖文製作。" : action === "render" ? "已排入圖文製作。Mac 完成後即可預覽與下載。" : action === "review" ? "已排入重新審核，將核對目前已儲存版本。" : action === "cancel" ? "任務已取消。" : "已重新排入佇列。");
-    } catch (cause) { if (!controller.signal.aborted) { setError(errorText(cause)); if (action === "draft") { setSaveBlocked(true); setUncertainSave(true); } } }
-    finally { request.current = null; pendingDraft.current = null; if (!controller.signal.aborted) setBusy(""); }
+    } catch (cause) { if (!controller.signal.aborted && isPrivateSessionActive()) { setError(errorText(cause)); if (action === "draft") { setSaveBlocked(true); setUncertainSave(true); } } }
+    finally { request.current = null; pendingDraft.current = null; if (!controller.signal.aborted && isPrivateSessionActive()) setBusy(""); }
   };
 
   useEffect(() => {
-    if (!dirty || !editable || conflict || busy || saveBlocked || !owner) return;
+    if (!dirty || !editable || conflict || busy || saveBlocked || !owner || !isPrivateSessionActive()) return;
     const timer = window.setTimeout(() => void operate("draft"), 1500);
     return () => clearTimeout(timer);
   }, [draft, dirty, editable, conflict, busy, saveBlocked, revision, owner]);
@@ -171,7 +172,18 @@ function SourceMetadata({ metadata }: { metadata: Record<string, unknown> }) {
 
 function Preview({ artifact, jobId }: { artifact: Artifact; jobId: string }) {
   const [failed, setFailed] = useState(false);
-  return <figure>{failed ? <div className="wb-notice">預覽無法載入，請重新登入或使用下載連結。</div> : <img src={fileUrl(jobId, artifact, true)} alt={artifact.name} loading="lazy" onError={() => setFailed(true)} />}<figcaption>{artifact.name}</figcaption></figure>;
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    let objectUrl: string | null = null;
+    setFailed(false); setUrl(null);
+    void fetchArtifact(jobId, artifact, controller.signal).then(blob => {
+      if (controller.signal.aborted || !isPrivateSessionActive()) return;
+      objectUrl = URL.createObjectURL(blob); setUrl(objectUrl);
+    }).catch(() => { if (!controller.signal.aborted && isPrivateSessionActive()) setFailed(true); });
+    return () => { controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [jobId, artifact.id, artifact.sha256, artifact.size, artifact.contentType]);
+  return <figure>{failed ? <div className="wb-notice">預覽無法載入，請重新登入或使用下載按鈕。</div> : url ? <img src={url} alt={artifact.name} loading="lazy" onError={() => setFailed(true)} /> : <p className="wb-small" role="status">正在取得 {artifact.name} 預覽…</p>}<figcaption>{artifact.name}</figcaption></figure>;
 }
 function Artifacts({ job, edited }: { job: Job; edited: boolean }) {
   const [downloading, setDownloading] = useState("");
@@ -189,17 +201,14 @@ function Artifacts({ job, edited }: { job: Job; edited: boolean }) {
     };
   }, [job.id, artifactIds]);
 
-  const download = async (event: React.MouseEvent<HTMLAnchorElement>, file: Artifact) => {
-    // Preserve ordinary new-tab / save-link actions, but keep normal failures in this page.
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-    event.preventDefault();
-    if (active.current) return;
+  const download = async (file: Artifact) => {
+    if (!isPrivateSessionActive() || active.current) return;
     const controller = new AbortController(); active.current = controller;
     if (objectUrl.current) URL.revokeObjectURL(objectUrl.current);
     objectUrl.current = null; setReady(null); setDownloadError(""); setDownloading(file.name);
     try {
       const blob = await fetchArtifact(job.id, file, controller.signal);
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || !isPrivateSessionActive()) return;
       const url = URL.createObjectURL(blob); objectUrl.current = url;
       setReady({ url, name: file.name, size: blob.size });
       const link = document.createElement("a");
@@ -219,12 +228,12 @@ function Artifacts({ job, edited }: { job: Job; edited: boolean }) {
   const renderDraftRevision = record(job.metadata.render).draftRevision;
   const outputMatchesDraft = typeof renderDraftRevision === "number" && renderDraftRevision === job.draftRevision;
   const previousOutput = hasRenderOutput && (edited || (typeof renderDraftRevision === "number" ? !outputMatchesDraft || (job.phase === "render" && job.status !== "completed") : job.status !== "completed"));
-  return <section className="wb-panel" aria-label="預覽與下載"><div className="wb-section-heading"><h2>預覽與下載</h2>{zip && <a className="wb-button is-primary" href={fileUrl(job.id, zip)} download={zip.name} aria-disabled={Boolean(downloading)} onClick={event => void download(event, zip)}>{downloading === zip.name ? "正在下載 ZIP…" : previousOutput ? "下載前次 ZIP" : "下載完整 ZIP"}</a>}</div>
+  return <section className="wb-panel" aria-label="預覽與下載"><div className="wb-section-heading"><h2>預覽與下載</h2>{zip && <button type="button" className="wb-button is-primary" disabled={Boolean(downloading)} onClick={() => void download(zip)}>{downloading === zip.name ? "正在下載 ZIP…" : previousOutput ? "下載前次 ZIP" : "下載完整 ZIP"}</button>}</div>
     {downloading && <p className="wb-notice" role="status">正在取得 {downloading}，請稍候…</p>}
     {downloadError && <p className="wb-alert" role="alert">{downloadError}</p>}
     {ready && <div className="wb-notice" role="status">檔案已就緒（{Math.max(1, Math.round(ready.size / 1024))} KB）。若未自動儲存，請按 <a href={ready.url} download={ready.name}>儲存 {ready.name}</a>，並查看瀏覽器的下載面板。</div>}
     {previousOutput && <p className="wb-notice" role="status">圖卡與 ZIP 為前次輸出，未包含目前文字／設計變更。{job.status === "queued" || job.status === "running" ? "新一輪製作尚未完成。" : "請完成重新製作後，再下載更新素材。"}</p>}
     {images.length > 0 && <div className="wb-previews">{images.map(file => <Preview key={file.id} artifact={file} jobId={job.id} />)}</div>}
-    <ul className="wb-files">{job.artifacts.map(file => <li key={file.id}><a href={fileUrl(job.id, file)} download={file.name} aria-disabled={Boolean(downloading)} onClick={event => void download(event, file)}>{file.name}<span aria-hidden="true"> ↓</span></a><span className="wb-small">{Math.max(1, Math.round(file.size / 1024))} KB</span></li>)}</ul>
+    <ul className="wb-files">{job.artifacts.map(file => <li key={file.id}><button type="button" className="wb-button is-quiet" disabled={Boolean(downloading)} onClick={() => void download(file)}>{file.name}<span aria-hidden="true"> ↓</span></button><span className="wb-small">{Math.max(1, Math.round(file.size / 1024))} KB</span></li>)}</ul>
   </section>;
 }

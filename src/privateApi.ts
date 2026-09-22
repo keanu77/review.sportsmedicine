@@ -1,4 +1,9 @@
 import type { Artifact, Job } from "../shared/contracts";
+import { isPrivateSessionActive, onPrivateSessionLock } from "./draftRecovery";
+
+function assertPrivateSession() {
+  if (!isPrivateSessionActive()) throw new DOMException("工作台已登出。", "AbortError");
+}
 
 /** A delayed poll must not rewind a mutation, heartbeat or newly created list item. */
 export function latestJob(current: Job | null | undefined, incoming: Job): Job {
@@ -17,12 +22,15 @@ export class PrivateApiError extends Error {
 }
 
 export async function privateApi<T>(path: string, options: { method?: string; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
+  assertPrivateSession();
   const controller = new AbortController();
   const abort = () => controller.abort();
+  const unsubscribe = onPrivateSessionLock(abort);
   if (options.signal?.aborted) abort();
   else options.signal?.addEventListener("abort", abort, { once: true });
   const timer = window.setTimeout(abort, 20000);
   try {
+    controller.signal.throwIfAborted();
     const response = await fetch(`/api/private${path}`, {
       method: options.method ?? "GET", credentials: "same-origin", cache: "no-store", signal: controller.signal,
       headers: { Accept: "application/json", ...(options.body !== undefined ? { "Content-Type": "application/json" } : {}) },
@@ -32,12 +40,16 @@ export async function privateApi<T>(path: string, options: { method?: string; bo
       throw new PrivateApiError("API_UNAVAILABLE", "私人服務尚未可用，或登入已失效。純靜態預覽無法建立任務；請開啟已設定私人服務的工作台。", response.status);
     }
     const data = await response.json();
+    assertPrivateSession();
+    controller.signal.throwIfAborted();
     if (!response.ok) throw new PrivateApiError(data?.error?.code ?? "REQUEST_FAILED", data?.error?.message ?? `請求失敗（${response.status}）`, response.status);
     return data as T;
   } catch (error) {
+    assertPrivateSession();
     if (controller.signal.aborted && !options.signal?.aborted) throw new PrivateApiError("TIMEOUT", "連線等候逾時。若剛送出操作，請重新整理任務確認結果。");
     throw error;
   } finally {
+    unsubscribe();
     clearTimeout(timer);
     options.signal?.removeEventListener("abort", abort);
   }
@@ -59,11 +71,14 @@ export function fileUrl(jobId: string, artifact: Pick<Artifact, "id">, inline = 
 
 /** Fetch within the owner session so HTTP/auth failures stay visible in the editor. */
 export async function fetchArtifact(jobId: string, artifact: Artifact, signal?: AbortSignal): Promise<Blob> {
+  assertPrivateSession();
   const controller = new AbortController();
   const abort = () => controller.abort();
+  const unsubscribe = onPrivateSessionLock(abort);
   if (signal?.aborted) abort(); else signal?.addEventListener("abort", abort, { once: true });
   const timer = setTimeout(abort, 60000);
   try {
+    controller.signal.throwIfAborted();
     const response = await fetch(fileUrl(jobId, artifact), { credentials: "same-origin", cache: "no-store", signal: controller.signal });
     if (!response.ok) {
       throw new PrivateApiError("DOWNLOAD_FAILED", response.status === 404 ? "檔案已更新或不存在，請重新整理工作台後再下載。" : `伺服器無法提供檔案（HTTP ${response.status}）。請稍後再試。`, response.status);
@@ -74,15 +89,19 @@ export async function fetchArtifact(jobId: string, artifact: Artifact, signal?: 
     const bytes = await response.arrayBuffer();
     if (bytes.byteLength !== artifact.size) throw new PrivateApiError("DOWNLOAD_INCOMPLETE", "收到的檔案不完整，請重新下載。");
     const digest = await crypto.subtle.digest("SHA-256", bytes);
+    assertPrivateSession();
+    controller.signal.throwIfAborted();
     const hash = Array.from(new Uint8Array(digest), value => value.toString(16).padStart(2, "0")).join("");
     if (hash !== artifact.sha256) throw new PrivateApiError("DOWNLOAD_CHECKSUM", "檔案完整性檢查未通過，請重新下載。");
     return new Blob([bytes], { type: artifact.contentType });
   } catch (error) {
+    assertPrivateSession();
     if (signal?.aborted) throw error;
     if (controller.signal.aborted) throw new PrivateApiError("DOWNLOAD_TIMEOUT", "下載等候逾時，請檢查連線後再試。");
     if (error instanceof TypeError) throw new PrivateApiError("DOWNLOAD_NETWORK", "下載連線失敗，請檢查網路或重新登入工作台後再試。");
     throw error;
   } finally {
+    unsubscribe();
     clearTimeout(timer);
     signal?.removeEventListener("abort", abort);
   }

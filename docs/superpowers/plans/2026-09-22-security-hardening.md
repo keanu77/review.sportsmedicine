@@ -1,0 +1,10 @@
+# Security improvements approved on 2026-09-22
+
+Scope: address the four security recommendations accepted by the owner. Preserve public literature/search behavior, private job history, Access owner checks, private R2, and the running Mac worker. Never put credentials in source, logs, artifacts, or chat.
+
+1. Update vulnerable build dependencies to supported patched versions. Audit the complete dependency tree during monthly maintenance, including development tools. Verify build, existing tests, browser behavior, and isolated Functions integration.
+2. Add explicit logout with confirmation that unsaved local drafts will be removed. Stop private polling, autosaves and in-flight work; clear private recovery storage and memory; coordinate other open tabs so they cannot recreate drafts; navigate to the same-origin Cloudflare Access logout endpoint. Preserve public favorites and crash recovery before logout. Test cancellation, actual clearing, cross-tab behavior, and delayed responses.
+3. Add a required expiry for worker credentials, bounded overlap for rotation, and a read-only authenticated health probe. Provide a secret-safe rotation/revocation command and operating instructions. Rotate the deployed credential without disrupting active jobs, verify new credential acceptance and old credential rejection, and record the next deadline without storing secret values.
+4. Give build/update jobs read-only repository permissions and remove persisted checkout credentials. Publish in a separate minimal job with pinned actions, a strict data-only artifact allowlist, trusted validation, and a stale-base check. Preserve monthly schedules and dry-run maintenance; exercise the new workflow in GitHub.
+
+Work in an isolated worktree because the production LaunchAgent imports the main checkout. Review specification compliance and code quality before release. Release order must preserve compatibility while installing new worker credentials. Final evidence must distinguish local tests from deployed checks. Do not modify unrelated `.claude/` or `skill-updates/` files.

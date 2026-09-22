@@ -13,12 +13,16 @@ Configure these Pages variables/secrets for each environment:
 - `ACCESS_TEAM_DOMAIN`: `your-team.cloudflareaccess.com`.
 - `ACCESS_AUD`: the Access application's audience tag.
 - `OWNER_EMAIL`: the exact permitted owner's email (compared case-insensitively).
-- `WORKER_TOKEN`: a random credential at least 32 characters long, shared only with the Mac worker.
-- `APP_ORIGIN` (optional): exact origin such as `https://review.example.com`; when set, pins the allowed owner mutation Origin. Without it, the request URL origin is required.
+- `WORKER_TOKEN`: a random base64url credential, 32–512 characters, shared only with the Mac worker.
+- `WORKER_TOKEN_ISSUED_AT` and `WORKER_TOKEN_EXPIRES_AT`: required strict UTC ISO timestamps (`YYYY-MM-DDTHH:mm:ss.sssZ`), with expiry after issuance and at most 90 days later. Missing lifecycle configuration fails closed with 503; expired credentials return 401.
+- `WORKER_PREVIOUS_TOKEN` and `WORKER_PREVIOUS_TOKEN_EXPIRES_AT`: optional paired fields for rotation only; the previous token must differ and expires no later than one hour after active-token issuance. Remove both fields after activation.
+- `APP_ORIGIN` (required): exact canonical origin such as `https://review.example.com`; pins worker request URLs and allowed owner mutation Origin. Missing or invalid configuration closes worker access.
 
 Configure Access to protect the workbench and `/api/private/*`; allow the single owner's identity. Worker API paths need to reach the bearer-authenticated Functions endpoint without a browser Access login. Protect preview deployments consistently; the application verifies JWTs even if Access routing is misconfigured. A client must send owner mutations with same-origin `Origin` and JSON requests with `Content-Type: application/json`.
 
 For local development, put variables in an ignored `.dev.vars` file. A real valid Access JWT is still required for owner calls. The worker API works with the local bearer credential.
+
+Use the [staged credential rotation/revocation runbook](../docs/worker-credentials.md). The Node tool stores its private plan outside Git, updates only production credential settings, verifies live authenticated `GET /api/worker/health`, and never claims a configuration save is a deployment. Health returns only `{ ok, activeJobs, credentialExpiresAt }` and does not claim jobs. Stop the idle Mac LaunchAgent before changing its env, deploy each server configuration change, and require new-token 200 / old-token 401 before completing rotation. Complete revocation removes both credentials and returns 503 `WORKER_NOT_CONFIGURED` after deployment; existing private jobs/artifacts remain intact.
 
 ```sh
 npx wrangler d1 migrations apply DB --local
@@ -42,3 +46,5 @@ Limits: 32 files and 128 MiB per attempt; individual PDF 32 MiB, JATS XML 8 MiB,
 Abandoned/previous attempt objects remain private for recovery and currently require an operator retention policy. No scheduled cleanup or automatic model retry is included. Storage validation checks basic file signatures, not PDF/ZIP semantic contents; source identity and evidence validation belong to the worker.
 
 Cloudflare references: [Access JWT validation](https://developers.cloudflare.com/cloudflare-one/access-controls/applications/http-apps/authorization-cookie/validating-json/), [D1 batch transactions](https://developers.cloudflare.com/d1/worker-api/d1-database/), [R2 Workers API](https://developers.cloudflare.com/r2/api/workers/workers-api-reference/).
+
+Worker routes require the exact canonical `APP_ORIGIN`; forwarded host headers and Pages deployment aliases cannot override it. This protects future deployment snapshots. Older deployments that predate this guard must be separately retired when rotating credentials.

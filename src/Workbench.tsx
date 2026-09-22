@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { Design, Job } from "../shared/contracts";
 import { errorText, latestJob, mergeJobList, privateApi } from "./privateApi";
 import WorkbenchJob, { STATUS_LABELS, type EditorSnapshot } from "./WorkbenchJob";
+import { clearExpiredRecoveries, isPrivateSessionActive, logoutPrivateSession, watchPrivateSession } from "./draftRecovery";
 import "./workbench.css";
 
-interface Session { email: string; worker: { lastSeen: string; capabilities: unknown } | null }
+interface Session { email: string; worker: { lastSeen: string; capabilities: unknown } | null; workerCredentialExpiresAt?: string }
 export const DEFAULT_DESIGN: Design = { palette: "blue", style: "clinical", imageStyle: "photo", format: "portrait" };
 
 export default function Workbench() {
@@ -21,82 +23,114 @@ export default function Workbench() {
   const [creating, setCreating] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [notice, setNotice] = useState("");
+  const [locked, setLocked] = useState(!isPrivateSessionActive());
+  const [storageNotice, setStorageNotice] = useState("");
   const createController = useRef<AbortController | null>(null);
   const editorCache = useRef(new Map<string, EditorSnapshot>());
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
 
   useEffect(() => {
+    setStorageNotice(clearExpiredRecoveries() || "");
+    return watchPrivateSession(() => {
+      createController.current?.abort();
+      editorCache.current.clear(); selectedRef.current = null;
+      setLocked(true); setJob(null); setJobs([]); setSelected(null); setSession(null);
+      setInput(""); setTitle(""); setError(""); setDetailError(""); setNotice(""); setCreating(false);
+    });
+  }, []);
+
+  useEffect(() => {
+    if (locked || !isPrivateSessionActive()) return;
     const controller = new AbortController();
     let timer: number;
     const poll = async () => {
+      if (!isPrivateSessionActive()) return;
       try {
         const [nextSession, list] = await Promise.all([
           privateApi<Session>("/session", { signal: controller.signal }),
           privateApi<{ jobs: Job[] }>("/jobs", { signal: controller.signal }),
         ]);
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || !isPrivateSessionActive()) return;
         if (!nextSession.email || !Array.isArray(list.jobs)) throw new Error("私人服務回應格式無法辨識。");
         setSession(nextSession);
         setJobs(current => mergeJobList(current, list.jobs));
         setSelected(current => current ?? list.jobs[0]?.id ?? null);
         setError("");
       } catch (cause) {
-        if (!controller.signal.aborted) setError(errorText(cause));
+        if (!controller.signal.aborted && isPrivateSessionActive()) setError(errorText(cause));
       } finally {
-        if (!controller.signal.aborted) { setLoading(false); timer = window.setTimeout(poll, 8000); }
+        if (!controller.signal.aborted && isPrivateSessionActive()) { setLoading(false); timer = window.setTimeout(poll, 8000); }
       }
     };
     void poll();
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [refresh]);
+  }, [refresh, locked]);
 
   useEffect(() => {
     setJob(current => current?.id === selected ? current : null);
     setDetailError("");
-    if (!selected) return;
+    if (!selected || locked || !isPrivateSessionActive()) return;
     const controller = new AbortController();
     let timer: number;
     const poll = async () => {
+      if (!isPrivateSessionActive()) return;
       try {
         const result = await privateApi<{ job: Job }>(`/jobs/${encodeURIComponent(selected)}`, { signal: controller.signal });
-        if (controller.signal.aborted || selectedRef.current !== selected) return;
+        if (controller.signal.aborted || selectedRef.current !== selected || !isPrivateSessionActive()) return;
         setJob(current => latestJob(current, result.job));
         setDetailError("");
       } catch (cause) {
-        if (!controller.signal.aborted) setDetailError(errorText(cause));
+        if (!controller.signal.aborted && isPrivateSessionActive()) setDetailError(errorText(cause));
       } finally {
-        if (!controller.signal.aborted) timer = window.setTimeout(poll, 5000);
+        if (!controller.signal.aborted && isPrivateSessionActive()) timer = window.setTimeout(poll, 5000);
       }
     };
     void poll();
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [selected, refresh]);
+  }, [selected, refresh, locked]);
 
   useEffect(() => () => createController.current?.abort(), []);
 
   const updateJob = (next: Job) => {
+    if (!isPrivateSessionActive()) return;
     if (selectedRef.current === next.id) setJob(current => latestJob(current, next));
     setJobs(current => mergeJobList(current, [next]));
   };
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!input.trim() || creating) return;
+    if (!input.trim() || creating || !isPrivateSessionActive()) return;
     const controller = new AbortController();
     createController.current = controller;
     setCreating(true); setNotice("");
     try {
       const result = await privateApi<{ job: Job }>("/jobs", { method: "POST", body: { input: input.trim(), ...(title.trim() ? { title: title.trim() } : {}), design: DEFAULT_DESIGN }, signal: controller.signal });
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted || !isPrivateSessionActive()) return;
       updateJob(result.job); setSelected(result.job.id);
       setNotice("任務已加入佇列。Mac 連線後會先查核全文，再產生待審草稿。");
     } catch (cause) {
       if (!controller.signal.aborted) setNotice(errorText(cause));
     } finally { if (!controller.signal.aborted) setCreating(false); }
   };
+  const logout = () => {
+    if (!window.confirm("登出並清除本機草稿？\n\n這會移除此瀏覽器所有工作台分頁的未儲存草稿與本機復原副本，並鎖定其他工作台分頁。伺服器上已儲存的資料會保留。\n\n也會登出此 Cloudflare Access 組織的其他應用程式；登入憑證撤銷可能需要約 20–30 秒。")) return;
+    let failure: string | null = null;
+    // Commit the lock and unmount private editors/downloads before navigating.
+    flushSync(() => { failure = logoutPrivateSession(); setStorageNotice(failure || ""); });
+    if (!failure) window.location.assign("/cdn-cgi/access/logout");
+  };
   const workerDate = session?.worker ? Date.parse(session.worker.lastSeen) : NaN;
   const workerOnline = Number.isFinite(workerDate) && Date.now() - workerDate < 120000;
+  const credentialExpiry = Date.parse(session?.workerCredentialExpiresAt || "");
+  const credentialExpiresSoon = Number.isFinite(credentialExpiry) && credentialExpiry - Date.now() <= 14 * 86400000;
   const capabilities = session?.worker?.capabilities as { imageGeneration?: { available?: boolean } } | undefined;
+
+  if (locked) return <section className="workbench wb-panel" aria-labelledby="workbench-locked-heading">
+    <h1 id="workbench-locked-heading">工作台已鎖定</h1>
+    <p>此工作台已鎖定。{!storageNotice && "本機草稿已清除。"}伺服器上已儲存的資料仍保留。</p>
+    {storageNotice && <p role="alert" className="wb-alert">{storageNotice}</p>}
+    <a className="wb-button" href="/cdn-cgi/access/logout">繼續登出 Cloudflare Access</a>
+  </section>;
 
   return <div className="workbench">
     <header className="wb-hero">
@@ -110,10 +144,13 @@ export default function Workbench() {
       <span className={`wb-dot ${workerOnline ? "is-online" : ""}`} aria-hidden="true" />
       <div>{loading ? "正在確認私人服務…" : session ? <><strong>{workerOnline ? "Mac 已連線" : "等待 Mac 連線"}</strong><span className="wb-small"> {session.email}</span></> : <strong>私人服務尚未連線</strong>}
         {session && <p className="wb-small">{session.worker ? `最後回報：${new Date(session.worker.lastSeen).toLocaleString("zh-TW")}` : "尚無 Mac 回報紀錄"}{!workerOnline && "。已排隊任務會等待 worker 啟動。"}</p>}
+        {Number.isFinite(credentialExpiry) && <p className={credentialExpiresSoon ? "wb-small wb-alert" : "wb-small"}>憑證到期：{new Date(credentialExpiry).toLocaleString("zh-TW")}{credentialExpiresSoon && (credentialExpiry <= Date.now() ? "（已到期，請輪替）" : "（14 天內到期，請輪替）")}</p>}
         {capabilities?.imageGeneration?.available === false && <p className="wb-small">Mac 圖片生成功能尚未就緒；寫實／插畫任務會等待可生圖的 Mac。</p>}
       </div>
       <button className="wb-button is-quiet" onClick={() => setRefresh(value => value + 1)}>重新整理</button>
+      <button className="wb-button is-quiet" onClick={logout}>登出並清除本機草稿</button>
     </div>
+    {storageNotice && <p role="alert" className="wb-alert">{storageNotice}</p>}
     {error && <div className="wb-alert" role="alert"><p>{error}</p><a href={`/workbench/${window.location.search}`}>重新登入／開啟工作台</a></div>}
 
     <div className="wb-layout">

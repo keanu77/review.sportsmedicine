@@ -131,9 +131,14 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
 export async function runWorker(config, { once = false, signal, onStage = console.log, capabilities = {} } = {}) {
   await mkdir(config.workspace, { recursive: true, mode: 0o700 });
   const api = new WorkerAPI(config);
+  let lastExpiryWarning = 0;
   while (!signal?.aborted) {
     try {
       const claimed = await api.call('/claim', { data: { workerId: config.workerId, capabilities: { ...capabilities, draftProvider: config.provider, reviewDraft: true } }, signal });
+      if (Date.parse(claimed.credentialExpiresAt) - Date.now() <= 14 * 86400000 && Date.now() - lastExpiryWarning > 86400000) {
+        onStage(`連線憑證將於 ${claimed.credentialExpiresAt} 到期；請依 docs/worker-credentials.md 輪替。`);
+        lastExpiryWarning = Date.now();
+      }
       if (claimed.job) await processJob(api, claimed, config, { signal, onStage });
       else onStage('等待網站任務');
     } catch (error) { if (signal?.aborted) break; onStage(`工作未完成：${error.message}`); if (once) throw error; }

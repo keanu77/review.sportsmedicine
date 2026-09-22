@@ -35,14 +35,35 @@ export async function sha256(value) {
   const bytes = typeof value === 'string' ? new TextEncoder().encode(value) : value;
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
-export async function authenticateWorker(request, env) {
-  if (typeof env.WORKER_TOKEN !== 'string' || env.WORKER_TOKEN.length < 32) throw new ApiError(503, 'WORKER_NOT_CONFIGURED', 'Worker authentication is not configured');
+export function workerCredentials(env) {
+  const invalid = () => new ApiError(503, 'WORKER_NOT_CONFIGURED', 'Worker credential lifecycle is not configured');
+  const timestamp = value => typeof value === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value) ? Date.parse(value) : NaN;
+  const secret = value => typeof value === 'string' && /^[A-Za-z0-9_-]{32,512}$/.test(value);
+  const issued = timestamp(env.WORKER_TOKEN_ISSUED_AT), expires = timestamp(env.WORKER_TOKEN_EXPIRES_AT);
+  if (!secret(env.WORKER_TOKEN) || !Number.isFinite(issued) || !Number.isFinite(expires) || expires <= issued || expires - issued > 90 * 86400000) throw invalid();
+  const credentials = [{ token: env.WORKER_TOKEN, issued, expires, expiresAt: env.WORKER_TOKEN_EXPIRES_AT }];
+  if (env.WORKER_PREVIOUS_TOKEN || env.WORKER_PREVIOUS_TOKEN_EXPIRES_AT) {
+    const previousExpires = timestamp(env.WORKER_PREVIOUS_TOKEN_EXPIRES_AT);
+    if (!secret(env.WORKER_PREVIOUS_TOKEN) || env.WORKER_PREVIOUS_TOKEN === env.WORKER_TOKEN || !Number.isFinite(previousExpires)
+      || previousExpires <= issued || previousExpires > Math.min(expires, issued + 3600000)) throw invalid();
+    credentials.push({ token: env.WORKER_PREVIOUS_TOKEN, issued, expires: previousExpires, expiresAt: env.WORKER_PREVIOUS_TOKEN_EXPIRES_AT });
+  }
+  return credentials;
+}
+export async function authenticateWorker(request, env, now = Date.now()) {
+  const credentials = workerCredentials(env);
   const authorization = request.headers.get('Authorization') || '';
   if (!authorization.startsWith('Bearer ') || authorization.length > 4096) throw new ApiError(401, 'UNAUTHORIZED', 'A worker credential is required');
-  const [actual, expected] = await Promise.all([sha256(authorization.slice(7)), sha256(env.WORKER_TOKEN)]);
-  let difference = 0;
-  for (let index = 0; index < expected.length; index++) difference |= actual.charCodeAt(index) ^ expected.charCodeAt(index);
-  if (difference !== 0) throw new ApiError(401, 'UNAUTHORIZED', 'Invalid worker credential');
+  const [actual, ...expected] = await Promise.all([sha256(authorization.slice(7)), ...credentials.map(value => sha256(value.token))]);
+  let accepted;
+  for (let slot = 0; slot < credentials.length; slot++) {
+    let difference = 0;
+    for (let index = 0; index < expected[slot].length; index++) difference |= actual.charCodeAt(index) ^ expected[slot].charCodeAt(index);
+    const credential = credentials[slot];
+    if (difference === 0 && now >= credential.issued && now < credential.expires) accepted = { expiresAt: credential.expiresAt };
+  }
+  if (!accepted) throw new ApiError(401, 'UNAUTHORIZED', 'Invalid or expired worker credential');
+  return accepted;
 }
 export function requireOrigin(request, env) {
   const origin = request.headers.get('Origin');
