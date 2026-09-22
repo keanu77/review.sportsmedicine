@@ -33,8 +33,10 @@ export function toVancouver(item: Item): string {
   const authors = (item.authors ?? []).filter(Boolean);
   const parts = [...(authors.length ? [`${authors.join(", ")}.`] : []), `${title}.`];
   if (journal) parts.push(`${journal}.`);
-  if (item.year) parts.push(`${item.year}.`);
+  const publication = [item.year || "", item.volume ? `;${item.volume}` : "", item.issue ? `(${item.issue})` : "", item.pages ? `:${item.pages}` : ""].join("");
+  if (publication) parts.push(`${publication}.`);
   if (item.pmid) parts.push(`PMID: ${item.pmid}.`);
+  if (item.pmcid) parts.push(`PMCID: ${item.pmcid}.`);
   if (doi) parts.push(`doi:${doi}`);
   return parts.join(" ");
 }
@@ -56,8 +58,12 @@ export function toBibTeX(item: Item): string {
   if (item.authors?.length) fields.push(["author", `{${item.authors.map(escapeBibTeX).join(" and ")}}`]);
   if (journal) fields.push(["journal", `{${escapeBibTeX(journal)}}`]);
   if (item.year) fields.push(["year", item.year]);
+  if (item.volume) fields.push(["volume", `{${escapeBibTeX(item.volume)}}`]);
+  if (item.issue) fields.push(["number", `{${escapeBibTeX(item.issue)}}`]);
+  if (item.pages) fields.push(["pages", `{${escapeBibTeX(item.pages)}}`]);
   if (doi) fields.push(["doi", `{${escapeBibTeX(doi)}}`]);
   if (item.pmid) fields.push(["pmid", `{${item.pmid}}`]);
+  if (item.pmcid) fields.push(["pmcid", `{${item.pmcid}}`]);
   fields.push(["url", `{${escapeBibTeX(item.freeUrl || item.url)}}`]);
   const body = fields.map(([k, v]) => `  ${k} = ${v},`).join("\n");
   return `@article{pmid${key},\n${body}\n}`;

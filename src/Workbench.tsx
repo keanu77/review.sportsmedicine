@@ -139,7 +139,7 @@ export default function Workbench() {
 
       <div className="wb-main">
         {detailError && <div role="alert" className="wb-alert">{detailError}</div>}
-        {job ? <WorkbenchJob key={job.id} job={job} onUpdate={updateJob} cache={editorCache} /> : selected ? <div className="wb-panel" role="status">{detailError ? "無法取得任務，請重新整理後再試。" : "正在取得任務…"}</div> : <section className="wb-empty"><div aria-hidden="true" className="wb-paper-icon">↗</div><p className="wb-eyebrow">YOUR NEXT STORY</p><h2>把重點，留給讀者。</h2><p>這裡會保留論文來源、草稿與每次審核結果。<br />確認文字後，再生成可以下載的社群素材。</p><div className="wb-empty-cards" aria-hidden="true"><div /><div /><div /></div></section>}
+        {job ? <WorkbenchJob key={job.id} job={job} onUpdate={updateJob} cache={editorCache} owner={session?.email || ""} /> : selected ? <div className="wb-panel" role="status">{detailError ? "無法取得任務，請重新整理後再試。" : "正在取得任務…"}</div> : <section className="wb-empty"><div aria-hidden="true" className="wb-paper-icon">↗</div><p className="wb-eyebrow">YOUR NEXT STORY</p><h2>把重點，留給讀者。</h2><p>這裡會保留論文來源、草稿與每次審核結果。<br />確認文字後，再生成可以下載的社群素材。</p><div className="wb-empty-cards" aria-hidden="true"><div /><div /><div /></div></section>}
       </div>
     </div>
     <p className="wb-footer">私人檔案只提供登入者下載。工作台輸出檔案，由你確認後自行發布至 FB／IG。</p>

@@ -14,6 +14,34 @@ export function doiOf(item: Pick<Item, "url" | "doi">): string | null {
   return /^10\.\d{4,9}\/\S+$/i.test(decoded) ? decoded.toLowerCase() : null;
 }
 
+export function identifiersOf(item: Pick<Item, "url" | "freeUrl" | "doi" | "pmid" | "pmcid">): { doi: string | null; pmid: string | null; pmcid: string | null } {
+  const urls = [item.url, item.freeUrl].flatMap(raw => {
+    try { const url = new URL(raw || ""); return /^https?:$/.test(url.protocol) ? [url] : []; } catch { return []; }
+  });
+  const pmidUrl = urls.find(url => url.hostname === "pubmed.ncbi.nlm.nih.gov");
+  const pmcidUrl = urls.find(url => url.hostname === "pmc.ncbi.nlm.nih.gov" || (url.hostname === "ncbi.nlm.nih.gov" && url.pathname.startsWith("/pmc/")));
+  return {
+    doi: doiOf(item),
+    pmid: item.pmid?.match(/^(?:PMID:\s*)?(\d+)$/i)?.[1] || pmidUrl?.pathname.match(/^\/(\d+)(?:\/|$)/)?.[1] || null,
+    pmcid: item.pmcid?.match(/^(PMC\d+)$/i)?.[1]?.toUpperCase() || pmcidUrl?.pathname.match(/^\/(?:pmc\/)?articles\/(PMC\d+)(?:\/|$)/i)?.[1]?.toUpperCase() || null,
+  };
+}
+
+/** Compare identifiers conservatively; a known conflict always prevents enrichment. */
+export function compatibleIdentifiers(a: ReturnType<typeof identifiersOf>, b: ReturnType<typeof identifiersOf>): boolean {
+  return (["doi", "pmid", "pmcid"] as const).every(key => !a[key] || !b[key] || a[key] === b[key]);
+}
+
+export function normalizedTitle(title: string): string {
+  const named: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " " };
+  const decoded = title.replace(/&(#x[\da-f]+|#\d+|amp|lt|gt|quot|apos|nbsp);/gi, (entity, code: string) => {
+    if (code[0] !== "#") return named[code.toLowerCase()] || entity;
+    const value = code[1].toLowerCase() === "x" ? parseInt(code.slice(2), 16) : Number(code.slice(1));
+    return Number.isInteger(value) && value > 0 && value <= 0x10ffff ? String.fromCodePoint(value) : entity;
+  });
+  return decoded.normalize("NFKC").toLowerCase().replace(/<[^>]+>/g, "").replace(/[^\p{L}\p{N}]+/gu, "");
+}
+
 export function sourceInput(item: Item): string | null {
   const doi = doiOf(item);
   if (doi) return doi;
@@ -31,8 +59,9 @@ export function canonicalPaperId(item: Item): string {
 }
 
 export function paperAliases(item: Item): string[] {
+  const ids = identifiersOf(item);
   return [...new Set([canonicalPaperId(item), paperKey(item), `title:${paperKey(item)}`, ...(item.identityAliases ?? []),
-    ...(item.pmid ? [`pmid:${item.pmid}`] : []), ...(item.pmcid ? [item.pmcid.toLowerCase()] : [])])];
+    ...(ids.doi ? [`doi:${ids.doi}`] : []), ...(ids.pmid ? [`pmid:${ids.pmid}`] : []), ...(ids.pmcid ? [ids.pmcid.toLowerCase()] : [])])];
 }
 
 /** Merge identifier and historical title aliases without losing disease memberships. */
@@ -77,6 +106,9 @@ export function uniquePapers(items: Item[]): Item[] {
         diseases: [...new Set([...(existing.diseases ?? []), ...(incoming.diseases ?? []), incoming.disease].filter(Boolean))],
         pmid: existing.pmid ?? incoming.pmid, pmcid: existing.pmcid ?? incoming.pmcid, doi: doiOf(existing) ?? doiOf(incoming),
         authors: existing.authors?.length ? existing.authors : incoming.authors,
+        journal: existing.journal ?? incoming.journal, volume: existing.volume ?? incoming.volume,
+        issue: existing.issue ?? incoming.issue, pages: existing.pages ?? incoming.pages,
+        bibliography: existing.bibliography ?? incoming.bibliography,
         free: existing.free || incoming.free, freeUrl: existing.freeUrl ?? incoming.freeUrl,
         tldr: existing.tldr ?? incoming.tldr, impactFactor: existing.impactFactor ?? incoming.impactFactor,
       };

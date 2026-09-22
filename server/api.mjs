@@ -47,13 +47,39 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
           return json({ job: await store.create({ input: normalizeInput(data.input), title: data.title === undefined ? '' : text(data.title, 'title', 1000, { empty: true }), design: validateDesign(data.design) }) }, 201);
         }
       }
-      const jobPath = path.match(/^\/jobs\/([^/]+)(?:\/(draft|render|cancel|retry))?$/);
+      const versionsPath = path.match(/^\/jobs\/([^/]+)\/versions(?:\/(\d+))?$/);
+      if (versionsPath && method === 'GET') {
+        const id = safeId(versionsPath[1]);
+        return versionsPath[2] ? json({ version: await store.version(id, validateRevision(Number(versionsPath[2]))) })
+          : json({ versions: await store.versions(id, url.searchParams.has('before') ? validateRevision(Number(url.searchParams.get('before'))) : undefined) });
+      }
+      const reviewsPath = path.match(/^\/jobs\/([^/]+)\/reviews(?:\/([^/]+)\/findings\/(claude|gemini|grok)\/(\d+))?$/);
+      if (reviewsPath) {
+        const id = safeId(reviewsPath[1]);
+        if (!reviewsPath[2] && method === 'GET') return json({ runs: await store.reviews(id) });
+        if (reviewsPath[2] && method === 'PATCH') {
+          const data = await body(request);
+          if (!['pending','resolved','rejected'].includes(data.status)) throw new ValidationError('Invalid finding status');
+          const reason = text(data.reason ?? '', 'reason', 2000, { empty: data.status !== 'rejected' });
+          await store.disposition(id, safeId(reviewsPath[2]), reviewsPath[3], Number(reviewsPath[4]), data.status, reason);
+          return json({ runs: await store.reviews(id) });
+        }
+      }
+      const jobPath = path.match(/^\/jobs\/([^/]+)(?:\/(draft|render|cancel|retry|restore|review))?$/);
       if (jobPath) {
         const id = safeId(jobPath[1]); const action = jobPath[2];
         if (!action && method === 'GET') return json({ job: await store.get(id) });
         if (action === 'draft' && method === 'PATCH') {
           const data = await body(request);
-          return json({ job: await store.edit(id, validateRevision(data.revision), validateDraft(data.draft)) });
+          return json({ job: await store.edit(id, validateRevision(data.revision), validateDraft(data.draft), null, data.checkpoint === true) });
+        }
+        if (action === 'restore' && method === 'POST') {
+          const data = await body(request);
+          return json({ job: await store.restore(id, validateRevision(data.revision), validateRevision(data.version)) });
+        }
+        if (action === 'review' && method === 'POST') {
+          const data = await body(request);
+          return json({ job: await store.review(id, validateRevision(data.revision)) });
         }
         if (action === 'render' && method === 'POST') {
           const data = await body(request);
@@ -107,8 +133,9 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         if (action === 'heartbeat') return json(await store.heartbeat(id, data.leaseToken, text(data.stage, 'stage', 120)));
         if (action === 'fail') return json({ job: await store.fail(id, data.leaseToken, safeId(data.code, 'error code'), text(data.message, 'error message', 2000)) });
         const { row: active } = await store.lease(id, data.leaseToken);
-        if (active.phase === 'render' && data.draft !== undefined) throw new ValidationError('A render may not replace its approved draft');
-        const draft = active.phase === 'research' ? validateDraft(data.draft) : undefined;
+        if ((active.phase === 'render' || active.review_requested) && data.draft !== undefined) throw new ValidationError('Rendering and review may not replace their saved draft');
+        if (active.review_requested && !Array.isArray(data.metadata?.reviews)) throw new ValidationError('A review must return reviewer results');
+        const draft = active.phase === 'research' && !active.review_requested ? validateDraft(data.draft) : undefined;
         return json({ job: await store.complete(id, data.leaseToken, { artifacts: fileIds(data.artifacts), draft, metadata: validateMetadata(data.metadata) }) });
       }
     }

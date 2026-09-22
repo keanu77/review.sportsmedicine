@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures";
 
 // 檢索是這個站的核心，也是改版前壞得最徹底的地方。
 // 每一條斷言都對應一個**實際發生過的**回歸，門檻刻意留寬（>50 而非 ==75），

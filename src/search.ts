@@ -9,6 +9,7 @@
 
 import { expandToken } from "./aliases";
 import type { Item } from "./types";
+import { doiOf, identifiersOf } from "./identity";
 
 /** 一篇文獻所有可搜尋的文字，小寫合併。 */
 export function haystackOf(item: Item): string {
@@ -20,6 +21,9 @@ export function haystackOf(item: Item): string {
     item.source,
     item.journal,
     item.pmid,
+    item.pmcid,
+    doiOf(item),
+    ...(item.authors ?? []),
     item.region,
     ...(item.themes ?? []),
     ...(item.populations ?? []),
@@ -55,14 +59,53 @@ function tokenMatches(haystack: string, token: string): boolean {
 
 /** 把查詢字串切成 token。 */
 export function tokenize(query: string): string[] {
-  return query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return query.trim().replace(/\b(doi|pmid|pmcid):\s+/gi, "$1:").split(/\s+/).filter(Boolean).map(token => /^https?:/i.test(token) ? token : token.toLowerCase());
+}
+
+function canonicalUrl(raw: string): string | null {
+  try {
+    const url = new URL(raw);
+    if (!/^https?:$/.test(url.protocol)) return null;
+    for (const key of [...url.searchParams.keys()]) if (/^(utm_|fbclid$|gclid$|mc_cid$|mc_eid$)/i.test(key)) url.searchParams.delete(key);
+    url.searchParams.sort();
+    return `${url.hostname.toLowerCase()}${decodeURI(url.pathname).replace(/\/$/, "")}${url.search}`;
+  } catch { return null; }
+}
+
+function exactToken(item: Item, token: string): boolean | null {
+  const ids = identifiersOf(item);
+  const doi = doiOf({ doi: /^https?:/i.test(token) ? undefined : token, url: token });
+  if (doi) return ids.doi === doi;
+  const queryIds = identifiersOf({ url: token });
+  const pmid = token.match(/^pmid:(\d+)$/i)?.[1] || token.match(/^(\d{5,9})$/)?.[1] || queryIds.pmid;
+  if (pmid) return ids.pmid === pmid;
+  const pmcid = token.match(/^(?:pmcid:)?(PMC\d+)$/i)?.[1]?.toUpperCase() || queryIds.pmcid;
+  if (pmcid) return ids.pmcid === pmcid;
+  const url = canonicalUrl(token);
+  if (url) return [item.url, item.freeUrl].some(value => value && canonicalUrl(value) === url);
+  return null;
 }
 
 /** 全部 token 都命中才算命中（AND 語意）。 */
 export function matchesQuery(item: Item, tokens: string[]): boolean {
   if (!tokens.length) return true;
   const haystack = haystackOf(item);
-  return tokens.every((token) => tokenMatches(haystack, token));
+  return tokens.every((token) => exactToken(item, token) ?? tokenMatches(haystack, token));
+}
+
+export type SearchSort = "relevance" | "latest";
+
+export function searchSortLabel(sort: SearchSort): string {
+  return sort === "latest" ? "依年份新到舊" : "依相關度";
+}
+
+export function rankResults(items: Item[], tokens: string[], sort: SearchSort): Item[] {
+  const score = (item: Item) => tokens.reduce((total, token) => total + (exactToken(item, token) ? 100 : 0)
+    + (tokenMatches(item.title.toLowerCase(), token) ? 10 : 0)
+    + (tokenMatches((item.authors ?? []).join(" ").toLowerCase(), token) ? 5 : 0)
+    + (tokenMatches([item.disease, ...(item.themes ?? [])].join(" ").toLowerCase(), token) ? 3 : 0), 0);
+  return [...items].sort((a, b) => (sort === "relevance" ? score(b) - score(a) : 0)
+    || (b.year ?? 0) - (a.year ?? 0) || a.title.localeCompare(b.title));
 }
 
 /**

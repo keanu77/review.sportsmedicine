@@ -1,11 +1,11 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures";
 import type { Job } from "../../shared/contracts";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { strToU8, zipSync } from "fflate";
 
 // API fixtures test browser behavior only; they are not evidence of deployed authentication or real model output.
-function sampleJob(overrides: Partial<Job> = {}): Job {
+export function sampleJob(overrides: Partial<Job> = {}): Job {
   return {
     id: "job-test-1", input: "PMC1234567", title: "A randomized trial in sports rehabilitation", status: "needs_review", phase: "research", stage: "needs_review", revision: 2,
     draft: { post: "初始 Facebook 草稿", igCaption: "初始 IG 草稿", notes: "待核對", pages: [{ id: "cover", layout: "cover", title: "測試封面", subtitle: "回到原始證據" }, { id: "body", layout: "content", title: "重點", cards: [{ title: "效果", body: "測試內文" }] }], claims: [{ text: "研究主張", locator: "p. 3", quote: "A test evidence excerpt." }] },
@@ -15,7 +15,7 @@ function sampleJob(overrides: Partial<Job> = {}): Job {
   };
 }
 
-async function apiFixture(page: Page, jobs: Job[] = [sampleJob()]) {
+export async function apiFixture(page: Page, jobs: Job[] = [sampleJob()]) {
   const state = { jobs, mutations: [] as { method: string; path: string; body: any }[], conflict: false };
   await page.route("**/api/private/**", async route => {
     const request = route.request(), path = new URL(request.url()).pathname.replace("/api/private", "");
@@ -26,15 +26,16 @@ async function apiFixture(page: Page, jobs: Job[] = [sampleJob()]) {
       const job = sampleJob({ id: "job-created", input: body.input, title: body.title || "", status: "queued", stage: "queued", draft: null, revision: 1 }); state.jobs.unshift(job);
       return route.fulfill({ json: { job } });
     }
-    const match = path.match(/^\/jobs\/([^/]+)(?:\/(draft|render|cancel|retry))?$/);
+    const match = path.match(/^\/jobs\/([^/]+)(?:\/(draft|render|cancel|retry|review))?$/);
     if (match) {
       const job = state.jobs.find(item => item.id === match[1]);
       if (!job) return route.fulfill({ status: 404, json: { error: { code: "NOT_FOUND", message: "Missing job" } } });
       if (request.method() === "GET") return route.fulfill({ json: { job } });
       const body = request.postData() ? request.postDataJSON() : null;
       state.mutations.push({ method: request.method(), path, body });
-      if (state.conflict) return route.fulfill({ status: 409, json: { error: { code: "CONFLICT", message: "Version conflict" } } });
+      if (state.conflict || (body?.revision && body.revision !== job.revision)) return route.fulfill({ status: 409, json: { error: { code: "CONFLICT", message: "Version conflict" } } });
       if (match[2] === "draft") { job.draft = body.draft; job.status = "needs_review"; }
+      if (match[2] === "review") { job.status = "queued"; job.stage = "queued"; job.phase = "review"; }
       if (match[2] === "render") { job.design = body.design; job.status = "queued"; job.stage = "queued"; job.phase = "render"; }
       if (match[2] === "cancel") { job.status = "cancelled"; job.stage = "cancelled"; }
       if (match[2] === "retry") { job.status = "queued"; job.stage = "queued"; }
@@ -264,4 +265,181 @@ test("unavailable full text keeps explicit source failures visible", async ({ pa
   await expect(source.getByText("全文未取得", { exact: true })).toBeVisible();
   await expect(source.getByText("PDF 未取得（無開放取用 PDF）", { exact: true })).toBeVisible();
   await expect(source.getByText("結構化全文 XML 未取得（PMC 未提供 XML）", { exact: true })).toBeVisible();
+});
+
+
+test("idle edits autosave and display the saved time", async ({ page }) => {
+  await page.clock.install(); const state = await apiFixture(page); await page.goto('/workbench/');
+  await page.getByLabel('Facebook 貼文').fill('自動儲存的文字');
+  await page.clock.fastForward(2000);
+  await expect(page.getByText(/最後儲存/)).toBeVisible();
+  await expect.poll(() => state.jobs[0].draft?.post).toBe('自動儲存的文字');
+  expect(state.mutations.filter(m => m.path.endsWith('/draft'))).toHaveLength(1);
+});
+
+test("reload recovers unsaved text and refuses to overwrite a newer remote draft", async ({ page }) => {
+  await page.clock.install(); const state = await apiFixture(page); await page.goto('/workbench/');
+  await page.getByLabel('Facebook 貼文').fill('異常關機前的文字');
+  await expect(page.getByText(/本機復原副本/)).toBeVisible();
+  state.jobs[0] = { ...state.jobs[0], revision: 8, draft: { ...state.jobs[0].draft!, post: '另一個分頁的文字' } };
+  await page.reload();
+  await expect(page.getByLabel('Facebook 貼文')).toHaveValue('異常關機前的文字');
+  await expect(page.getByText(/已恢復未儲存/)).toBeVisible();
+  await expect(page.getByText(/遠端已更新至版本 8/)).toBeVisible();
+  await page.clock.fastForward(3000);
+  expect(state.mutations).toHaveLength(0);
+});
+
+test("text typed while autosave is pending remains in editor and is saved next", async ({ page }) => {
+  await page.clock.install(); const state = await apiFixture(page);
+  let release: () => void = () => {}; let arrived = false;
+  await page.route('**/api/private/jobs/*/draft', async route => {
+    if (!arrived) { arrived = true; await new Promise<void>(resolve => { release = resolve; }); }
+    await route.fallback();
+  });
+  await page.goto('/workbench/'); await page.getByLabel('Facebook 貼文').fill('第一段');
+  await page.clock.fastForward(2000); await expect.poll(() => arrived).toBe(true);
+  await expect(page.getByLabel('Facebook 貼文')).toBeEnabled();
+  await page.getByLabel('Facebook 貼文').fill('第一段加上第二段'); release();
+  await expect.poll(() => state.jobs[0].draft?.post).toBe('第一段');
+  await expect(page.getByLabel('Facebook 貼文')).toHaveValue('第一段加上第二段');
+  await page.clock.fastForward(2000);
+  await expect.poll(() => state.jobs[0].draft?.post).toBe('第一段加上第二段');
+});
+
+test("saved draft can explicitly enter the re-review queue", async ({ page }) => {
+  const state = await apiFixture(page); await page.goto('/workbench/');
+  await page.getByRole('button', { name: '重新審核目前版本', exact: true }).click();
+  await expect(page.getByText(/已排入重新審核/)).toBeVisible();
+  expect(state.mutations[0].body.revision).toBe(2);
+  expect(state.jobs[0].phase).toBe('review');
+});
+
+test('history compares a saved version and restores it without overwriting history', async ({ page }) => {
+  const state = await apiFixture(page);
+  const older = { revision: 1, createdAt: '2026-09-20T12:00:00Z', restoredFrom: null, draft: { ...state.jobs[0].draft!, post: '歷史草稿' } };
+  await page.route('**/api/private/jobs/*/versions', route => route.fulfill({ json: { versions: [older] } }));
+  await page.route('**/api/private/jobs/*/versions/1', route => route.fulfill({ json: { version: older } }));
+  await page.route('**/api/private/jobs/*/restore', route => {
+    expect(route.request().postDataJSON()).toEqual({ revision: 2, version: 1 });
+    state.jobs[0] = { ...state.jobs[0], revision: 3, draftRevision: 3, draft: older.draft };
+    return route.fulfill({ json: { job: state.jobs[0] } });
+  });
+  await page.goto('/workbench/'); await page.getByText('草稿版本紀錄', { exact: true }).click();
+  await page.getByLabel('選擇歷史版本').selectOption('1');
+  await expect(page.getByRole('cell', { name: '歷史草稿', exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: '初始 Facebook 草稿', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: '還原為新版本', exact: true }).click();
+  await expect(page.getByLabel('Facebook 貼文')).toHaveValue('歷史草稿');
+});
+
+test('review findings require a rejection reason and save the disposition', async ({ page }) => {
+  const job = sampleJob(); job.metadata.reviewRunId = 'run-1'; job.metadata.reviewsDraftRevision = 2; job.metadata.reviewsStale = false;
+  await apiFixture(page, [job]);
+  const run = { id: 'run-1', draftRevision: 2, createdAt: new Date().toISOString(), reviews: job.metadata.reviews, dispositions: [] as any[] };
+  await page.route('**/api/private/jobs/*/reviews', route => route.fulfill({ json: { runs: [run] } }));
+  await page.route('**/api/private/jobs/*/reviews/run-1/findings/gemini/0', route => {
+    const data = route.request().postDataJSON();
+    expect(data).toMatchObject({ status: 'rejected', reason: '原文已明確限定族群' });
+    run.dispositions = [{ provider: 'gemini', findingIndex: 0, ...data }];
+    return route.fulfill({ json: { runs: [run] } });
+  });
+  await page.goto('/workbench/'); await page.locator('summary').filter({ hasText: 'Gemini' }).click();
+  await page.getByLabel('Gemini 意見 1 處理狀態').selectOption('rejected');
+  await expect(page.getByRole('button', { name: '儲存 Gemini 意見 1', exact: true })).toBeDisabled();
+  await page.getByLabel('Gemini 意見 1 處理理由').fill('原文已明確限定族群');
+  await page.getByRole('button', { name: '儲存 Gemini 意見 1', exact: true }).click();
+  await expect(page.getByText('意見處理紀錄已儲存。', { exact: true })).toBeVisible();
+});
+
+test('legacy review selection retains its unknown draft version after a new review', async ({ page }) => {
+  const job = sampleJob({ draftRevision: 2 });
+  Object.assign(job.metadata, { reviewRunId: 'new-run', reviewsDraftRevision: 2 });
+  await apiFixture(page, [job]);
+  const runs = [
+    { id: 'new-run', draftRevision: 2, createdAt: '2026-09-22T00:00:00Z', reviews: job.metadata.reviews, dispositions: [] },
+    { id: 'legacy-run', draftRevision: null, createdAt: '2026-09-21T00:00:00Z', reviews: job.metadata.reviews, dispositions: [] },
+  ];
+  await page.route('**/api/private/jobs/*/reviews', route => route.fulfill({ json: { runs } }));
+  await page.goto('/workbench/');
+  await expect(page.getByText('審核對應草稿版本 2。', { exact: true })).toBeVisible();
+  await page.getByLabel('查看審核批次').selectOption('legacy-run');
+  await expect(page.getByText(/舊紀錄未保存確切草稿版本/)).toBeVisible();
+  await expect(page.getByText('審核對應草稿版本 2。', { exact: true })).toHaveCount(0);
+});
+
+test('a clean second tab cannot delete the first tab crash recovery copy', async ({ page, context }) => {
+  await page.clock.install(); const state = await apiFixture(page); await page.goto('/workbench/');
+  await expect(page.getByLabel('Facebook 貼文')).toBeVisible();
+  const second = await context.newPage(); await second.route('https://fonts.googleapis.com/**', route => route.abort()); await second.clock.install();
+  await apiFixture(second, state.jobs); await second.goto('/workbench/'); await expect(second.getByLabel('Facebook 貼文')).toBeVisible();
+  await page.route('**/api/private/jobs/*/draft', route => route.fulfill({ status: 503, json: { error: { code: 'UNAVAILABLE', message: 'Offline fixture' } } }));
+  await page.getByLabel('Facebook 貼文').fill('第一個分頁的未儲存草稿');
+  await second.clock.fastForward(6000); await expect(second.getByLabel('Facebook 貼文')).toHaveValue('初始 Facebook 草稿');
+  await page.reload(); await expect(page.getByLabel('Facebook 貼文')).toHaveValue('第一個分頁的未儲存草稿');
+  await second.close();
+});
+
+test('reverting to baseline during a pending save survives a newer poll', async ({ page }) => {
+  await page.clock.install(); const state = await apiFixture(page);
+  let release: () => void = () => {}, arrived = false;
+  await page.route('**/api/private/jobs/*/draft', async route => {
+    if (arrived) return route.fallback();
+    arrived = true; const data = route.request().postDataJSON();
+    state.jobs[0] = { ...state.jobs[0], revision: 3, draft: data.draft };
+    const reply = structuredClone(state.jobs[0]);
+    await new Promise<void>(resolve => { release = resolve; });
+    return route.fulfill({ json: { job: reply } });
+  });
+  await page.goto('/workbench/'); await page.getByLabel('Facebook 貼文').fill('送出中的 B');
+  await page.clock.fastForward(2000); await expect.poll(() => arrived).toBe(true);
+  await page.getByLabel('Facebook 貼文').fill('初始 Facebook 草稿');
+  await page.clock.fastForward(4000);
+  await expect(page.getByLabel('Facebook 貼文')).toHaveValue('初始 Facebook 草稿');
+  release(); await page.clock.fastForward(2000);
+  await expect(page.getByLabel('Facebook 貼文')).toHaveValue('初始 Facebook 草稿');
+});
+
+test('re-review preserves freshness of output matching the current draft', async ({ page }) => {
+  const job = sampleJob({ status: 'needs_review', phase: 'review', revision: 8, draftRevision: 4,
+    metadata: { render: { draftRevision: 4 } }, artifacts: [{ id: 'zip-test', name: 'social.zip', contentType: 'application/zip', size: 1200, sha256: 'a'.repeat(64) }] });
+  await apiFixture(page, [job]); await page.goto('/workbench/');
+  await expect(page.getByRole('link', { name: '下載完整 ZIP', exact: true })).toBeVisible();
+  await expect(page.getByText(/前次輸出，未包含目前文字/)).toHaveCount(0);
+});
+
+test('a pending save crash recovers the submitted draft before server commit', async ({ page }) => {
+  await page.clock.install(); const state = await apiFixture(page);
+  let release: () => void = () => {}, arrived = false;
+  await page.route('**/api/private/jobs/*/draft', async route => {
+    if (arrived) return route.fallback();
+    arrived = true; await new Promise<void>(resolve => { release = resolve; });
+    await route.fulfill({ status: 503, json: { error: { code: 'INTERRUPTED' } } }).catch(() => {});
+  });
+  await page.goto('/workbench/'); await page.getByLabel('Facebook 貼文').fill('送出但尚未到達伺服器的文字');
+  await page.clock.fastForward(2000); await expect.poll(() => arrived).toBe(true);
+  await page.reload(); release();
+  await expect(page.getByLabel('Facebook 貼文')).toHaveValue('送出但尚未到達伺服器的文字');
+  await expect(page.getByText(/上次儲存結果尚待確認/)).toBeVisible();
+  expect(state.jobs[0].draft?.post).toBe('初始 Facebook 草稿');
+});
+
+test('an uncertain save failure preserves a later revert through polls and reload', async ({ page }) => {
+  await page.clock.install(); const state = await apiFixture(page);
+  let release: () => void = () => {}, arrived = false;
+  await page.route('**/api/private/jobs/*/draft', async route => {
+    if (arrived) return route.fallback();
+    arrived = true; const data = route.request().postDataJSON();
+    state.jobs[0] = { ...state.jobs[0], revision: 3, draft: data.draft };
+    await new Promise<void>(resolve => { release = resolve; });
+    return route.fulfill({ status: 503, json: { error: { code: 'LOST_RESPONSE', message: 'Committed but response lost' } } });
+  });
+  await page.goto('/workbench/'); await page.getByLabel('Facebook 貼文').fill('已送出的 B');
+  await page.clock.fastForward(2000); await expect.poll(() => arrived).toBe(true);
+  await page.getByLabel('Facebook 貼文').fill('初始 Facebook 草稿'); release();
+  await expect(page.getByRole('alert')).toContainText('LOST_RESPONSE');
+  await page.clock.fastForward(6000);
+  await expect(page.getByLabel('Facebook 貼文')).toHaveValue('初始 Facebook 草稿');
+  await page.reload(); await expect(page.getByLabel('Facebook 貼文')).toHaveValue('初始 Facebook 草稿');
+  await expect(page.getByText(/遠端已更新至版本 3/)).toBeVisible();
 });

@@ -17,6 +17,10 @@ export interface Item {
   pmcid?: string | null;
   doi?: string | null;
   authors?: string[] | null;
+  volume?: string | null;
+  issue?: string | null;
+  pages?: string | null;
+  bibliography?: BibliographyEntry;
   /** Frontend merge aliases; keeps old title bookmarks resolvable after metadata enrichment. */
   identityAliases?: string[];
   impactFactor?: number | null;
@@ -29,6 +33,31 @@ export interface Item {
   diseases?: string[];
   /** 摘要來源。"local-llm" 代表由本機模型自 PubMed 摘要生成，UI 會標示 */
   tldrSource?: "local-llm" | string;
+}
+
+/** Durable source metadata, independent of the monthly upstream index. */
+export interface BibliographyEntry {
+  title: string;
+  year: number | null;
+  doi?: string | null;
+  pmid?: string | null;
+  pmcid?: string | null;
+  authors: string[];
+  journal?: string | null;
+  volume?: string | null;
+  issue?: string | null;
+  pages?: string | null;
+  source: "Europe PMC" | "Crossref";
+  sourceUrl: string;
+  verifiedAt: string;
+  matchMethod: "identifier" | "exact-title-year";
+}
+
+export interface BibliographyData {
+  version: 1;
+  generatedAt: string;
+  records: BibliographyEntry[];
+  unresolved: { key: string; title: string; reason: string; checkedAt: string }[];
 }
 
 export interface AxisKey {

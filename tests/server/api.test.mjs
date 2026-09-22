@@ -252,7 +252,7 @@ test('editing a reviewed draft marks reviews stale and render completion cannot 
   assert.equal(completed.status, 'completed');
   assert.equal(completed.metadata.reviewsStale, true, 'rendering cannot mark the edited draft as reviewed');
   assert.deepEqual(completed.metadata.reviews, reviews);
-  assert.deepEqual(completed.metadata.render, { checked: true });
+  assert.deepEqual(completed.metadata.render, { checked: true, draftRevision: edited.draftRevision });
 });
 
 test('a lost upload response can be retried without a second write or artifact', async (t) => {

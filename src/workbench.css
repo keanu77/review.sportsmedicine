@@ -92,3 +92,10 @@
 @media (max-width: 720px) { .wb-layout { grid-template-columns: minmax(0, 1fr); } .wb-hero { padding: 24px 20px; } .wb-panel { padding: 18px; } .wb-job-list { max-height: 220px; } .wb-empty { min-height: 350px; padding: 35px 20px; } }
 @media (max-width: 390px) { .wb-design { grid-template-columns: minmax(0, 1fr); } .wb-previews { grid-template-columns: minmax(0, 1fr); } .wb-steps { gap: 10px 15px; } .wb-hero h1 { font-size: 26px; } .wb-metadata > div { grid-template-columns: minmax(0, 1fr); gap: 2px; } .wb-connection > .wb-button { width: 100%; } }
 @media (prefers-color-scheme: dark) { .wb-connection, .wb-footer { color: #bdd0e6; } .wb-connection .wb-small, .wb-footer { color: #aebfd3; } .wb-connection .wb-button { color: #bdd0e6; } }
+
+.wb-history-heading { cursor: pointer; font-weight: 700; font-size: 1.1rem; padding: .5rem 0; }
+.wb-diff-scroll { overflow-x: auto; margin: 1rem 0; }
+.wb-diff { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: .875rem; }
+.wb-diff th, .wb-diff td { vertical-align: top; border: 1px solid #cbd5e1; padding: .6rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+.wb-diff th:first-child { width: 20%; }
+.wb-decision { margin-top: 1rem; border-top: 1px solid #cbd5e1; padding-top: 1rem; }

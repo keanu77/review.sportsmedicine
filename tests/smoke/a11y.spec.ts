@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test } from "./fixtures";
 
 // 可及性回歸。這些 typecheck 與 build 都抓不到，卻是改版前失分最多的地方：
 // 分類色盤 11 色中 6 色在淺色底達不到 4.5:1、156 個手風琴按鈕零 aria-expanded、

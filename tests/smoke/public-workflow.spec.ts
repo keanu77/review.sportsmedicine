@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "./fixtures";
 
 async function sourceFixture(page: Page) {
   const item = { title: "An Umbrella Review Following PRIOR Guideline", year: 2026, url: "https://doi.org/10.1234/prior", source: "Test Journal", free: true, tldr: "原始摘要", region: "膝", disease: "膝痛", themes: [], populations: [] };

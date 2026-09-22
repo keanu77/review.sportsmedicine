@@ -3,7 +3,7 @@ import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
-import { resolvePaper, downloadPaper } from './paper.mjs';
+import { resolvePaper, downloadPaper, loadPaper } from './paper.mjs';
 import { generateDraft } from './draft.mjs';
 import { reviewDraft } from './review.mjs';
 import { renderPackage } from './render.mjs';
@@ -88,6 +88,23 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
       result = { draft, metadata: { paper: source.paper, reviews, draftProvider: config.provider } };
       files = [...sourceArtifacts(source),
         { path: notesFile, name: 'research-notes.md', contentType: 'text/markdown' }, { path: path.join(directory, 'reviews.json'), name: 'reviews.json', contentType: 'application/json' }];
+    } else if (job.phase === 'review') {
+      const request = job.metadata?.reviewRequest;
+      safeId(request?.runId, 'review run id');
+      await update('reviewing');
+      const source = await loadPaper(path.join(jobDir, 'research'), { signal: combined });
+      const expected = job.metadata?.paper;
+      if (!expected?.fullTextVerified || ![expected.xmlSha256, expected.sha256].some(Boolean)
+        || ['doi','pmid','pmcid','xmlSha256','sha256'].some(key => expected[key] && expected[key] !== source.paper[key])) {
+        throw new Error('本機全文與這次審核指定的來源版本不符，請先恢復原始全文');
+      }
+      const draft = validateDraft(job.draft);
+      const directory = path.join(jobDir, 'reviews', request.runId);
+      await mkdir(directory, { recursive: true, mode: 0o700 });
+      // A new owner request has a unique run directory; retry can reuse a known result.
+      const reviews = await reviewDraft(source, draft, directory, { signal: combined, allowRetry: true });
+      result = { metadata: { reviews } };
+      files = [{ path: path.join(directory, 'reviews.json'), name: 'reviews.json', contentType: 'application/json' }];
     } else if (job.phase === 'render') {
       const draft = validateDraft(job.draft), design = validateDesign(job.design);
       if (!job.metadata?.paper?.fullTextVerified) throw new Error('缺少已驗證的全文紀錄');
@@ -116,7 +133,7 @@ export async function runWorker(config, { once = false, signal, onStage = consol
   const api = new WorkerAPI(config);
   while (!signal?.aborted) {
     try {
-      const claimed = await api.call('/claim', { data: { workerId: config.workerId, capabilities: { ...capabilities, draftProvider: config.provider } }, signal });
+      const claimed = await api.call('/claim', { data: { workerId: config.workerId, capabilities: { ...capabilities, draftProvider: config.provider, reviewDraft: true } }, signal });
       if (claimed.job) await processJob(api, claimed, config, { signal, onStage });
       else onStage('等待網站任務');
     } catch (error) { if (signal?.aborted) break; onStage(`工作未完成：${error.message}`); if (once) throw error; }

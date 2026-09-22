@@ -1,0 +1,65 @@
+name: Monthly website maintenance
+
+# Day 3, 03:37 UTC = 11:37 Taipei / 12:37 Tokyo.
+on:
+  schedule:
+    - cron: '37 3 3 * *'
+  workflow_dispatch:
+    inputs:
+      apply_updates:
+        description: Apply compatible updates after all checks pass
+        required: true
+        type: boolean
+        default: false
+permissions:
+  contents: write
+concurrency:
+  group: review-monthly-publish
+  cancel-in-progress: false
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Apply compatible dependency improvements in this checkout
+        run: npm update
+      - name: Validate data and run regression checks
+        run: |
+          node scripts/validate-index.mjs
+          npm test
+          npm run build
+          npx playwright install --with-deps chromium
+          npm run test:smoke -- --workers=2
+          npm run test:local-api
+          npm run test:integration
+          npm audit --omit=dev --audit-level=high
+      - name: Generate maintenance report
+        run: node --import tsx scripts/monthly-report.ts >> "$GITHUB_STEP_SUMMARY"
+      - name: Record the exact proposed changes
+        run: git diff -- package.json package-lock.json > dependency-updates.patch
+      - name: Apply passing maintenance
+        if: github.event_name == 'schedule' || inputs.apply_updates
+        run: |
+          git add package.json package-lock.json docs/maintenance/
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email 'github-actions[bot]@users.noreply.github.com'
+            git commit -m 'chore: monthly verified website maintenance'
+            git push
+          fi
+      - name: Retain reports and failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-maintenance-verification
+          path: |
+            docs/maintenance/
+            dependency-updates.patch
+            test-results/
+          retention-days: 90

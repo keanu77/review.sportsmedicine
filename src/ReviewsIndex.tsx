@@ -1,13 +1,13 @@
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
-import { enrichItem } from "./enrich";
+import { createBibliographyIndex, enrichItem } from "./enrich";
 import { canonicalPaperId, paperAliases, uniquePapers } from "./identity";
 import PaperDetails from "./PaperDetails";
 import { studyTypeOf } from "./studyType";
 import NewThisMonth from "./NewThisMonth";
 import ReviewRow from "./ReviewRow";
 import { toneByIndex, toneOf } from "./regionGroups";
-import { matchesQuery, suggestTerms, tokenize } from "./search";
-import type { Axis, Item, ReviewsData, SummariesData, TagsData } from "./types";
+import { matchesQuery, rankResults, searchSortLabel, suggestTerms, tokenize, type SearchSort } from "./search";
+import type { Axis, BibliographyData, BibliographyEntry, Item, ReviewsData, SummariesData, TagsData } from "./types";
 import { useLibrary } from "./useLibrary";
 import { useUrlState } from "./useUrlState";
 
@@ -64,9 +64,6 @@ function sortByIntervalThenIF(a: Item, b: Item): number {
   if (ib !== ia) return ib - ia;
   return (b.year ?? 0) - (a.year ?? 0);
 }
-function sortByYear(a: Item, b: Item): number {
-  return (b.year ?? 0) - (a.year ?? 0) || (b.impactFactor ?? -1) - (a.impactFactor ?? -1);
-}
 
 // 上游同一篇文獻會以兩種方式重複出現：依多個疾病重複列出（分組瀏覽時刻意如此），
 // 以及同一篇同時收錄 DOI 版與出版社版網址（41 組）。統計與平坦列表都必須以
@@ -89,6 +86,8 @@ export default function ReviewsIndex() {
   const [data, setData] = useState<ReviewsData | null>(null);
   const [summaries, setSummaries] = useState<Record<string, string>>({});
   const [tags, setTags] = useState<TagsData["tags"]>({});
+  const [bibliography, setBibliography] = useState<BibliographyEntry[]>([]);
+  const bibliographyIndex = useMemo(() => createBibliographyIndex(bibliography), [bibliography]);
   const [err, setErr] = useState<string | null>(null);
   const [view, setView] = useUrlState();
   const [open, setOpen] = useState<Set<string>>(new Set());
@@ -117,6 +116,12 @@ export default function ReviewsIndex() {
   const hasQuery = tokens.length > 0;
 
   useEffect(() => {
+    fetch(`${import.meta.env.BASE_URL}data/bibliography.json`)
+      .then(response => response.ok ? response.json() : null)
+      .then((data: BibliographyData | null) => {
+        if (data?.version === 1 && Array.isArray(data.records)) setBibliography(data.records);
+      })
+      .catch(() => { /* Bibliography is optional; source index remains readable. */ });
     // 兩份資料平行取，摘要疊加層缺漏或損毀不影響主索引。
     fetch(`${import.meta.env.BASE_URL}data/reviews-index.json`)
       .then((r) => {
@@ -173,8 +178,8 @@ export default function ReviewsIndex() {
   // 不用分類器結果取代上游——對檢索工具而言漏掉一篇相關文獻，比多收一篇無關的嚴重。
   const merged: Item[] = useMemo(() => {
     if (!data) return [];
-    return data.items.map(item => enrichItem(item, summaries, tags));
-  }, [data, summaries, tags]);
+    return data.items.map(item => enrichItem(item, summaries, tags, bibliographyIndex));
+  }, [data, summaries, tags, bibliographyIndex]);
 
   const starSet = useMemo(() => {
     const saved = new Set(stars);
@@ -211,8 +216,8 @@ export default function ReviewsIndex() {
 
   /** 搜尋模式的平坦結果，已去重。 */
   const flatResults = useMemo(
-    () => (hasQuery ? uniqueItems(filtered).sort(sortByYear) : []),
-    [filtered, hasQuery],
+    () => (hasQuery ? rankResults(uniqueItems(filtered), tokens, view.sort) : []),
+    [filtered, hasQuery, tokens, view.sort],
   );
 
   const groups: AxisGroup[] = useMemo(() => {
@@ -372,7 +377,7 @@ export default function ReviewsIndex() {
         </div>
       </header>
 
-      <NewThisMonth jcrYear={jcrYear} summaries={summaries} tags={tags} starSet={starSet} onToggleStar={togglePaper} onOpen={markRead} />
+      <NewThisMonth jcrYear={jcrYear} summaries={summaries} tags={tags} bibliography={bibliographyIndex} starSet={starSet} onToggleStar={togglePaper} onOpen={markRead} />
 
       {/* Toolbar：行動裝置不 sticky，避免動態高度的工具列遮住錨點目標 */}
       <div className="z-10 space-y-3 rounded-lg border border-line bg-surface/95 p-3 backdrop-blur dark:border-line-dark dark:bg-surface-dark/95 sm:sticky sm:top-0 print:hidden">
@@ -393,7 +398,7 @@ export default function ReviewsIndex() {
               type="search"
               value={view.q}
               onChange={(e) => setView({ q: e.target.value })}
-              placeholder="病名、縮寫或期刊，例：ACL、PRP、RTP、冰凍肩、BJSM"
+              placeholder="病名、作者、期刊、DOI／PMID／PMCID 或文獻網址"
               className="min-h-11 w-full rounded-md border border-linestrong bg-surface px-3 text-sm text-ink placeholder:text-muted focus-visible:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-linestrong-dark dark:bg-surface-altdark dark:text-ink-dark dark:placeholder:text-muted-dark dark:focus-visible:ring-brand-dark"
             />
           </div>
@@ -422,6 +427,11 @@ export default function ReviewsIndex() {
         </div>
 
         <div className="flex flex-wrap gap-3">
+          {hasQuery && <label className="flex min-w-0 flex-1 items-center gap-2 text-xs sm:flex-none">排序
+            <select aria-label="搜尋結果排序" value={view.sort} onChange={event => setView({ sort: event.target.value === "latest" ? "latest" : "relevance" })} className="min-h-11 min-w-0 flex-1 rounded border border-linestrong bg-surface px-2 text-sm dark:bg-surface-altdark dark:border-linestrong-dark">
+              <option value="relevance">相關度</option><option value="latest">最新年份</option>
+            </select>
+          </label>}
           <label className="flex min-w-0 flex-1 items-center gap-2 text-xs sm:flex-none">年份
             <select aria-label="年份" value={view.year} onChange={e => setView({ year: e.target.value })} className="min-h-11 min-w-0 flex-1 rounded border border-linestrong bg-surface px-2 text-sm dark:bg-surface-altdark dark:border-linestrong-dark">
               <option value="">所有年份</option>
@@ -472,6 +482,7 @@ export default function ReviewsIndex() {
       {hasQuery ? (
         <SearchResults
           results={flatResults}
+          sort={view.sort}
           query={deferredQ}
           total={totalUnique}
           freeOnly={freeOnly}
@@ -580,6 +591,7 @@ export default function ReviewsIndex() {
 
 function SearchResults({
   results,
+  sort,
   query,
   total,
   freeOnly,
@@ -592,6 +604,7 @@ function SearchResults({
   onClearFree,
 }: {
   results: Item[];
+  sort: SearchSort;
   query: string;
   total: number;
   freeOnly: boolean;
@@ -642,7 +655,7 @@ function SearchResults({
         <span className="font-semibold tabular-nums text-ink dark:text-ink-dark">
           {results.length}
         </span>{" "}
-        / {total} 篇符合「{query}」{freeOnly && "（限免費全文）"} · 依年份新到舊
+        / {total} 篇符合「{query}」{freeOnly && "（限免費全文）"} · {searchSortLabel(sort)}
       </p>
       <ul className="divide-y divide-line rounded-lg border border-line bg-surface dark:divide-line-dark dark:border-line-dark dark:bg-surface-dark">
         {results.map((r) => (

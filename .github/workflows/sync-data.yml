@@ -1,61 +1,62 @@
 name: Monthly data sync
 
-# 每月自上游公開 URL 同步 reviews-index.json，commit 回 repo。
-# 部署本身由 Cloudflare Pages Git 整合負責——這個 commit 的 push 會自動觸發
-# Cloudflare 重建，故本 workflow 不需要 build/deploy，也不需任何 token/secret。
-#
-# 上游 monorepo 於每月 28 日重生資料並部署到 app.sportsmedicine.tw，
-# 故 1 日拉取可取得最新月度資料，留有部署緩衝。
+# 03:17 UTC = 11:17 Asia/Taipei / 12:17 Asia/Tokyo, on day 1.
+# Upstream rebuilds on day 28. Preserve the existing snapshot on any failure.
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 3 1 * *"
-
+    - cron: '17 3 1 * *'
 permissions:
   contents: write
-
 concurrency:
-  group: data-sync
-  cancel-in-progress: true
-
+  group: review-monthly-publish
+  cancel-in-progress: false
 jobs:
   sync:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-
-      # 從上游公開 URL 拉最新資料；curl 失敗（上游暫時不可用）時保留現有檔案，不失敗收場。
-      # 上游是固定容量的滾動視窗（每月有新增也有汰除），且項目沒有收錄日期欄位，
-      # 因此「本月新增」必須在覆寫前先留下舊快照，事後比對得出。
-      - name: Refresh reviews data from upstream
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Fetch and validate before replacing data
         run: |
-          cp public/data/reviews-index.json /tmp/prev.json
-          if curl -fsSL --max-time 60 https://app.sportsmedicine.tw/data/reviews-index.json -o /tmp/reviews.json \
-            && node -e 'JSON.parse(require("fs").readFileSync("/tmp/reviews.json","utf8"))'; then
-            mv /tmp/reviews.json public/data/reviews-index.json
-            # 資料真的有變才重算，否則會用一份空清單蓋掉上一批的新增紀錄、並產生無意義 commit。
-            if git diff --quiet -- public/data/reviews-index.json; then
-              echo "✅ 上游資料與現有版本相同，保留既有新增清單"
-            else
-              node scripts/build-new-items.mjs /tmp/prev.json public/data/reviews-index.json public/data/new-items.json
-              # feed 先產一版（此時尚無中文摘要）；本機補完摘要後再跑一次 npm run feed 會帶上摘要。
-              node scripts/build-feed.mjs
-              echo "✅ 已從上游刷新資料、更新本月新增清單與 Atom feed"
-              echo "ℹ️  新文獻的中文摘要與自訂標籤需在本機補：npm run summaries && npm run tags && npm run feed（依賴本機 ollama，CI runner 沒有）"
-            fi
-          else
-            echo "⚠️ 上游拉取失敗或非合法 JSON，保留已 commit 的資料"
+          cp public/data/reviews-index.json "$RUNNER_TEMP/previous-index.json"
+          curl --fail --silent --show-error --location --retry 3 --max-time 90 https://app.sportsmedicine.tw/data/reviews-index.json -o "$RUNNER_TEMP/next-index.json"
+          node scripts/validate-index.mjs "$RUNNER_TEMP/next-index.json" "$RUNNER_TEMP/previous-index.json"
+          if ! cmp -s "$RUNNER_TEMP/previous-index.json" "$RUNNER_TEMP/next-index.json"; then
+            cp "$RUNNER_TEMP/next-index.json" public/data/reviews-index.json
+            node scripts/build-new-items.mjs "$RUNNER_TEMP/previous-index.json" public/data/reviews-index.json public/data/new-items.json
+            npm run feed
           fi
-
-      # 有變更才 commit+push；push 會觸發 Cloudflare Pages 自動重建。
-      - name: Commit refreshed data
+      - name: Enrich verified bibliographic metadata
+        run: node --import tsx scripts/build-bibliography.ts
+      - name: Verify application and data
         run: |
-          if ! git diff --quiet -- public/data/ public/feed.xml; then
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add public/data/reviews-index.json public/data/new-items.json public/feed.xml
-            git commit -m "chore(data): 每月同步 reviews-index.json 與本月新增清單（自上游）"
+          npm test
+          npm run build
+          npx playwright install --with-deps chromium
+          npm run test:smoke -- --workers=2
+      - name: Record monthly public data health
+        run: node --import tsx scripts/monthly-report.ts >> "$GITHUB_STEP_SUMMARY"
+      - name: Publish verified data
+        run: |
+          git add public/data/reviews-index.json public/data/new-items.json public/data/bibliography.json public/feed.xml docs/maintenance/
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email 'github-actions[bot]@users.noreply.github.com'
+            git commit -m 'chore(data): verified monthly literature and citation refresh'
             git push
-          else
-            echo "資料無變更，略過 commit"
           fi
+      - name: Retain verification and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monthly-data-verification
+          path: |
+            docs/maintenance/
+            test-results/
+          retention-days: 90

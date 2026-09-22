@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { generateKeyPair, SignJWT } from 'jose';
 import { handleApi } from '../../server/api.mjs';
 
@@ -7,7 +7,8 @@ import { handleApi } from '../../server/api.mjs';
 // The separate Wrangler smoke test exercises Cloudflare's actual D1/R2 bindings.
 export function sqliteD1() {
   const db = new DatabaseSync(':memory:');
-  db.exec(readFileSync(new URL('../../migrations/0001_private_jobs.sql', import.meta.url), 'utf8'));
+  const migrations = new URL('../../migrations/', import.meta.url);
+  for (const file of readdirSync(migrations).filter(name => name.endsWith('.sql')).sort()) db.exec(readFileSync(new URL(file, migrations), 'utf8'));
   function statement(sql, params = []) {
     return {
       bind(...values) { return statement(sql, values); },
