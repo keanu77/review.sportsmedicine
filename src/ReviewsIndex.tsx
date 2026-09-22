@@ -10,6 +10,7 @@ import { matchesQuery, rankResults, searchSortLabel, suggestTerms, tokenize, typ
 import type { Axis, BibliographyData, BibliographyEntry, Item, ReviewsData, SummariesData, TagsData } from "./types";
 import { useLibrary } from "./useLibrary";
 import { useUrlState } from "./useUrlState";
+import { matchesPublicationWindow, parsePublicationPeriod, PUBLICATION_PERIODS, publicationWindow } from "./publicationDate";
 
 // ---------------------------------------------------------------------------
 // 運動醫學 Review 索引（獨立公開頁）
@@ -108,6 +109,8 @@ export default function ReviewsIndex() {
     ? (view.axis as Axis)
     : "region";
   const freeOnly = view.free;
+  const dateWindow = publicationWindow(view.period);
+  const dateFrom = dateWindow?.from, dateTo = dateWindow?.to;
 
   // 本地過濾工作量不小（911 筆 × 多欄位），用 useDeferredValue 讓輸入保持即時回應。
   const deferredQ = useDeferredValue(view.q);
@@ -198,13 +201,14 @@ export default function ReviewsIndex() {
   const filtered: Item[] = useMemo(
     () =>
       merged.filter((it) => {
+        if (!matchesPublicationWindow(it.firstPublicationDate, dateFrom && dateTo ? { from: dateFrom, to: dateTo } : null)) return false;
         if (view.year && String(it.year) !== view.year) return false;
         if (view.type && studyTypeOf(it.title) !== view.type) return false;
         if (freeOnly && !it.free) return false;
         if (showStarred && !starSet.has(canonicalPaperId(it))) return false;
         return matchesQuery(it, tokens);
       }),
-    [merged, tokens, freeOnly, showStarred, starSet, view.year, view.type],
+    [merged, tokens, freeOnly, showStarred, starSet, view.year, view.type, dateFrom, dateTo],
   );
 
   // 最近瀏覽：以唯一文獻為單位，保持點擊當下的順序
@@ -432,6 +436,11 @@ export default function ReviewsIndex() {
               <option value="relevance">相關度</option><option value="latest">最新年份</option>
             </select>
           </label>}
+          <label className="flex min-w-0 flex-1 items-center gap-2 text-xs sm:flex-none">發表時間
+            <select aria-label="發表時間" value={view.period} onChange={event => setView({ period: parsePublicationPeriod(event.target.value) })} className="min-h-11 min-w-0 flex-1 rounded border border-linestrong bg-surface px-2 text-sm dark:bg-surface-altdark dark:border-linestrong-dark">
+              {PUBLICATION_PERIODS.map(period => <option key={period.value} value={period.value}>{period.label}</option>)}
+            </select>
+          </label>
           <label className="flex min-w-0 flex-1 items-center gap-2 text-xs sm:flex-none">年份
             <select aria-label="年份" value={view.year} onChange={e => setView({ year: e.target.value })} className="min-h-11 min-w-0 flex-1 rounded border border-linestrong bg-surface px-2 text-sm dark:bg-surface-altdark dark:border-linestrong-dark">
               <option value="">所有年份</option>
@@ -444,8 +453,11 @@ export default function ReviewsIndex() {
               {["系統性回顧", "統合分析", "傘狀回顧", "範疇回顧", "敘述性回顧", "指引", "共識"].map(type => <option key={type}>{type}</option>)}
             </select>
           </label>
-          {(view.year || view.type) && <button type="button" className="min-h-11 rounded px-2 text-sm text-brand dark:text-brand-dark" onClick={() => setView({ year: "", type: "" })}>清除年份與文體</button>}
+          {(view.period || view.year || view.type) && <button type="button" className="min-h-11 rounded px-2 text-sm text-brand dark:text-brand-dark" onClick={() => setView({ period: "", year: "", type: "" })}>清除時間、年份與文體</button>}
         </div>
+        {dateWindow && <p className="text-xs text-muted dark:text-muted-dark" role="status">
+          {PUBLICATION_PERIODS.find(period => period.value === view.period)?.label}：{dateWindow.from} 至 {dateWindow.to}（含當日）。依 Europe PMC 首次發表日期篩選，部分日期由來源推定；未提供日期的文獻不納入。
+        </p>}
         {showStarred && stars.length === 0 && <p role="status" className="text-sm">收藏清單已清空。取消「只看收藏」即可繼續瀏覽。</p>}
 
         {!hasQuery && (

@@ -1,10 +1,12 @@
 import { compatibleIdentifiers, identifiersOf, normalizedTitle } from "../src/identity.ts";
 import { selectBibliography } from "../src/enrich.ts";
+import { publicationDate } from "../src/publicationDate.ts";
 import type { BibliographyEntry, Item } from "../src/types.ts";
 
 export interface EuropePmcResult {
   id: string; source: string; title?: string; pubYear?: string;
   pmid?: string; pmcid?: string; doi?: string; pageInfo?: string;
+  firstPublicationDate?: string;
   authorList?: { author?: { fullName?: string; collectiveName?: string }[] };
   journalInfo?: { volume?: string; issue?: string; journal?: { title?: string; medlineAbbreviation?: string } };
 }
@@ -12,6 +14,7 @@ export interface EuropePmcResult {
 export function europePmcRecord(raw: EuropePmcResult, verifiedAt: string): BibliographyEntry {
   return {
     title: raw.title || "", year: /^\d{4}$/.test(raw.pubYear || "") ? Number(raw.pubYear) : null,
+    firstPublicationDate: publicationDate(raw.firstPublicationDate),
     ...identifiersOf({ ...raw, url: "" }),
     authors: (raw.authorList?.author ?? []).map(author => author.fullName || author.collectiveName || "").filter(Boolean),
     journal: raw.journalInfo?.journal?.title || raw.journalInfo?.journal?.medlineAbbreviation || null,

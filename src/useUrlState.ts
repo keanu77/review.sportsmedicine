@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { parsePublicationPeriod, type PublicationPeriod } from "./publicationDate";
 
 // 把檢索狀態綁到 URL query string。
 //
@@ -13,11 +14,12 @@ export interface ViewState {
   axis: string;
   free: boolean;
   year: string;
+  period: PublicationPeriod;
   type: string;
   sort: "relevance" | "latest";
 }
 
-const DEFAULTS: ViewState = { q: "", axis: "region", free: false, year: "", type: "", sort: "relevance" };
+const DEFAULTS: ViewState = { q: "", axis: "region", free: false, year: "", period: "", type: "", sort: "relevance" };
 
 function parse(search: string): ViewState {
   const params = new URLSearchParams(search);
@@ -26,6 +28,7 @@ function parse(search: string): ViewState {
     axis: params.get("axis") ?? DEFAULTS.axis,
     free: params.get("free") === "1",
     year: params.get("year") ?? "",
+    period: parsePublicationPeriod(params.get("period")),
     type: params.get("type") ?? "",
     sort: params.get("sort") === "latest" ? "latest" : "relevance",
   };
@@ -37,6 +40,7 @@ function serialize(state: ViewState): string {
   if (state.axis !== DEFAULTS.axis) params.set("axis", state.axis);
   if (state.free) params.set("free", "1");
   if (state.year) params.set("year", state.year);
+  if (state.period) params.set("period", state.period);
   if (state.type) params.set("type", state.type);
   if (state.sort === "latest") params.set("sort", state.sort);
   const query = params.toString();

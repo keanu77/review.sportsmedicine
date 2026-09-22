@@ -7,6 +7,7 @@ export type Axis = "region" | "theme" | "population";
 export interface Item {
   title: string;
   year: number | null;
+  firstPublicationDate?: string | null;
   url: string;
   source: string;
   tldr: string | null;
@@ -39,6 +40,8 @@ export interface Item {
 export interface BibliographyEntry {
   title: string;
   year: number | null;
+  /** Europe PMC first-publication date; the upstream source may infer partial dates. */
+  firstPublicationDate?: string | null;
   doi?: string | null;
   pmid?: string | null;
   pmcid?: string | null;

@@ -42,6 +42,7 @@ export function enrichItem(item: Item, summaries: Record<string, string>, tags: 
     pmcid: record.pmcid || item.pmcid, authors: record.authors.length ? record.authors : item.authors,
     journal: record.journal || item.journal, volume: record.volume || item.volume,
     issue: record.issue || item.issue, pages: record.pages || item.pages, year: record.year ?? item.year,
+    firstPublicationDate: record.firstPublicationDate ?? item.firstPublicationDate,
     bibliography: record, identityAliases: paperAliases(item) } : item;
   next = summaries[key] ? { ...next, tldr: summaries[key], tldrSource: "local-llm" } : next;
   for (const tag of Object.values(tags)) {

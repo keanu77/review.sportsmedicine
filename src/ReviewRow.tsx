@@ -128,6 +128,7 @@ export default function ReviewRow({
               </span>
             )}
             <span lang="en">{item.source}</span>
+            {item.firstPublicationDate && <time dateTime={item.firstPublicationDate} title="Europe PMC 首次發表日期，部分日期可能由來源推定">首次發表 {item.firstPublicationDate}</time>}
             {evidence && <span title="依標題推測文體，不代表本篇證據品質">{evidence}</span>}
             {typeof item.impactFactor === "number" && (
               <span className="tabular-nums text-muted dark:text-muted-dark">

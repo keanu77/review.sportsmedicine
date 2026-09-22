@@ -29,7 +29,11 @@ const records = [...previous.records];
 const unresolved = new Map(previous.unresolved.map(entry => [entry.key, entry]));
 const allItems = uniquePapers(input.items);
 const initialIndex = createBibliographyIndex(records);
-const pending = allItems.filter(item => refresh || !selectBibliography(item, initialIndex)).slice(0, limit);
+const pending = allItems.filter(item => {
+  const existing = selectBibliography(item, initialIndex);
+  // Backfill older overlays once; explicit null means the source did not provide a date.
+  return refresh || !existing || !Object.hasOwn(existing, "firstPublicationDate");
+}).slice(0, limit);
 let requests = 0, cached = 0, examined = 0, matched = 0, nextRequestAt = 0, sourceFailures = 0, consecutiveFailures = 0;
 let savedSignature = JSON.stringify({ records: previous.records, unresolved: previous.unresolved });
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
