@@ -30,4 +30,12 @@ Migration 0002 seeds current drafts and old reviews without inventing old review
 
 Browser recovery copies are scoped to owner/job/document, expire after seven days and are size bounded. Server history remains authoritative. Re-review requires the original verified full-text cache; an unavailable cache produces an explicit failure instead of silently substituting another source.
 
-Production deployment and hosted Linux workflow execution are separate release checks; local success alone does not establish either.
+## Production acceptance
+
+- Feature commit `1d19b0d9ef7dbf438034555101a307a8c02534c6` pushed to `main`; Cloudflare canonical production deployment `4b7ba7b3-56f2-4b72-99ec-2227cfc5c006` succeeded with that exact commit.
+- D1 backup saved privately with mode 0600; migration 0002 applied successfully. Existing completed job remains at revision 9, with all 16 committed artifacts and its initial history snapshot intact. Legacy review provenance remains unknown.
+- Existing LaunchAgent restarted while idle. Production worker presence now reports `reviewDraft: true`; authenticated workbench shows Mac connected, saved draft, history, re-review control and existing full ZIP link.
+- Live DOI lookup returns the expected single paper; its detail page includes authors, DOI/PMID/PMCID, volume/issue/article number and Europe PMC provenance.
+- Anonymous public pages return 200. Workbench, private API and ZIP redirect to Access; direct Pages-origin private endpoints and missing/invalid worker credentials return 401.
+- Both monthly workflows are active on the default branch. [Hosted maintenance trial](https://github.com/keanu77/review.sportsmedicine/actions/runs/35681081987) completed successfully on Ubuntu with compatible dependency updates, regression checks, build, local D1/R2 and worker integration, audit and report artifact. `apply_updates=false` correctly skipped publication.
+- The literature workflow's live source/enrichment and validation were checked locally; its first scheduled run is October 1, 2026. Maintenance is next scheduled for October 3, 2026. GitHub scheduled start times may be delayed.

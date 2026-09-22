@@ -19,7 +19,7 @@ User approved recommendations 1–4 and monthly website maintenance, with litera
 - [x] Review queue: capability-gated worker phase without rebuilding existing jobs table; API/worker tests cover current-version snapshot, retries, failures and no draft replacement. UI persists findings dispositions.
 - [x] Monthly workflows: day-1 sync and monthly maintenance, explicit failed checks, durable reports and no duplicate schedule.
 - [x] Integration: typecheck/build, frontend/server/worker suites, browser tests and real local D1/R2 smoke; inspect final diff.
-- [ ] Rollout: additive migration before API deployment, update Mac worker only while idle; production anonymous/private checks and verify schedules on default branch. Do not create a production research task or consume model/image credits merely to smoke-test.
+- [x] Rollout: additive migration before API deployment, update Mac worker only while idle; production anonymous/private checks and verify schedules on default branch. Do not create a production research task or consume model/image credits merely to smoke-test.
 
 ## Boundaries
 
