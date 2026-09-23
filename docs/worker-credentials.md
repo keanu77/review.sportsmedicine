@@ -121,3 +121,14 @@ API 依據：[Cloudflare Pages project 更新](https://developers.cloudflare.com
 測試只用 `/private/tmp` 中的 fixture token／env／OAuth 檔與注入的假 HTTP，涵蓋分段部署、idle 檢查、重試、錯誤訊息保密、權限／symlink／hard link／Git 路徑、無重疊輪替及撤銷。測試不讀實際憑證、不呼叫 production。
 
 新版 worker API 只接受 `APP_ORIGIN` 指定的正式網域，所有 `*.pages.dev` 部署副本回覆 403。輪替時仍需移除加入此限制以前的舊部署，否則那些部署可能繼續接受舊 bearer token。移除的是舊建置入口；D1、R2 與 Git 歷史保留。
+
+
+## 歷史部署與 Access 保護
+
+不要把 Pages 刪除 API 的成功回應視為舊入口已撤銷。正式驗證曾遇到：8 個舊部署在管理 API 均回 404，但其中 5 個舊網址仍執行舊 Functions、接受舊 bearer。對每個舊網址都必須驗證 HTTP 認證結果；管理清單消失、一般 404、主站 token 輪替都不能單獨證明舊入口不可用。
+
+此專案已在 Pages → 設定 → 預覽存取啟用 Access，保護 `*.review-sportsmedicine.pages.dev`，allow 規則只包含擁有者 email。這是正式網域檢查以外的獨立防護；必須保留。主 `review-sportsmedicine.pages.dev` 的 worker API 由 canonical origin 檢查拒絕。自訂網域的公開索引與 worker API 保持正常，私人 API 維持既有 Access 保護。
+
+驗收舊部署時，帶舊 bearer、沒有 Access session 的請求必須先回 Access 登入（302）或確定拒絕；不能再得到 authenticated `NOT_FOUND`。Access 阻擋代表 bearer 單獨不能使用，**不代表平台已實際抹除所有舊 Functions 快照**。確認保護規則只允許擁有者、主站新 token 200／舊 token 401、R2 仍未公開後，再執行最後 `verify` 清除私人輪替計畫。
+
+參考：[Cloudflare 預覽存取保護](https://developers.cloudflare.com/pages/configuration/preview-deployments/)、[官方專案中的刪除後仍可存取回報](https://github.com/cloudflare/developer-platform/issues/67)。後者是公開問題回報；本專案的判定仍以自身的 API／HTTP 驗證為準。
