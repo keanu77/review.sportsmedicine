@@ -39,7 +39,7 @@ async function singleTransfer(value, { maxBytes = 32 * 1024 * 1024, signal, redi
         try { singleTransfer(new URL(response.headers.location, url), { maxBytes, signal, redirects: redirects - 1 }).then(resolve, reject); } catch (error) { reject(error); }
         return;
       }
-      if (status !== 200) { response.resume(); return reject(Object.assign(new Error(`來源回應 HTTP ${status}`), { status })); }
+      if (status !== 200) { response.resume(); return reject(Object.assign(new Error(`來源回應 HTTP ${status}`), { status, challenge: String(response.headers['cf-mitigated'] ?? '').toLowerCase() === 'challenge' })); }
       if (Number(response.headers['content-length']) > maxBytes) { response.destroy(); return reject(new Error('來源檔案超過大小限制')); }
       const chunks = []; let size = 0;
       response.on('data', chunk => { size += chunk.length; if (size > maxBytes) response.destroy(new Error('來源檔案超過大小限制')); else chunks.push(chunk); });

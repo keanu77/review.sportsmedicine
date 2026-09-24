@@ -268,6 +268,25 @@ test("unavailable full text keeps explicit source failures visible", async ({ pa
 });
 
 
+test("classified and legacy full-text failures explain the next step at 360px without auto-retrying", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  const classified = sampleJob({ id: "job-fulltext-new", status: "failed", stage: "failed", draft: null,
+    error: { code: "FULLTEXT_ACCESS_DENIED", message: "公開來源拒絕自動下載（多半需要機構訂閱或網站驗證）。請改用圖書館連結或館際互借取得；重試通常不會改變結果。 已嘗試 2 個來源：onlinelibrary.wiley.com（HTTP 403）、europepmc.org（HTTP 404）。", recoverable: true } });
+  const legacy = sampleJob({ id: "job-fulltext-old", title: "Legacy shoulder consensus", status: "failed", stage: "failed", draft: null, createdAt: "2026-09-20T00:00:00Z",
+    error: { code: "PROCESSING_FAILED", message: "未取得可驗證全文。XML：來源沒有提供 XML 全文；PDF：來源回應 HTTP 403", recoverable: true } });
+  const state = await apiFixture(page, [classified, legacy]); await page.goto("/workbench/");
+  const alert = page.getByRole("alert");
+  await expect(alert).toContainText("全文來源拒絕自動下載");
+  await expect(alert).toContainText("onlinelibrary.wiley.com（HTTP 403）");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.getByRole("button", { name: /Legacy shoulder consensus/ }).click();
+  await expect(alert).toContainText("全文來源拒絕自動下載");
+  await expect(alert).toContainText("館際互借");
+  await expect(alert).toContainText("PDF：來源回應 HTTP 403");
+  await expect(page.getByRole("button", { name: "重試任務", exact: true })).toBeVisible();
+  expect(state.mutations).toEqual([]);
+});
+
 test("idle edits autosave and display the saved time", async ({ page }) => {
   await page.clock.install(); const state = await apiFixture(page); await page.goto('/workbench/');
   await page.getByLabel('Facebook 貼文').fill('自動儲存的文字');

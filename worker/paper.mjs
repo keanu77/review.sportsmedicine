@@ -2,7 +2,9 @@ import { XMLParser } from 'fast-xml-parser';
 import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
 import { remoteBytes, remoteJSON } from './http.mjs';
+import { collectCandidates, fetchCandidatePDF, classifyAttempt, acquisitionFailure, MAX_CANDIDATES } from './sources.mjs';
 import { runProcess } from './process.mjs';
 import { parseJATS, normalizedTitle, MAX_XML_BYTES, XML_EXTRACTION_VERSION } from './xml.mjs';
 
@@ -56,7 +58,7 @@ async function pmcPaper(pmcid, expected, signal) {
     sourceUrl: `https://pmc.ncbi.nlm.nih.gov/articles/${pmcid}/`, provider: 'PMC', checkedAt: new Date().toISOString() };
 }
 
-export async function resolvePaper(input, { email = process.env.REVIEW_CONTACT_EMAIL, title, signal } = {}) {
+export async function resolvePaper(input, { email = process.env.REVIEW_CONTACT_EMAIL, title, signal, getJSON = remoteJSON, getBytes = remoteBytes } = {}) {
   const identifier = parseIdentifier(input);
   let ids = { [identifier.kind]: identifier.value };
   let conversionError;
@@ -64,7 +66,7 @@ export async function resolvePaper(input, { email = process.env.REVIEW_CONTACT_E
     const url = new URL('https://pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/');
     url.search = new URLSearchParams({ ids: identifier.value, idtype: identifier.kind, format: 'json', tool: 'sportsmedicine-review', ...(email ? { email } : {}) });
     try {
-      const data = await remoteJSON(url, { signal });
+      const data = await getJSON(url, { signal });
       const record = data.records?.[0];
       if (record?.pmcid) {
         if (ids.doi && record.doi?.toLowerCase() !== ids.doi.toLowerCase()) throw new Error('ID 轉換結果 DOI 與原始輸入不符');
@@ -77,24 +79,27 @@ export async function resolvePaper(input, { email = process.env.REVIEW_CONTACT_E
   if (ids.pmcid) paper = await pmcPaper(ids.pmcid, ids, signal);
   if (!paper) {
     if (!ids.doi && ids.pmid) {
-      const pubmed = await remoteBytes(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${ids.pmid}&retmode=xml`, { signal, maxBytes: 2000000 });
+      const pubmed = await getBytes(`https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id=${ids.pmid}&retmode=xml`, { signal, maxBytes: 2000000 });
       const article = parser.parse(pubmed.bytes.toString()).PubmedArticleSet?.PubmedArticle;
       ids.doi = array(article?.PubmedData?.ArticleIdList?.ArticleId).find(x => x['@_IdType'] === 'doi')?.['#text'];
     }
     if (!ids.doi) throw conversionError ?? new Error('未找到可取得的 PMC 全文或 DOI');
-    if (!email) throw new Error('此篇需使用 Unpaywall 查詢；請先設定 REVIEW_CONTACT_EMAIL');
-    const data = await remoteJSON(`https://api.unpaywall.org/v2/${encodeURIComponent(ids.doi)}?email=${encodeURIComponent(email)}`, { signal });
-    if (data.doi?.toLowerCase() !== ids.doi.toLowerCase()) throw new Error('DOI 全文來源身分不符');
-    const location = [data.best_oa_location, ...array(data.oa_locations)].find(x => x?.url_for_pdf);
-    if (!data.is_oa || !location) throw new Error('未找到已公開的 PDF；不能以摘要代替全文');
-    paper = { id: `doi:${ids.doi}`, doi: ids.doi, pmid: ids.pmid ?? null, title: data.title, year: data.year,
-      authors: array(data.z_authors).map(x => `${x.given ?? ''} ${x.family ?? ''}`.trim()), journal: data.journal_name,
-      citation: `${data.title}. ${data.journal_name ?? ''}. ${data.year ?? ''}. doi:${ids.doi}`,
-      license: location.license ?? null, version: location.version, pdfUrl: location.url_for_pdf,
-      sourceUrl: location.url_for_landing_page ?? `https://doi.org/${ids.doi}`, provider: 'Unpaywall', checkedAt: new Date().toISOString() };
+    const { candidates, metadata, indexErrors } = await collectCandidates(ids.doi, { email, signal, getJSON });
+    if (!candidates.length) {
+      const failure = acquisitionFailure([], { indexUnavailable: indexErrors.length === (email ? 3 : 2) });
+      throw Object.assign(new Error(failure.message), { failureCode: failure.code });
+    }
+    if (!metadata.title) throw new Error('公開全文索引沒有提供文獻標題，無法核對身分');
+    const first = candidates[0];
+    paper = { id: `doi:${ids.doi}`, doi: ids.doi, pmid: ids.pmid ?? null, title: metadata.title, year: metadata.year,
+      authors: metadata.authors ?? [], journal: metadata.journal,
+      citation: `${metadata.title}. ${metadata.journal ?? ''}. ${metadata.year ?? ''}. doi:${ids.doi}`,
+      license: first.license, version: first.version, pdfUrl: first.pdfUrl,
+      sourceUrl: first.landingUrl ?? `https://doi.org/${ids.doi}`, provider: first.provider,
+      candidates: candidates.slice(0, MAX_CANDIDATES), checkedAt: new Date().toISOString() };
   }
   if (title && normalizedTitle(title) !== normalizedTitle(paper.title)) throw new Error('索引標題與取得的文獻不一致，請以 DOI／PMID 重新核對');
-  if (!paper.pdfUrl && !paper.xmlUrl) throw new Error('沒有可取得的 PDF 或 XML 全文');
+  if (!paper.pdfUrl && !paper.xmlUrl && !paper.candidates?.length) throw new Error('沒有可取得的 PDF 或 XML 全文');
   return paper;
 }
 
@@ -142,7 +147,7 @@ export async function loadPaper(directory, { signal } = {}) {
     structuredText: structured?.structuredText ?? null, locators: structured?.locators ?? null };
 }
 
-export async function downloadPaper(paper, directory, { signal, fetchBytes = remoteBytes, extractPDF = async (file, options) => (await runProcess('pdftotext', ['-enc', 'UTF-8', file, '-'], options)).stdout } = {}) {
+export async function downloadPaper(paper, directory, { signal, fetchBytes = remoteBytes, pause = ms => delay(ms, undefined, { signal }), extractPDF = async (file, options) => (await runProcess('pdftotext', ['-enc', 'UTF-8', file, '-'], options)).stdout } = {}) {
   signal?.throwIfAborted();
   await mkdir(directory, { recursive: true, mode: 0o700 });
   const metadataFile = path.join(directory, 'source.json'), pdfFile = path.join(directory, 'paper.pdf'), textFile = path.join(directory, 'paper.txt');
@@ -150,10 +155,14 @@ export async function downloadPaper(paper, directory, { signal, fetchBytes = rem
   const hash = value => createHash('sha256').update(value).digest('hex');
   let old = {}; try { old = JSON.parse(await readFile(metadataFile, 'utf8')); } catch {}
   let text = '', xml, structured, pdfBytes, cachedXML = false, cachedPDF = false;
-  const verified = { ...paper, fullTextAvailable: false, pdfAvailable: false, xmlAvailable: false,
+  const { candidates: listed, ...paperFields } = paper;
+  // PMC and older jobs carry one pdfUrl; DOI lookups carry an ordered OA candidate list.
+  const candidates = (listed ?? (paper.pdfUrl ? [{ pdfUrl: paper.pdfUrl, landingUrl: paper.sourceUrl, provider: paper.provider, license: paper.license, version: paper.version }] : [])).slice(0, MAX_CANDIDATES);
+  const attempts = [];
+  const verified = { ...paperFields, fullTextAvailable: false, pdfAvailable: false, xmlAvailable: false,
     pdfStatus: 'unavailable', xmlStatus: 'unavailable', fullTextVerified: false };
   // Never inherit successful acquisition fields from a previous attempt/source.
-  for (const field of ['sha256', 'xmlSha256', 'textSha256', 'pdfError', 'xmlError', 'downloadedAt', 'xmlDownloadedAt', 'textExtractionVersion', 'xmlExtractionVersion']) delete verified[field];
+  for (const field of ['sha256', 'xmlSha256', 'textSha256', 'pdfError', 'xmlError', 'downloadedAt', 'xmlDownloadedAt', 'textExtractionVersion', 'xmlExtractionVersion', 'acquisitionAttempts']) delete verified[field];
   if (paper.xmlUrl) {
     try {
       const xmlURL = httpsS3(paper.xmlUrl);
@@ -178,36 +187,59 @@ export async function downloadPaper(paper, directory, { signal, fetchBytes = rem
       verified.xmlError = error.message.slice(0, 600);
     }
   } else verified.xmlError = '來源沒有提供 XML 全文';
-  if (paper.pdfUrl) {
+  const sourceFields = candidate => ({ pdfUrl: candidate.pdfUrl, license: candidate.license ?? null, version: candidate.version ?? null,
+    provider: candidate.provider ?? paper.provider, sourceUrl: candidate.landingUrl ?? candidate.pdfUrl ?? paper.sourceUrl });
+  const cachedCandidate = old.id === paper.id && old.sha256 && old.textExtractionVersion === 1 && candidates.some(c => c.pdfUrl === old.pdfUrl || c.landingUrl === old.sourceUrl);
+  if (cachedCandidate) {
     try {
-      if (old.id === paper.id && old.pdfUrl === paper.pdfUrl && old.sha256 && old.textExtractionVersion === 1) {
-        try {
-          const cached = await readFile(pdfFile), cachedText = await readFile(textFile, 'utf8');
-          if (hash(cached) === old.sha256 && (!old.textSha256 || hash(cachedText) === old.textSha256)) { verifyPDF(cached, cachedText, paper); pdfBytes = cached; text = cachedText; cachedPDF = true; }
-        } catch {}
+      const cached = await readFile(pdfFile), cachedText = await readFile(textFile, 'utf8');
+      if (hash(cached) === old.sha256 && (!old.textSha256 || hash(cachedText) === old.textSha256)) {
+        verifyPDF(cached, cachedText, paper); pdfBytes = cached; text = cachedText; cachedPDF = true;
+        Object.assign(verified, { pdfUrl: old.pdfUrl, license: old.license ?? null, version: old.version ?? null, provider: old.provider, sourceUrl: old.sourceUrl });
       }
-      if (!pdfBytes) {
-        const { bytes } = await fetchBytes(paper.pdfUrl, { signal });
-        if (bytes.subarray(0, 5).toString() !== '%PDF-') throw new Error('下載內容不是 PDF');
-        const temporary = path.join(directory, 'paper.download.pdf');
-        await writeFile(temporary, bytes, { mode: 0o600 });
-        text = await extractPDF(temporary, { signal });
-        verifyPDF(bytes, text, paper);
-        await rename(temporary, pdfFile); await writeFile(textFile, text, { mode: 0o600 });
-        pdfBytes = bytes;
-      }
-      Object.assign(verified, { pdfAvailable: true, pdfStatus: 'available', sha256: hash(pdfBytes), textSha256: hash(text), textExtractionVersion: 1, downloadedAt: cachedPDF ? old.downloadedAt : new Date().toISOString() });
+    } catch {}
+  }
+  for (const [index, candidate] of candidates.entries()) {
+    if (pdfBytes) break;
+    signal?.throwIfAborted();
+    if (index) await pause(1000);
+    const target = candidate.pdfUrl ?? candidate.landingUrl;
+    try {
+      const { bytes, url } = await fetchCandidatePDF(candidate, { fetchBytes, signal });
+      const temporary = path.join(directory, 'paper.download.pdf');
+      await writeFile(temporary, bytes, { mode: 0o600 });
+      const extracted = await extractPDF(temporary, { signal });
+      verifyPDF(bytes, extracted, paper);
+      await rename(temporary, pdfFile); await writeFile(textFile, extracted, { mode: 0o600 });
+      pdfBytes = bytes; text = extracted;
+      // Licence, version and source must describe the source actually used.
+      Object.assign(verified, sourceFields({ ...candidate, pdfUrl: url }));
+      attempts.push({ host: new URL(target).hostname, provider: candidate.provider ?? null, kind: 'ok' });
     } catch (error) {
-      signal?.throwIfAborted(); text = '';
-      verified.pdfStatus = /PDF|標題|DOI|OCR/i.test(error.message) ? 'rejected' : 'unavailable';
+      signal?.throwIfAborted();
+      const host = new URL(target).hostname, kind = classifyAttempt(error, host);
+      attempts.push({ host, provider: candidate.provider ?? null, kind, detail: error.status ? `HTTP ${error.status}` : kind });
+      verified.pdfStatus = kind === 'identity' || kind === 'not_pdf' ? 'rejected' : 'unavailable';
       verified.pdfError = error.message.slice(0, 600);
     }
-  } else verified.pdfError = '全文可讀，但來源沒有提供可下載的 PDF';
+  }
+  if (pdfBytes) {
+    Object.assign(verified, { pdfAvailable: true, pdfStatus: 'available', sha256: hash(pdfBytes), textSha256: hash(text), textExtractionVersion: 1, downloadedAt: cachedPDF ? old.downloadedAt : new Date().toISOString() });
+    delete verified.pdfError;
+  } else { text = ''; if (!candidates.length) verified.pdfError = '全文可讀，但來源沒有提供可下載的 PDF'; }
+  if (attempts.length) verified.acquisitionAttempts = attempts;
   verified.fullTextAvailable = verified.pdfAvailable || verified.xmlAvailable;
   verified.fullTextVerified = verified.fullTextAvailable;
   verified.fullTextFormat = verified.xmlAvailable ? 'xml' : verified.pdfAvailable ? 'pdf' : null;
   await writeFile(metadataFile, JSON.stringify(verified, null, 2), { mode: 0o600 });
-  if (!verified.fullTextAvailable) throw Object.assign(new Error(`未取得可驗證全文。XML：${verified.xmlError}；PDF：${verified.pdfError}`), { source: verified });
+  if (!verified.fullTextAvailable) {
+    if (candidates.length) {
+      const failure = acquisitionFailure(attempts);
+      const xmlNote = paper.xmlUrl ? ` XML：${verified.xmlError}` : '';
+      throw Object.assign(new Error(`${failure.message}${xmlNote}`), { source: verified, failureCode: failure.code });
+    }
+    throw Object.assign(new Error(`未取得可驗證全文。XML：${verified.xmlError}；PDF：${verified.pdfError}`), { source: verified });
+  }
   return { paper: verified, text, pdfFile: verified.pdfAvailable ? pdfFile : null, textFile: verified.pdfAvailable ? textFile : null, metadataFile,
     structuredText: structured?.structuredText ?? null, locators: structured?.locators ?? null,
     xmlFile: verified.xmlAvailable ? xmlFile : null, structuredFile: verified.xmlAvailable ? structuredFile : null };

@@ -123,7 +123,7 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
     onStage(`${job.id}: completed ${job.phase}`);
   } catch (error) {
     // The server rejects this if cancellation/expiry already revoked our lease.
-    try { await api.call(`/jobs/${job.id}/fail`, { data: { leaseToken, code: combined.aborted ? 'WORKER_INTERRUPTED' : 'PROCESSING_FAILED', message: error.message.slice(0, 1800) } }); } catch {}
+    try { await api.call(`/jobs/${job.id}/fail`, { data: { leaseToken, code: combined.aborted ? 'WORKER_INTERRUPTED' : error.failureCode ?? 'PROCESSING_FAILED', message: error.message.slice(0, 1800) } }); } catch {}
     throw error;
   } finally { clearInterval(timer); controller.abort(new Error('工作執行結束')); }
 }

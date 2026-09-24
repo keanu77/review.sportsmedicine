@@ -5,6 +5,7 @@ import ReviewPanel from "./ReviewPanel";
 import { isPrivateSessionActive, readRecovery, writeRecovery, type EditorSnapshot } from "./draftRecovery";
 export type { EditorSnapshot } from "./draftRecovery";
 import { errorText, fetchArtifact, privateApi } from "./privateApi";
+import { describeJobError } from "./jobError";
 
 export const STATUS_LABELS: Record<JobStatus, string> = { queued: "排隊中", running: "處理中", needs_review: "待你審閱", completed: "輸出完成", failed: "執行失敗", cancelled: "已取消" };
 const PALETTES: [Design["palette"], string][] = [["blue", "白藍 · 專業"], ["cyan", "青藍"], ["emerald", "翡翠綠"], ["orange-light", "柔橘"], ["gold", "金色"], ["orange", "暖橘"], ["sky", "天空藍"]];
@@ -86,13 +87,14 @@ export default function WorkbenchJob({ job, onUpdate, cache, owner }: { job: Job
   const editPage = (pageIndex: number, field: "title" | "subtitle", value: string) => changeDraft(current => current ? { ...current, pages: current.pages.map((page, index) => index === pageIndex ? { ...page, [field]: value } : page) } : current);
   const editCard = (pageIndex: number, cardIndex: number, field: "title" | "body", value: string) => changeDraft(current => current ? { ...current, pages: current.pages.map((page, index) => index === pageIndex ? { ...page, cards: page.cards?.map((card, cardNumber) => cardNumber === cardIndex ? { ...card, [field]: value } : card) } : page) } : current);
 
+  const jobError = job.error ? describeJobError(job.error) : null;
   return <div className="wb-job" aria-busy={Boolean(busy)}>
     <section className="wb-panel">
       <div className="wb-section-heading"><p className="wb-eyebrow">CURRENT PROJECT</p><span className={`wb-status status-${job.status}`}>{STATUS_LABELS[job.status]}</span></div>
       <h2 className="wb-project-title">{job.title || job.input}</h2>
       <p className="wb-small wb-wrap">{job.input} · 版本 {job.revision}</p>
       <p className="wb-stage" role="status">{STAGES[job.stage] || `目前步驟：${job.stage}`}</p>
-      {job.error && <div role="alert" className="wb-alert">{job.error.message}<span className="wb-small"> {job.error.code}</span></div>}
+      {jobError && <div role="alert" className="wb-alert"><strong>{jobError.title}</strong><br />{jobError.message}{jobError.hint && <><br />{jobError.hint}</>}<span className="wb-small"> {job.error?.code}</span></div>}
       <div className="wb-actions">
         {["queued", "running", "needs_review"].includes(job.status) && <button className="wb-button is-quiet" disabled={Boolean(busy)} onClick={() => void operate("cancel")}>{busy === "cancel" ? "取消中…" : "取消任務"}</button>}
         {["failed", "cancelled"].includes(job.status) && <button className="wb-button" disabled={Boolean(busy)} onClick={() => void operate("retry")}>{busy === "retry" ? "重新排隊中…" : "重試任務"}</button>}

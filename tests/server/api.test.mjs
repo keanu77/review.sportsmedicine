@@ -79,6 +79,15 @@ test('heartbeat extends a live lease, but cancellation invalidates heartbeat/upl
   assert.equal((await f.call(`/jobs/${job.id}/fail`, { role: 'worker', method: 'POST', data: { leaseToken, code: 'MODEL_ERROR', message: 'Failed' } })).status, 409);
 });
 
+test('classified full-text failure codes and next-step messages round-trip to the owner', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const job = await f.create(); const { leaseToken } = await f.claim();
+  const message = '公開來源拒絕自動下載。已嘗試 2 個來源：onlinelibrary.wiley.com（HTTP 403）、europepmc.org（HTTP 404）。';
+  assert.equal((await f.call(`/jobs/${job.id}/fail`, { role: 'worker', method: 'POST', data: { leaseToken, code: 'FULLTEXT_ACCESS_DENIED', message } })).status, 200);
+  const failed = (await (await f.call(`/jobs/${job.id}`)).json()).job;
+  assert.deepEqual(failed.error, { code: 'FULLTEXT_ACCESS_DENIED', message, recoverable: true });
+});
+
 test('draft CAS rejects stale revisions and an active render cannot change the snapshot', async (t) => {
   const f = await fixture(); t.after(f.close);
   const job = await f.create(); const { leaseToken } = await f.claim(); await f.upload(job.id, leaseToken);
