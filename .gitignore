@@ -20,3 +20,7 @@ launchagent-output/
 
 # Personal paper downloads and social materials
 /outputs/
+
+# Session handoffs record private operational details; never publish
+/.claude/HANDOFF.md
+/docs/handoffs/
