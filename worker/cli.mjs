@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import os from 'node:os';
-import { geminiAuthStatus, reviewerStatus } from './reviewers.mjs';
+import { antigravityStatus, reviewerStatus } from './reviewers.mjs';
 import path from 'node:path';
 import { readFile, mkdir, writeFile, statfs } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -25,7 +25,7 @@ export async function doctor() {
   await mkdir(workspace, { recursive: true, mode: 0o700 });
   const disk = await statfs(workspace); checks.workspace = { available: true, path: workspace, freeBytes: disk.bavail * disk.bsize };
   const providers = (process.env.REVIEW_REVIEWERS ?? 'claude,gemini,grok').split(',').filter(Boolean);
-  checks.reviewers = reviewerStatus(checks, await geminiAuthStatus(), providers);
+  checks.reviewers = reviewerStatus(checks, await antigravityStatus(), providers);
   checks.imageGeneration = { available: false, detail: '需完成 image-probe 並設定 REVIEW_IMAGE_PROBE_DIR；CLI 存在不代表生圖已驗證' };
   if (process.env.REVIEW_IMAGE_PROBE_DIR) {
     try { const proof = await verifiedImage(path.resolve(process.env.REVIEW_IMAGE_PROBE_DIR)); checks.imageGeneration = { available: Boolean(checks.codex?.available), checkedAt: proof.generatedAt, sha256: proof.sha256, detail: '已完成生圖與檔案校驗；訂閱額度仍由服務端決定' }; }

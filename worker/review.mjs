@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { runProcess, modelEnvironment } from './process.mjs';
 import { normalizeQuote } from './draft.mjs';
 import { analysisText, evidenceAt } from './xml.mjs';
-import { geminiAuthStatus } from './reviewers.mjs';
+import { GEMINI_MODEL } from './reviewers.mjs';
 
 const schema = { type: 'object', additionalProperties: false, required: ['summary', 'findings'], properties: {
   summary: { type: 'string' }, findings: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['severity', 'claim', 'reason', 'locator', 'quote', 'suggestion'], properties: {
@@ -35,6 +35,11 @@ export function parseResult(output) {
     if (!candidates.length) throw new Error('查核回傳格式不符：找不到 JSON 結果');
     result = candidates.at(-1);
   }
+  // Antigravity may put the whole answer, findings included, inside the summary string.
+  if (typeof result?.summary === 'string' && result.summary.trim().startsWith('{')) {
+    const inner = jsonObjects(result.summary).filter(value => typeof value?.summary === 'string' && Array.isArray(value.findings)).at(-1);
+    if (inner) result = inner;
+  }
   if (typeof result.summary !== 'string' || !Array.isArray(result.findings)) throw new Error('查核回傳格式不符');
   for (const finding of result.findings) {
     if (!['high','medium','low'].includes(finding.severity) || ['claim','reason','locator','quote','suggestion'].some(key => typeof finding[key] !== 'string')) throw new Error('查核項目格式不符');
@@ -63,10 +68,6 @@ export async function reviewDraft(source, draft, directory, { signal, providers 
       if (!allowRetry) {
         try { await access(requestFile); throw new Error('先前查核請求結果不明，需明確重試'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
       }
-      if (provider === 'gemini') {
-        const auth = await geminiAuthStatus();
-        if (!auth.available) throw new Error(auth.detail);
-      }
       if (provider === 'claude') {
         const auth = await runProcess('claude', ['auth', 'status'], { timeout: 20000, signal, env: modelEnvironment() });
         if (!JSON.parse(auth.stdout).loggedIn) throw new Error('Claude CLI 尚未登入訂閱');
@@ -76,13 +77,12 @@ export async function reviewDraft(source, draft, directory, { signal, providers 
       let command, args, input;
       if (provider === 'claude') { command = 'claude'; args = ['-p','--output-format','json','--json-schema',JSON.stringify(schema),'--tools','','--strict-mcp-config','--mcp-config','{"mcpServers":{}}','--no-session-persistence']; input = prompt; }
       if (provider === 'gemini') {
-        const policyFile = path.join(directory, 'gemini-no-tools.toml');
-        await writeFile(policyFile, '[[rule]]\ntoolName = "*"\ndecision = "deny"\npriority = 999\n', { mode: 0o600 });
-        command = 'gemini'; args = ['--prompt', '依stdin提供的原文與草稿查核，直接回傳JSON，不使用工具。', '--output-format','json','--approval-mode','plan','--policy',policyFile,'--extensions','none','--allowed-mcp-server-names','__disabled__']; input = prompt;
+        // agy ignores stdin in print mode, so it reads the saved prompt file in read-only plan mode.
+        command = 'agy'; args = ['--print', `只讀取目前資料夾的 review-gemini-prompt.txt 全文並依其指示查核。不要修改或建立任何檔案、不要執行指令、不要上網。直接回傳 JSON。`, '--model', GEMINI_MODEL, '--output-format', 'json', '--json-schema', JSON.stringify(schema), '--mode', 'plan', '--disable-slash-commands', '--print-timeout', '540s'];
       }
       if (provider === 'grok') { command = 'grok'; args = ['--prompt-file',path.join(directory, `review-${provider}-prompt.txt`),'--tools','','--disable-web-search','--no-memory','--no-subagents','--json-schema',JSON.stringify(schema)]; }
       await writeFile(requestFile, JSON.stringify({ ...base, status: 'requested' }), { mode: 0o600 });
-      const { stdout } = await runProcess(command, args, { cwd: directory, input, signal, timeout: 6 * 60000, env: modelEnvironment() });
+      const { stdout } = await runProcess(command, args, { cwd: directory, input, signal, timeout: 10 * 60000, env: modelEnvironment() });
       await writeFile(path.join(directory, `review-${provider}-raw.json`), stdout, { mode: 0o600 });
       review = { ...verifyReviewQuotes(parseResult(stdout), source), ...base, status: 'ran' };
     } catch (error) {

@@ -26,3 +26,10 @@ test('Claude and Gemini shapes keep working and malformed findings are still rej
   assert.throws(() => parseResult(JSON.stringify({ structuredOutput: { summary: 'x', findings: [{ ...finding, severity: 'critical' }] } })), /格式不符/);
   assert.throws(() => parseResult(JSON.stringify({ text: 'no json here' })), /格式不符|JSON/);
 });
+
+test('Antigravity answers wrapped inside the summary string are unwrapped so findings are not lost', () => {
+  const raw = JSON.stringify({ status: 'SUCCESS', structured_output: { findings: [], summary: JSON.stringify(real) }, response: JSON.stringify(real) });
+  assert.deepEqual(parseResult(raw), real);
+  const plain = JSON.stringify({ structured_output: { summary: '{這不是 JSON} 只是摘要', findings: [] } });
+  assert.deepEqual(parseResult(plain), { summary: '{這不是 JSON} 只是摘要', findings: [] });
+});
