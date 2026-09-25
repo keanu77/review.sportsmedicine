@@ -176,7 +176,10 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
 }
 
 const PRUNE_INTERVAL_MS = 6 * 3600000;
-export async function runWorker(config, { once = false, signal, onStage = console.log, capabilities = {} } = {}) {
+const CAPABILITY_REFRESH_MS = 30 * 60000;
+export async function runWorker(config, { once = false, signal, onStage = console.log, capabilities: initialCapabilities = {}, refreshCapabilities } = {}) {
+  // Re-check periodically so a reviewer login on the Mac shows up without restarting the worker.
+  let capabilities = initialCapabilities, lastCapabilityCheck = Date.now();
   await mkdir(config.workspace, { recursive: true, mode: 0o700 });
   const api = new WorkerAPI(config);
   let lastExpiryWarning = 0, lastPrune = 0;
@@ -185,6 +188,10 @@ export async function runWorker(config, { once = false, signal, onStage = consol
       lastPrune = Date.now();
       try { const removed = await pruneWorkspace(api, config.workspace, { signal }); if (removed.length) onStage(`已清除 ${removed.length} 個已刪除任務的本機資料`); }
       catch (error) { if (signal?.aborted) break; onStage(`本機資料清理略過：${error.message}`); }
+    }
+    if (refreshCapabilities && Date.now() - lastCapabilityCheck > CAPABILITY_REFRESH_MS) {
+      lastCapabilityCheck = Date.now();
+      try { capabilities = await refreshCapabilities(); } catch (error) { onStage(`能力檢查略過：${error.message}`); }
     }
     try {
       const claimed = await api.call('/claim', { data: { workerId: config.workerId, capabilities: { ...capabilities, draftProvider: config.provider, reviewDraft: true } }, signal });

@@ -424,6 +424,16 @@ test("new art-direction options are selectable, explain themselves and are sent 
   expect(state.mutations.at(-1)!.body.design).toEqual({ palette: "clash", style: "roadmap", imageStyle: "watercolor", format: "story" });
 });
 
+test("the connection panel shows each reviewer and how to fix one that is signed out", async ({ page }) => {
+  await apiFixture(page);
+  await page.route("**/api/private/session", route => route.fulfill({ json: { email: "owner@example.test", worker: { lastSeen: new Date().toISOString(), capabilities: { reviewers: {
+    claude: { available: true }, gemini: { available: false, fix: "在 Mac 執行 gemini，選「Login with Google」完成登入。" }, grok: { available: true } } } } } }));
+  await page.goto("/workbench/");
+  await expect(page.getByText("Claude 可用")).toBeVisible();
+  await expect(page.getByText("Gemini 不可用")).toBeVisible();
+  await expect(page.getByText(/Gemini 目前無法審核：在 Mac 執行 gemini/)).toBeVisible();
+});
+
 test("idle edits autosave and display the saved time", async ({ page }) => {
   await page.clock.install(); const state = await apiFixture(page); await page.goto('/workbench/');
   await page.getByLabel('Facebook 貼文').fill('自動儲存的文字');

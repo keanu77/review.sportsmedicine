@@ -136,7 +136,9 @@ export default function Workbench() {
   const workerOnline = Number.isFinite(workerDate) && Date.now() - workerDate < 120000;
   const credentialExpiry = Date.parse(session?.workerCredentialExpiresAt || "");
   const credentialExpiresSoon = Number.isFinite(credentialExpiry) && credentialExpiry - Date.now() <= 14 * 86400000;
-  const capabilities = session?.worker?.capabilities as { imageGeneration?: { available?: boolean } } | undefined;
+  const capabilities = session?.worker?.capabilities as { imageGeneration?: { available?: boolean }; reviewers?: Record<string, { available?: boolean; fix?: string }> } | undefined;
+  const reviewers = Object.entries(capabilities?.reviewers ?? {});
+  const REVIEWER_NAMES: Record<string, string> = { claude: "Claude", gemini: "Gemini", grok: "Grok" };
 
   if (locked) return <section className="workbench wb-panel" aria-labelledby="workbench-locked-heading">
     <h1 id="workbench-locked-heading">工作台已鎖定</h1>
@@ -159,6 +161,8 @@ export default function Workbench() {
         {session && <p className="wb-small">{session.worker ? `最後回報：${new Date(session.worker.lastSeen).toLocaleString("zh-TW")}` : "尚無 Mac 回報紀錄"}{!workerOnline && "。已排隊任務會等待 worker 啟動。"}</p>}
         {Number.isFinite(credentialExpiry) && <p className={credentialExpiresSoon ? "wb-small wb-alert" : "wb-small"}>憑證到期：{new Date(credentialExpiry).toLocaleString("zh-TW")}{credentialExpiresSoon && (credentialExpiry <= Date.now() ? "（已到期，請輪替）" : "（14 天內到期，請輪替）")}</p>}
         {capabilities?.imageGeneration?.available === false && <p className="wb-small">Mac 圖片生成功能尚未就緒；寫實／插畫任務會等待可生圖的 Mac。</p>}
+        {reviewers.length > 0 && <p className="wb-small wb-reviewers">審核模型：{reviewers.map(([name, status]) => <span key={name} className={status.available ? "is-ok" : "is-off"}>{REVIEWER_NAMES[name] ?? name} {status.available ? "可用" : "不可用"}</span>)}</p>}
+        {reviewers.filter(([, status]) => !status.available && status.fix).map(([name, status]) => <p key={name} className="wb-small wb-alert">{REVIEWER_NAMES[name] ?? name} 目前無法審核：{status.fix}</p>)}
       </div>
       <button className="wb-button is-quiet" onClick={() => setRefresh(value => value + 1)}>重新整理</button>
       <button className="wb-button is-quiet" onClick={logout}>登出並清除本機草稿</button>

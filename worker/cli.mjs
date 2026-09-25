@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import os from 'node:os';
+import { geminiAuthStatus, reviewerStatus } from './reviewers.mjs';
 import path from 'node:path';
 import { readFile, mkdir, writeFile, statfs } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +24,8 @@ export async function doctor() {
   const workspace = path.resolve(process.env.REVIEW_WORKSPACE ?? path.join(os.homedir(), 'review-social-workspace'));
   await mkdir(workspace, { recursive: true, mode: 0o700 });
   const disk = await statfs(workspace); checks.workspace = { available: true, path: workspace, freeBytes: disk.bavail * disk.bsize };
+  const providers = (process.env.REVIEW_REVIEWERS ?? 'claude,gemini,grok').split(',').filter(Boolean);
+  checks.reviewers = reviewerStatus(checks, await geminiAuthStatus(), providers);
   checks.imageGeneration = { available: false, detail: '需完成 image-probe 並設定 REVIEW_IMAGE_PROBE_DIR；CLI 存在不代表生圖已驗證' };
   if (process.env.REVIEW_IMAGE_PROBE_DIR) {
     try { const proof = await verifiedImage(path.resolve(process.env.REVIEW_IMAGE_PROBE_DIR)); checks.imageGeneration = { available: Boolean(checks.codex?.available), checkedAt: proof.generatedAt, sha256: proof.sha256, detail: '已完成生圖與檔案校驗；訂閱額度仍由服務端決定' }; }
@@ -42,7 +45,7 @@ export async function main(args) {
     if (command === 'run') {
       const config = workerConfig(), capabilities = await doctor();
       for (const required of [config.provider, 'pdftotext', 'renderer']) if (!capabilities[required]?.available) throw new Error(`${required} 尚未就緒：${capabilities[required]?.detail ?? '不支援此工具'}`);
-      await runWorker(config, { once: rest.includes('--once'), signal: controller.signal, capabilities }); return;
+      await runWorker(config, { once: rest.includes('--once'), signal: controller.signal, capabilities, refreshCapabilities: doctor }); return;
     }
     if (!['prepare','draft','render','image-probe'].includes(command)) throw new Error('用法：npm run worker -- doctor | run [--once] | prepare DOI --dir 路徑 | draft --dir 路徑 | render --dir 路徑 | image-probe --dir 路徑');
     const directory = path.resolve(option('--dir', process.env.REVIEW_WORKSPACE ?? path.join(os.homedir(), 'review-social-workspace', 'manual')));
