@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { runProcess, modelEnvironment } from './process.mjs';
 import { normalizeQuote } from './draft.mjs';
 import { analysisText, evidenceAt } from './xml.mjs';
+import { geminiAuthStatus } from './reviewers.mjs';
 
 const schema = { type: 'object', additionalProperties: false, required: ['summary', 'findings'], properties: {
   summary: { type: 'string' }, findings: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['severity', 'claim', 'reason', 'locator', 'quote', 'suggestion'], properties: {
@@ -12,10 +13,28 @@ const schema = { type: 'object', additionalProperties: false, required: ['summar
 } };
 export const REVIEW_ROLES = { claude: '繁體中文文案與敘事：檢查可讀性、語氣與醫療限定語是否保留', gemini: '全文對照：檢查研究類型、對象、表格數字、分母、比較組與引用範圍', grok: '反向查核：找過度推論、因果混淆、誇大療效與讀者可能誤解的地方' };
 
+// Top-level JSON objects in a string, in order; braces inside strings are ignored.
+function jsonObjects(text) {
+  const found = [];
+  let depth = 0, start = -1, inString = false, escaped = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inString) { if (escaped) escaped = false; else if (c === '\\') escaped = true; else if (c === '"') inString = false; continue; }
+    if (c === '"') inString = true;
+    else if (c === '{') { if (depth++ === 0) start = i; }
+    else if (c === '}' && depth > 0 && --depth === 0) { try { found.push(JSON.parse(text.slice(start, i + 1))); } catch {} }
+  }
+  return found;
+}
 export function parseResult(output) {
   const parsed = JSON.parse(output);
-  let result = parsed.structured_output ?? parsed.response ?? parsed.result ?? parsed.text ?? parsed;
-  if (typeof result === 'string') result = JSON.parse(result.replace(/^```(?:json)?\s*|\s*```$/g, ''));
+  // Grok reports schema-validated output as structuredOutput; its text may hold a progress note first.
+  let result = parsed.structured_output ?? parsed.structuredOutput ?? parsed.response ?? parsed.result ?? parsed.text ?? parsed;
+  if (typeof result === 'string') {
+    const candidates = jsonObjects(result.replace(/^```(?:json)?\s*|\s*```$/g, '')).filter(value => typeof value?.summary === 'string' && Array.isArray(value.findings));
+    if (!candidates.length) throw new Error('查核回傳格式不符：找不到 JSON 結果');
+    result = candidates.at(-1);
+  }
   if (typeof result.summary !== 'string' || !Array.isArray(result.findings)) throw new Error('查核回傳格式不符');
   for (const finding of result.findings) {
     if (!['high','medium','low'].includes(finding.severity) || ['claim','reason','locator','quote','suggestion'].some(key => typeof finding[key] !== 'string')) throw new Error('查核項目格式不符');
@@ -43,6 +62,10 @@ export async function reviewDraft(source, draft, directory, { signal, providers 
     try {
       if (!allowRetry) {
         try { await access(requestFile); throw new Error('先前查核請求結果不明，需明確重試'); } catch (error) { if (error.code !== 'ENOENT') throw error; }
+      }
+      if (provider === 'gemini') {
+        const auth = await geminiAuthStatus();
+        if (!auth.available) throw new Error(auth.detail);
       }
       if (provider === 'claude') {
         const auth = await runProcess('claude', ['auth', 'status'], { timeout: 20000, signal, env: modelEnvironment() });
