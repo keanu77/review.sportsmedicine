@@ -7,8 +7,16 @@ import { runProcess, modelEnvironment, codexRestrictedArgs } from './process.mjs
 const output = 'assets/hero-v1.png';
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const png = bytes => bytes.length > 24 && bytes.subarray(0, 8).equals(Buffer.from([137,80,78,71,13,10,26,10])) && bytes.readUInt32BE(16) > 0 && bytes.readUInt32BE(20) > 0;
+// Prompts are the image cache key: the photo/illustration wording and the
+// original palette names must stay byte-identical to reuse earlier images.
+const IMAGE_LOOKS = {
+  photo: '自然寫實攝影，虛構成年人物', illustration: '清爽醫療插畫',
+  flat: '扁平向量插畫，簡潔色塊與細線條，虛構成年人物', watercolor: '柔和水彩手繪插畫，紙張紋理，虛構成年人物',
+  film: '底片復古攝影，細緻顆粒與暖色調，虛構成年人物',
+};
+const PALETTE_WORDS = { sage: '奶油米白與鼠尾草綠', coral: '珊瑚粉', lavender: '薰衣草紫', mono: '黑白高對比', clash: '電光藍與萊姆綠撞色' };
 export function imagePrompt(title, design) {
-  return `請使用內建圖片生成工具製作一張社群衛教情境主視覺。主題：${title.slice(0, 140)}。${design.imageStyle === 'illustration' ? '清爽醫療插畫' : '自然寫實攝影，虛構成年人物'}，${['gold','orange','sky'].includes(design.palette) ? '深色背景' : '明亮白色背景'}，${design.palette}點綴，橫式3:2，人物與動作自然。不要文字、字母、數字、標誌、箭頭、QR或解剖剖面。請回報產生的PNG完整路徑；不要用程式畫佔位圖。`;
+  return `請使用內建圖片生成工具製作一張社群衛教情境主視覺。主題：${title.slice(0, 140)}。${IMAGE_LOOKS[design.imageStyle] ?? IMAGE_LOOKS.photo}，${['gold','orange','sky'].includes(design.palette) ? '深色背景' : '明亮白色背景'}，${PALETTE_WORDS[design.palette] ?? design.palette}點綴，橫式3:2，人物與動作自然。不要文字、字母、數字、標誌、箭頭、QR或解剖剖面。請回報產生的PNG完整路徑；不要用程式畫佔位圖。`;
 }
 
 export async function verifiedImage(directory, { prompt, design } = {}) {

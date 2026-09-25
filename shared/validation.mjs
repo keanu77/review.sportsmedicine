@@ -4,8 +4,9 @@ export class ValidationError extends Error {
 
 export const DEFAULT_DESIGN = Object.freeze({ palette: 'blue', style: 'clinical', imageStyle: 'photo', format: 'portrait' });
 const options = {
-  palette: ['blue', 'cyan', 'emerald', 'orange-light', 'gold', 'orange', 'sky'],
-  style: ['clinical', 'editorial'], imageStyle: ['photo', 'illustration', 'none'], format: ['square', 'portrait'],
+  palette: ['blue', 'cyan', 'emerald', 'orange-light', 'gold', 'orange', 'sky', 'sage', 'coral', 'lavender', 'mono', 'clash'],
+  style: ['clinical', 'editorial', 'bold', 'contrast', 'notebook', 'journal', 'roadmap', 'seamless'],
+  imageStyle: ['photo', 'illustration', 'flat', 'watercolor', 'film', 'none'], format: ['square', 'portrait', 'story'],
 };
 export function record(value, name = 'value') {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ValidationError(`${name} must be an object`);

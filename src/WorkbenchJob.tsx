@@ -10,7 +10,19 @@ import ManualSourceUpload, { canUploadSource } from "./ManualSourceUpload";
 import JobManagement from "./JobManagement";
 
 export const STATUS_LABELS: Record<JobStatus, string> = { queued: "排隊中", running: "處理中", needs_review: "待你審閱", completed: "輸出完成", failed: "執行失敗", cancelled: "已取消" };
-const PALETTES: [Design["palette"], string][] = [["blue", "白藍 · 專業"], ["cyan", "青藍"], ["emerald", "翡翠綠"], ["orange-light", "柔橘"], ["gold", "金色"], ["orange", "暖橘"], ["sky", "天空藍"]];
+const PALETTES: [Design["palette"], string][] = [["blue", "白藍 · 專業"], ["cyan", "青藍"], ["emerald", "翡翠綠"], ["orange-light", "柔橘"], ["gold", "金色"], ["orange", "暖橘"], ["sky", "天空藍"],
+  ["sage", "奶油米白 · 鼠尾草綠"], ["coral", "珊瑚粉"], ["lavender", "薰衣草紫"], ["mono", "黑白高對比"], ["clash", "大膽撞色 · 藍 × 萊姆"]];
+const STYLES: [Design["style"], string, string][] = [
+  ["clinical", "Clinical · 醫療衛教", ""], ["editorial", "Editorial · 雜誌編排", ""],
+  ["bold", "粗體大字", "大字與純色底，每張一句重點。"],
+  ["contrast", "迷思 vs 實證 · 左右對照", "卡片標題放常見說法，內文放研究結果。"],
+  ["notebook", "手寫筆記", "筆記紙、膠帶與手寫字標題。"],
+  ["journal", "期刊論文風", "明體標題與分欄，像期刊頁面。"],
+  ["roadmap", "步驟路線圖", "卡片依序串成步驟，適合復健與回場流程。"],
+  ["seamless", "連續長圖 · 跨頁接續", "背景曲線跨頁相連，滑動時像一整張。"],
+];
+const IMAGE_STYLES: [Design["imageStyle"], string][] = [["photo", "寫實照片"], ["illustration", "插畫"], ["flat", "扁平向量"], ["watercolor", "水彩手繪"], ["film", "底片復古"], ["none", "純文字設計"]];
+const FORMATS: [Design["format"], string][] = [["portrait", "直式 · 4:5"], ["square", "正方形 · 1:1"], ["story", "限動 · 9:16"]];
 const STAGES: Record<string, string> = { queued: "等待 Mac 接手", researching: "查核全文", research: "查核全文與建立草稿", resolving: "尋找開放全文", drafting: "撰寫草稿", reviewing: "模型審核", review: "重新審核目前草稿", downloading: "取得原始全文", generating_image: "製作情境圖片", uploading: "儲存製作結果", needs_review: "等待你確認草稿", rendering: "製作圖文", render: "製作圖文", completed: "素材已可下載", failed: "需要處理錯誤", cancelled: "已取消", lease_expired: "Mac 連線中斷，需要手動重試" };
 function record(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function string(value: unknown): string { return typeof value === "string" ? value : typeof value === "number" ? String(value) : ""; }
@@ -139,11 +151,12 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
 
     {draft && <section className="wb-panel"><p className="wb-eyebrow">ART DIRECTION</p><h2>圖文製作</h2><p className="wb-small">套用目前已儲存文字。改色或更換版型後可重新輸出。</p>
       <fieldset className="wb-design" disabled={!editable || Boolean(busy)}>
-        <label>版型<select aria-label="版型" value={design.style} onChange={event => setDesign({ ...design, style: event.target.value as Design["style"] })}><option value="clinical">Clinical · 醫療衛教</option><option value="editorial">Editorial · 雜誌編排</option></select></label>
+        <label>版型<select aria-label="版型" value={design.style} onChange={event => setDesign({ ...design, style: event.target.value as Design["style"] })}>{STYLES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
         <label>色系<select aria-label="色系" value={design.palette} onChange={event => setDesign({ ...design, palette: event.target.value as Design["palette"] })}>{PALETTES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label>圖片風格<select aria-label="圖片風格" value={design.imageStyle} onChange={event => setDesign({ ...design, imageStyle: event.target.value as Design["imageStyle"] })}><option value="photo">寫實照片</option><option value="illustration">插畫</option><option value="none">純文字設計</option></select></label>
-        <label>尺寸<select aria-label="尺寸" value={design.format} onChange={event => setDesign({ ...design, format: event.target.value as Design["format"] })}><option value="portrait">直式 · 4:5</option><option value="square">正方形 · 1:1</option></select></label>
+        <label>圖片風格<select aria-label="圖片風格" value={design.imageStyle} onChange={event => setDesign({ ...design, imageStyle: event.target.value as Design["imageStyle"] })}>{IMAGE_STYLES.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label>尺寸<select aria-label="尺寸" value={design.format} onChange={event => setDesign({ ...design, format: event.target.value as Design["format"] })}>{FORMATS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       </fieldset>
+      {STYLES.find(([value]) => value === design.style)?.[2] && <p className="wb-small">{STYLES.find(([value]) => value === design.style)?.[2]}</p>}
       <button className="wb-button is-primary" onClick={() => void operate("render")} disabled={!editable || Boolean(busy) || dirty || conflict}>{busy === "render" ? "正在排入製作…" : job.status === "completed" ? "重新製作圖文 →" : "確認已核對，製作圖文 →"}</button>
       {dirty && <p className="wb-small">還有文字尚未儲存，請先完成上方儲存。</p>}
     </section>}

@@ -1,7 +1,8 @@
 export type JobStatus = 'queued' | 'running' | 'needs_review' | 'completed' | 'failed' | 'cancelled';
 export type Design = {
-  palette: 'blue' | 'cyan' | 'emerald' | 'orange-light' | 'gold' | 'orange' | 'sky';
-  style: 'clinical' | 'editorial'; imageStyle: 'photo' | 'illustration' | 'none'; format: 'square' | 'portrait';
+  palette: 'blue' | 'cyan' | 'emerald' | 'orange-light' | 'gold' | 'orange' | 'sky' | 'sage' | 'coral' | 'lavender' | 'mono' | 'clash';
+  style: 'clinical' | 'editorial' | 'bold' | 'contrast' | 'notebook' | 'journal' | 'roadmap' | 'seamless';
+  imageStyle: 'photo' | 'illustration' | 'flat' | 'watercolor' | 'film' | 'none'; format: 'square' | 'portrait' | 'story';
 };
 export type Draft = {
   post: string; igCaption: string; notes: string;

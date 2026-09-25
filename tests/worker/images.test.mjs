@@ -29,3 +29,15 @@ test('image recovery binds a completed session, exact output path, request and f
     await assert.rejects(generateHero('Running',dir,design),/明確重試/);
   } finally { await rm(dir,{recursive:true,force:true}); }
 });
+
+test('new image styles and palettes get their own prompt while existing prompts stay byte-identical for the cache', async () => {
+  const { imagePrompt } = await import('../../worker/images.mjs');
+  const legacy = imagePrompt('Running', { palette: 'blue', style: 'clinical', imageStyle: 'photo', format: 'portrait' });
+  assert.equal(legacy, '請使用內建圖片生成工具製作一張社群衛教情境主視覺。主題：Running。自然寫實攝影，虛構成年人物，明亮白色背景，blue點綴，橫式3:2，人物與動作自然。不要文字、字母、數字、標誌、箭頭、QR或解剖剖面。請回報產生的PNG完整路徑；不要用程式畫佔位圖。');
+  assert.match(imagePrompt('Running', { palette: 'gold', imageStyle: 'illustration' }), /清爽醫療插畫，深色背景，gold點綴/);
+  const cases = { flat: /扁平向量/, watercolor: /水彩/, film: /底片/ };
+  for (const [imageStyle, pattern] of Object.entries(cases)) {
+    const prompt = imagePrompt('Running', { palette: 'sage', imageStyle });
+    assert.match(prompt, pattern); assert.match(prompt, /鼠尾草綠/); assert.match(prompt, /不要文字/); assert.match(prompt, /虛構/);
+  }
+});

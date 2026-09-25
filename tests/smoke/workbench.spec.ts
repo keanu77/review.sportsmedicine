@@ -409,6 +409,21 @@ test("identity edit before a draft sends the new identifier and title; removing 
   expect(seen[1].method).toBe("DELETE"); expect(seen[1].url.pathname).toBe("/api/private/jobs/job-edit/source"); expect(seen[1].url.searchParams.get("revision")).toBe("5");
 });
 
+test("new art-direction options are selectable, explain themselves and are sent to render", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const state = await apiFixture(page, [sampleJob({ status: "completed", stage: "completed" })]); await page.goto("/workbench/");
+  await page.getByLabel("版型", { exact: true }).selectOption("contrast");
+  await expect(page.getByText("卡片標題放常見說法，內文放研究結果。")).toBeVisible();
+  await page.getByLabel("版型", { exact: true }).selectOption("roadmap");
+  await page.getByLabel("色系", { exact: true }).selectOption("clash");
+  await page.getByLabel("圖片風格", { exact: true }).selectOption("watercolor");
+  await page.getByLabel("尺寸", { exact: true }).selectOption("story");
+  for (const [label, count] of [["版型", 8], ["色系", 12], ["圖片風格", 6], ["尺寸", 3]] as const) await expect(page.getByLabel(label, { exact: true }).locator("option")).toHaveCount(count);
+  await page.getByRole("button", { name: "重新製作圖文 →" }).click();
+  await expect(page.getByText("已排入圖文製作。Mac 完成後即可預覽與下載。")).toBeVisible();
+  expect(state.mutations.at(-1)!.body.design).toEqual({ palette: "clash", style: "roadmap", imageStyle: "watercolor", format: "story" });
+});
+
 test("idle edits autosave and display the saved time", async ({ page }) => {
   await page.clock.install(); const state = await apiFixture(page); await page.goto('/workbench/');
   await page.getByLabel('Facebook 貼文').fill('自動儲存的文字');

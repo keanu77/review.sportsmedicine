@@ -106,3 +106,15 @@ test('the worker learns which local workspaces belong to deleted jobs', async (t
   assert.equal((await f.call('/workspace/unknown', { role: 'worker', method: 'POST', data: { ids: Array.from({ length: 501 }, (_, i) => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`) } })).status, 400);
   assert.equal((await f.call('/workspace/unknown', { method: 'POST', data: { ids: [gone] } })).status, 404, 'owner route does not exist');
 });
+
+test('render accepts every new design option and rejects unknown ones', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const job = await drafted(f);
+  const design = { palette: 'clash', style: 'seamless', imageStyle: 'film', format: 'story' };
+  const response = await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: job.revision, design } });
+  assert.equal(response.status, 200); assert.deepEqual((await response.json()).job.design, design);
+  const queued = await read(f, job.id);
+  for (const bad of [{ ...design, style: 'neon' }, { ...design, palette: 'rainbow' }, { ...design, imageStyle: 'clay' }, { ...design, format: 'banner' }]) {
+    assert.equal((await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: queued.revision, design: bad } })).status, 400);
+  }
+});

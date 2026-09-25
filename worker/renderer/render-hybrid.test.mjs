@@ -43,3 +43,52 @@ test('renders real pixels for both styles; overflow refuses replacement; previou
     assert.equal(second.report.results.every(page=>page.imageUsed && page.checks.images[0].width===1080),true);
   } finally {await rm(tmp,{recursive:true,force:true});}
 });
+
+test('every style renders every format with new palettes, and no text leaves its region', async () => {
+  const tmp=await mkdtemp(path.join(os.tmpdir(),'hybrid-styles-'));
+  try {
+    const styles=['clinical','editorial','bold','contrast','notebook','journal','roadmap','seamless'];
+    const palettes=['sage','coral','lavender','mono','clash','gold','sky','blue'];
+    for (const [i,style] of styles.entries()) {
+      for (const format of ['square','portrait','story']) {
+        const m=manifest();m.design={...m.design,style,format,palette:palettes[i]};
+        m.pages.push({id:'outro',layout:'outro',title:'研究限制\n仍需更多證據',subtitle:'來源：單篇研究，請與醫師討論'});
+        const input=path.join(tmp,`${style}-${format}.json`),out=path.join(tmp,`${style}-${format}`);
+        await writeFile(input,JSON.stringify(m));
+        const result=await render(input,out,{textOnly:true});
+        const expected={square:1080,portrait:1350,story:1920}[format];
+        for(const item of result.report.results){
+          assert.equal(item.checks.passed,true,`${style}/${format}/${item.id}`);
+          const png=await readFile(path.join(out,item.file));
+          assert.equal(png.readUInt32BE(20),item.id==='cover-1200x630'?630:expected,`${style}/${format}/${item.id} height`);
+        }
+      }
+    }
+  } finally {await rm(tmp,{recursive:true,force:true});}
+});
+
+test('new design values are validated and unknown ones rejected', () => {
+  for (const [key,value] of [['style','bold'],['style','seamless'],['palette','clash'],['imageStyle','watercolor'],['imageStyle','film'],['imageStyle','flat'],['format','story']]) {
+    const m=manifest();m.design[key]=value;assert.doesNotThrow(()=>validateManifest(m),`${key}=${value}`);
+  }
+  for (const [key,value] of [['style','neon'],['palette','rainbow'],['imageStyle','clay'],['format','banner']]) {
+    const m=manifest();m.design[key]=value;assert.throws(()=>validateManifest(m),new RegExp(key),`${key}=${value}`);
+  }
+});
+
+test('every style also lays out a hero image on the cover in square and story formats', async () => {
+  const tmp=await mkdtemp(path.join(os.tmpdir(),'hybrid-style-images-'));
+  try {
+    const first=manifest();await writeFile(path.join(tmp,'m.json'),JSON.stringify(first));
+    await render(path.join(tmp,'m.json'),path.join(tmp,'seed'),{textOnly:true});
+    await writeFile(path.join(tmp,'hero.png'),await readFile(path.join(tmp,'seed','cover-1200x630.png')));
+    for (const style of ['bold','contrast','notebook','journal','roadmap','seamless']) for (const format of ['square','story']) {
+      const m=manifest();m.design={...m.design,style,format,palette:'coral'};
+      for (const page of [m.pages[0],m.cover]) Object.assign(page,{image:'hero.png',imageAlt:'AI 生成情境示意',caption:'AI 生成情境示意'});
+      const input=path.join(tmp,`${style}-${format}.json`);await writeFile(input,JSON.stringify(m));
+      const result=await render(input,path.join(tmp,`${style}-${format}`));
+      assert.equal(result.report.results.every(item=>item.checks.passed),true,`${style}/${format}`);
+      assert.equal(result.report.results.find(item=>item.id==='cover').imageUsed,true);
+    }
+  } finally {await rm(tmp,{recursive:true,force:true});}
+});
