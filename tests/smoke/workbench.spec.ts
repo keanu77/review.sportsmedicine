@@ -3,6 +3,7 @@ import type { Job } from "../../shared/contracts";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { strToU8, zipSync } from "fflate";
+import { claimKey } from "../../shared/quality.mjs";
 
 // API fixtures test browser behavior only; they are not evidence of deployed authentication or real model output.
 export function sampleJob(overrides: Partial<Job> = {}): Job {
@@ -10,7 +11,7 @@ export function sampleJob(overrides: Partial<Job> = {}): Job {
     id: "job-test-1", input: "PMC1234567", title: "A randomized trial in sports rehabilitation", status: "needs_review", phase: "research", stage: "needs_review", revision: 2,
     draft: { post: "初始 Facebook 草稿", igCaption: "初始 IG 草稿", notes: "待核對", pages: [{ id: "cover", layout: "cover", title: "測試封面", subtitle: "回到原始證據" }, { id: "body", layout: "content", title: "重點", cards: [{ title: "效果", body: "測試內文" }] }], claims: [{ text: "研究主張", locator: "p. 3", quote: "A test evidence excerpt." }] },
     design: { palette: "blue", style: "clinical", imageStyle: "photo", format: "portrait" },
-    metadata: { paper: { title: "Test source", license: "CC BY 4.0", fullTextVerified: true, sourceUrl: "https://pmc.ncbi.nlm.nih.gov/articles/PMC1234567/" }, reviews: [{ provider: "claude", status: "unavailable", error: "尚未登入" }, { provider: "gemini", status: "ran", findings: [{ severity: "medium", claim: "研究主張", reason: "請確認族群", sourceVerified: false }] }, { provider: "grok", status: "failed", error: "逾時" }] },
+    metadata: { claimReview: { decisions: { [claimKey({ text: "研究主張", locator: "p. 3", quote: "A test evidence excerpt." })]: { status: "locked" } } }, paper: { title: "Test source", license: "CC BY 4.0", fullTextVerified: true, sourceUrl: "https://pmc.ncbi.nlm.nih.gov/articles/PMC1234567/" }, reviews: [{ provider: "claude", status: "unavailable", error: "尚未登入" }, { provider: "gemini", status: "ran", findings: [{ severity: "medium", claim: "研究主張", reason: "請確認族群", sourceVerified: false }] }, { provider: "grok", status: "failed", error: "逾時" }] },
     artifacts: [], error: null, createdAt: "2026-09-21T00:00:00Z", updatedAt: "2026-09-21T00:00:00Z", ...overrides,
   };
 }
@@ -172,7 +173,7 @@ test("cancel and retry change job state through the API", async ({ page }) => {
 
 test("completed output remains current after completion increments revision, then becomes previous output on edits", async ({ page }) => {
   const job = sampleJob({ status: "completed", stage: "completed", phase: "render", revision: 4,
-    metadata: { render: { revision: 3 } },
+    metadata: { ...sampleJob().metadata, render: { revision: 3 } },
     artifacts: [{ id: "zip-test", name: "social.zip", contentType: "application/zip", size: 1200, sha256: "a".repeat(64) }],
   });
   await apiFixture(page, [job]); await page.goto("/workbench/");
@@ -432,6 +433,67 @@ test("the connection panel shows each reviewer and how to fix one that is signed
   await expect(page.getByText("Claude 可用")).toBeVisible();
   await expect(page.getByText("Gemini 不可用")).toBeVisible();
   await expect(page.getByText(/Gemini 目前無法審核：在 Mac 執行 gemini/)).toBeVisible();
+});
+
+test("gate A: claims are locked or rejected one by one, and rendering waits until every claim is decided", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const claims = [{ text: "274人中272人恢復運動", locator: "p:1", quote: "272 of 274 returned" }, { text: "原有表現有落差", locator: "p:1", quote: "three studies reported" }];
+  const job = sampleJob({ status: "needs_review", draft: { ...sampleJob().draft!, claims }, metadata: { ...sampleJob().metadata, claimReview: { decisions: {} } } });
+  const state = await apiFixture(page, [job]);
+  const seen = await captureMutations(page, "**/api/private/jobs/job-test-1/claims", entry => {
+    const decisions = { ...(state.jobs[0].metadata.claimReview as any).decisions };
+    if (entry.body.status === "pending") delete decisions[entry.body.key]; else decisions[entry.body.key] = { status: entry.body.status, note: entry.body.note };
+    state.jobs[0] = { ...state.jobs[0], metadata: { ...state.jobs[0].metadata, claimReview: { decisions } }, updatedAt: new Date().toISOString() };
+    return { job: state.jobs[0] };
+  });
+  await page.goto("/workbench/");
+  const render = page.getByRole("button", { name: /製作圖文/ });
+  await expect(page.getByRole("alert").filter({ hasText: "還有 2 條主張尚未鎖定或駁回" })).toBeVisible();
+  await expect(render).toBeDisabled();
+  await page.getByRole("button", { name: "鎖定主張 1" }).click();
+  await expect(page.getByText("✓ 已鎖定")).toBeVisible();
+  await page.getByLabel("主張 2 駁回理由").fill("原文只說資料有限");
+  await page.getByRole("button", { name: "駁回主張 2" }).click();
+  await expect(page.getByText("駁回理由：原文只說資料有限")).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: "已駁回的主張仍在草稿中" })).toBeVisible();
+  await expect(render).toBeDisabled();
+  expect(seen.map(entry => [entry.body.key, entry.body.status])).toEqual([[claimKey(claims[0]), "locked"], [claimKey(claims[1]), "rejected"]]);
+  expect(seen[1].body.note).toBe("原文只說資料有限");
+});
+
+test("simplified characters block rendering, and source-number mismatches need an explicit acknowledgement", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const state = await apiFixture(page, [sampleJob({ status: "completed", stage: "completed", metadata: { ...sampleJob().metadata, sourceNumbers: ["12"] } })]);
+  await page.goto("/workbench/");
+  const render = page.getByRole("button", { name: /製作圖文/ });
+  await expect(page.getByText(/製作前檢查通過/)).toBeVisible();
+  await page.getByLabel("Facebook 貼文").fill("不能据此判定");
+  await expect(page.getByRole("alert").filter({ hasText: "出現簡體字：据" })).toBeVisible();
+  await page.getByLabel("Facebook 貼文").fill("約85%在8週內回場");
+  await page.getByRole("button", { name: "儲存文字", exact: true }).click();
+  await expect(page.getByText("文字已儲存。可以排入圖文製作。")).toBeVisible();
+  await expect(page.getByText(/數字「85%」在已核對的原文中找不到/)).toBeVisible();
+  await expect(render).toBeDisabled();
+  await page.getByLabel("我已回原文逐條確認，這些項目沒有問題").check();
+  await render.click();
+  await expect(page.getByText("已排入圖文製作。Mac 完成後即可預覽與下載。")).toBeVisible();
+  expect(state.mutations.at(-1)!.body.acceptWarnings).toBe(true);
+});
+
+test("adopted review findings and owner notes are sent as a revision request", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const state = await apiFixture(page, [sampleJob({ status: "needs_review" })]);
+  const seen = await captureMutations(page, "**/api/private/jobs/job-test-1/revise", () => { state.jobs[0] = { ...state.jobs[0], status: "queued", stage: "queued", phase: "research", revision: 3 }; return { job: state.jobs[0] }; });
+  await page.goto("/workbench/");
+  const button = page.getByRole("button", { name: /條意見修訂草稿/ });
+  await expect(button).toBeDisabled();
+  await page.getByText("Gemini").click();
+  await page.getByLabel("修訂時採納這條意見").first().check();
+  await page.getByLabel("補充說明（選填）").fill("語氣更口語");
+  await expect(button).toHaveText("依 1 條意見修訂草稿");
+  await button.click();
+  await expect(page.getByText("依審核意見修訂草稿").or(page.getByText("等待 Mac 接手"))).toBeVisible();
+  expect(seen[0].body).toEqual({ revision: 2, findings: [{ provider: "gemini", index: 0 }], instructions: "語氣更口語" });
 });
 
 test("idle edits autosave and display the saved time", async ({ page }) => {

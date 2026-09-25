@@ -1,5 +1,6 @@
 import { ApiError, conflict, staleLease } from './errors.mjs';
 import { sha256 } from './auth.mjs';
+import { claimKey, checkDraft } from '../shared/quality.mjs';
 
 export const LEASE_MS = 120000;
 export const MAX_ATTEMPT_FILES = 32;
@@ -111,8 +112,60 @@ export function createStore(db, clock = Date.now) {
       await run("INSERT INTO jobs (id,input,title,status,phase,stage,revision,design,created_at,updated_at) VALUES (?,?,?,'queued','research','queued',1,?,?,?)", id, input, title, JSON.stringify(design), now, now);
       return get(id);
     },
-    render(id, revision, design) {
-      return changed(prepare("UPDATE jobs SET status='queued',phase='render',review_requested=0,stage='queued',design=?,revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=? WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *", JSON.stringify(design), clock(), id, revision));
+    // Pre-render gate: hard errors always block; source-number mismatches and §85
+    // guarantees need an explicit owner acceptance, which is recorded.
+    async gate(id, revision, acceptWarnings) {
+      const current = await row(id);
+      if (current.revision !== revision || current.draft === null) throw conflict();
+      const metadata = parse(current.metadata, {});
+      const { errors } = checkDraft(parse(current.draft), { claimReview: metadata.claimReview, sourceNumbers: metadata.sourceNumbers });
+      const hard = errors.filter(issue => !issue.overridable), soft = errors.filter(issue => issue.overridable);
+      const describe = issues => issues.slice(0, 4).map(issue => `${issue.where}：${issue.message}`).join('；') + (issues.length > 4 ? `；另有 ${issues.length - 4} 項` : '');
+      if (hard.length) throw new ApiError(409, 'QUALITY_GATE', `製作前檢查未通過：${describe(hard)}`);
+      if (soft.length && !acceptWarnings) throw new ApiError(409, 'QUALITY_GATE', `需要確認後才能製作：${describe(soft)}`);
+      return [...new Set(soft.map(issue => issue.code))];
+    },
+    render(id, revision, design, acceptedCodes = []) {
+      const acceptance = acceptedCodes.length ? JSON.stringify({ codes: acceptedCodes, at: new Date(clock()).toISOString() }) : null;
+      return changed(prepare(`UPDATE jobs SET status='queued',phase='render',review_requested=0,stage='queued',design=?,revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
+        metadata=CASE WHEN ? IS NULL THEN json_remove(metadata,'$.gateAcceptance') ELSE json_set(metadata,'$.gateAcceptance',json(?)) END
+        WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, JSON.stringify(design), clock(), acceptance, acceptance, id, revision));
+    },
+    // Gate A decision on one claim. It keeps the job revision so unsaved editor
+    // text is not flagged as conflicting; updated_at guards concurrent writes.
+    async decideClaim(id, key, status, note) {
+      const current = await row(id);
+      if (current.draft === null || !['needs_review','completed'].includes(current.status)) throw conflict();
+      if (!parse(current.draft).claims.some(claim => claimKey(claim) === key)) throw new ApiError(404, 'NOT_FOUND', 'Claim not found in the current draft');
+      const metadata = parse(current.metadata, {});
+      const decisions = { ...(metadata.claimReview?.decisions ?? {}) };
+      if (status === 'pending') delete decisions[key];
+      else decisions[key] = { status, ...(note ? { note } : {}), decidedAt: new Date(clock()).toISOString() };
+      return changed(prepare("UPDATE jobs SET metadata=?,updated_at=? WHERE id=? AND revision=? AND updated_at=? AND status IN ('needs_review','completed') RETURNING *",
+        JSON.stringify({ ...metadata, claimReview: { decisions } }), clock(), id, current.revision, current.updated_at));
+    },
+    // Model revision of the saved draft: keeps locked claims verbatim, drops rejected
+    // ones and applies the owner's chosen findings. Findings are copied from the
+    // stored reviews, so the request never trusts client-supplied finding text.
+    async revise(id, revision, refs, instructions) {
+      const current = await row(id);
+      if (current.revision !== revision || current.draft === null || !['needs_review','completed'].includes(current.status)) throw conflict();
+      const metadata = parse(current.metadata, {}), draft = parse(current.draft);
+      const clip = value => String(value ?? '').slice(0, 1000);
+      const findings = refs.map(({ provider, index }) => {
+        const finding = (metadata.reviews ?? []).find(review => review.provider === provider)?.findings?.[index];
+        if (!finding) throw new ApiError(400, 'VALIDATION_ERROR', `找不到 ${provider} 第 ${index + 1} 條審核意見`);
+        return { provider, severity: finding.severity, claim: clip(finding.claim), reason: clip(finding.reason), suggestion: clip(finding.suggestion), locator: clip(finding.locator), quote: clip(finding.quote), sourceVerified: finding.sourceVerified === true };
+      });
+      const decisions = metadata.claimReview?.decisions ?? {};
+      const { errors, warnings } = checkDraft(draft, { claimReview: metadata.claimReview, sourceNumbers: metadata.sourceNumbers });
+      const request = { id: crypto.randomUUID(), requestedAt: new Date(clock()).toISOString(), draftRevision: revision, findings, instructions,
+        lockedClaims: draft.claims.filter(claim => decisions[claimKey(claim)]?.status === 'locked'),
+        rejectedClaims: draft.claims.filter(claim => decisions[claimKey(claim)]?.status === 'rejected'),
+        gateIssues: [...errors, ...warnings].filter(issue => !issue.code.startsWith('CLAIM')).slice(0, 30).map(issue => `${issue.where}：${issue.message}`) };
+      return changed(prepare(`UPDATE jobs SET status='queued',phase='research',review_requested=0,stage='queued',revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
+        metadata=json_set(metadata,'$.reviseRequest',json(?))
+        WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, clock(), JSON.stringify(request), id, revision));
     },
     cancel(id) {
       return changed(prepare("UPDATE jobs SET status='cancelled',stage='cancelled',revision=revision+1,lease_hash=NULL,lease_expires_at=NULL,updated_at=? WHERE id=? AND status IN ('queued','running','needs_review') RETURNING *", clock(), id));
@@ -138,7 +191,7 @@ export function createStore(db, clock = Date.now) {
     // Fresh research for a drafted job: the worker discards its cached source and model output.
     restart(id, revision) {
       return changed(prepare(`UPDATE jobs SET status='queued',phase='research',review_requested=0,stage='queued',revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
-        metadata=json_set(json_remove(metadata,'$.reviewRequest'),'$.restartRequest',json(?))
+        metadata=json_set(json_remove(metadata,'$.reviewRequest','$.reviseRequest'),'$.restartRequest',json(?))
         WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed','failed','cancelled') RETURNING *`, clock(), JSON.stringify({ id: crypto.randomUUID(), requestedAt: new Date(clock()).toISOString() }), id, revision));
     },
     // Identity is editable only before a draft exists; a PDF uploaded for another identifier is dropped.

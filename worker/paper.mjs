@@ -144,7 +144,7 @@ export async function loadPaper(directory, { signal } = {}) {
   }
   signal?.throwIfAborted();
   if (!structured && !text) throw new Error('全文沒有可核對的 XML 或 PDF，請先執行 prepare');
-  return { paper, text, metadataFile, pdfFile, textFile, xmlFile,
+  return { paper, text, metadataFile, pdfFile, textFile, xmlFile, structuredFile: xmlFile ? path.join(directory, 'paper-structured.json') : null,
     structuredText: structured?.structuredText ?? null, locators: structured?.locators ?? null };
 }
 

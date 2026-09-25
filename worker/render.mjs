@@ -3,6 +3,12 @@ import path from 'node:path';
 import { zipSync, strToU8 } from 'fflate';
 import { render } from './renderer/render-hybrid.mjs';
 import { generateHero } from './images.mjs';
+import { withDisclaimer } from '../shared/quality.mjs';
+
+// Exported captions always end with the disclaimer, whatever the draft says.
+export function exportTexts(draft) {
+  return { 'fb-post.md': withDisclaimer(draft.post), 'ig-caption.md': withDisclaimer(draft.igCaption) };
+}
 
 export async function renderPackage({ draft, paper, design }, directory, options = {}) {
   await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -22,7 +28,7 @@ export async function renderPackage({ draft, paper, design }, directory, options
   const output = path.join(directory, 'rendered');
   const result = await render(manifestFile, output, { textOnly: !hero, signal: options.signal });
   const textFiles = {
-    'fb-post.md': draft.post, 'ig-caption.md': draft.igCaption,
+    ...exportTexts(draft),
     'references.md': `${paper.citation}\n\n${paper.sourceUrl}\n\n授權紀錄：${paper.license ?? '未取得'}\n全文版本：${paper.version ?? '未取得'}\n`,
     'alt-text.md': pages.map((p, i) => `${i + 1}. ${p.title}。${p.subtitle ?? ''} ${p.imageAlt ?? ''} ${(p.cards ?? []).map(c => `${c.title}：${c.body}`).join(' ')}`).join('\n\n'),
   };

@@ -2,6 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, readdirSync } from 'node:fs';
 import { generateKeyPair, SignJWT } from 'jose';
 import { handleApi } from '../../server/api.mjs';
+import { claimKey } from '../../shared/quality.mjs';
 
 // Uses SQLite's real SQL semantics, including constraints and transactions.
 // The separate Wrangler smoke test exercises Cloudflare's actual D1/R2 bindings.
@@ -72,5 +73,10 @@ export async function fixture() {
   async function complete(jobId, leaseToken, artifacts = ['source'], draft = fixtureDraft) {
     return call(`/jobs/${jobId}/complete`, { method: 'POST', role: 'worker', data: { leaseToken, artifacts, ...(draft ? { draft } : {}), metadata: { source: 'full-text' } } });
   }
-  return { env, keys, objects, call, create, claim, upload, complete, token, advance: (ms) => { time += ms; }, close: () => env.DB.close() };
+  // Gate A for tests: lock every claim of the job's current draft.
+  async function approve(jobId) {
+    const { job } = await (await call(`/jobs/${jobId}`)).json();
+    for (const claim of job.draft?.claims ?? []) await call(`/jobs/${jobId}/claims`, { method: 'PATCH', data: { key: claimKey(claim), status: 'locked' } });
+  }
+  return { env, keys, objects, call, create, claim, upload, complete, token, approve, advance: (ms) => { time += ms; }, close: () => env.DB.close() };
 }

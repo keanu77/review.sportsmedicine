@@ -96,7 +96,9 @@ test('draft CAS rejects stale revisions and an active render cannot change the s
   const results = await Promise.all([1, 2].map((index) => f.call(`/jobs/${job.id}/draft`, { method: 'PATCH', data: { revision: reviewed.revision, draft: { ...fixtureDraft, post: `revision ${index}` } } })));
   assert.deepEqual(results.map((result) => result.status).sort(), [200, 409]);
   const edited = (await (await f.call(`/jobs/${job.id}`)).json()).job;
+  await f.approve(job.id);
   assert.equal((await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: reviewed.revision, design: {} } })).status, 409);
+  await f.approve(job.id);
   const renderResponse = await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: edited.revision, design: { format: 'square' } } });
   assert.equal(renderResponse.status, 200);
   const render = (await renderResponse.json()).job;
@@ -111,6 +113,7 @@ test('draft CAS rejects stale revisions and an active render cannot change the s
   const updated = await f.call(`/jobs/${job.id}/draft`, { method: 'PATCH', data: { revision: result.revision, draft: fixtureDraft } });
   const updatedJob = (await updated.json()).job;
   assert.equal(updatedJob.status, 'needs_review');
+  await f.approve(job.id);
   await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: updatedJob.revision, design: {} } });
   const third = await f.claim(); await f.upload(job.id, third.leaseToken, 'rerendered');
   const rerendered = (await (await f.complete(job.id, third.leaseToken, ['rerendered'], null)).json()).job;
@@ -197,6 +200,7 @@ test('photo and illustration render jobs require an explicitly available image c
     assert.equal(research.job.id, created.id, 'research may run before the image tool is available');
     await f.upload(created.id, research.leaseToken);
     const reviewed = (await (await f.complete(created.id, research.leaseToken)).json()).job;
+    await f.approve(created.id);
     const queued = (await (await f.call(`/jobs/${created.id}/render`, { method: 'POST', data: { revision: reviewed.revision, design: { imageStyle } } })).json()).job;
     for (const capabilities of [{}, [], { imageGeneration: false }, { imageGeneration: true }, { imageGeneration: { available: false } }, { imageGeneration: { available: 'true' } }]) {
       assert.equal((await f.claim(capabilities)).job, null, `${imageStyle}: missing or unverified capability cannot claim`);
@@ -217,6 +221,7 @@ test('an image-dependent queue head does not block eligible research and text-on
   const first = await f.create(); const research = await f.claim({});
   await f.upload(first.id, research.leaseToken);
   const reviewed = (await (await f.complete(first.id, research.leaseToken)).json()).job;
+  await f.approve(first.id);
   await f.call(`/jobs/${first.id}/render`, { method: 'POST', data: { revision: reviewed.revision, design: { imageStyle: 'photo' } } });
   f.advance(1000);
   const second = await f.create();
@@ -224,6 +229,7 @@ test('an image-dependent queue head does not block eligible research and text-on
   assert.equal(eligible.job.id, second.id);
   await f.upload(second.id, eligible.leaseToken);
   const secondReviewed = (await (await f.complete(second.id, eligible.leaseToken)).json()).job;
+  await f.approve(second.id);
   await f.call(`/jobs/${second.id}/render`, { method: 'POST', data: { revision: secondReviewed.revision, design: { imageStyle: 'none' } } });
   const textOnly = await f.claim({});
   assert.equal(textOnly.job.id, second.id);
@@ -250,6 +256,7 @@ test('editing a reviewed draft marks reviews stale and render completion cannot 
   const edited = (await editedResponse.json()).job;
   assert.equal(edited.metadata.reviewsStale, true);
   assert.deepEqual(edited.metadata.reviews, reviews, 'old reviews remain readable with their stale label');
+  await f.approve(created.id);
   await f.call(`/jobs/${created.id}/render`, { method: 'POST', data: { revision: edited.revision, design: { imageStyle: 'none' } } });
   const render = await f.claim({});
   assert.equal(render.job.metadata.reviewsStale, true);

@@ -1,10 +1,12 @@
 import path from 'node:path';
 import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, writeFile, readdir, rm } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, readdir, rm, access } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { resolvePaper, downloadPaper, importManualPaper, loadPaper } from './paper.mjs';
-import { generateDraft } from './draft.mjs';
+import { generateDraft, reviseDraft } from './draft.mjs';
+import { analysisText } from './xml.mjs';
+import { sourceNumberSet, withDisclaimer } from '../shared/quality.mjs';
 import { reviewDraft } from './review.mjs';
 import { renderPackage } from './render.mjs';
 import { retryTransfer } from './retry.mjs';
@@ -116,7 +118,24 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
   const timer = setInterval(heartbeat, 30000);
   try {
     let files, result;
-    if (job.phase === 'research') {
+    if (job.phase === 'research' && job.metadata?.reviseRequest?.id) {
+      // Owner-requested revision of the saved draft against the verified local source.
+      const request = job.metadata.reviseRequest, directory = path.join(jobDir, 'research');
+      await update('revising');
+      let source;
+      try { source = await loadPaper(directory, { signal: combined }); }
+      catch (error) { if (combined.aborted) throw error; throw new Error(`Mac 上找不到這篇的已核對全文（${error.message}）；請改用「從頭重跑」`); }
+      const draft = validateDraft(await reviseDraft(source, validateDraft(job.draft), request, directory, { provider: config.provider, signal: combined, allowRetry: true }));
+      const notesFile = path.join(directory, `revision-${request.id}.md`);
+      await writeFile(notesFile, `# 草稿修訂\n\n${request.findings.map(f => `- [${f.provider}] ${f.claim}：${f.suggestion}`).join('\n') || '- 無採納的審核意見'}\n\n醫師補充：${request.instructions || '無'}\n`, { mode: 0o600 });
+      result = { draft, metadata: { paper: source.paper, sourceNumbers: sourceNumberSet(analysisText(source).text), reviseRequest: null, lastRevision: { id: request.id, completedAt: new Date().toISOString(), findings: request.findings.length } } };
+      // Revised research replaces the earlier research files, so carry the earlier notes and reviews forward.
+      const kept = [];
+      for (const [name, contentType] of [['research-notes.md', 'text/markdown'], ['reviews.json', 'application/json']]) {
+        try { await access(path.join(directory, name)); kept.push({ path: path.join(directory, name), name, contentType }); } catch {}
+      }
+      files = [...sourceArtifacts(source), ...kept, { path: notesFile, name: 'revision-notes.md', contentType: 'text/markdown' }];
+    } else if (job.phase === 'research') {
       const directory = path.join(jobDir, 'research');
       await prepareResearchDirectory(directory, job.metadata?.restartRequest);
       await update('resolving');
@@ -127,12 +146,13 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
         : await downloadPaper(paper, directory, { signal: combined });
       await update('drafting');
       // A newly queued retry is an explicit owner action; never independently requeue model work.
-      const draft = validateDraft(await generateDraft(source, directory, { provider: config.provider, signal: combined, allowRetry: true }));
+      const generated = validateDraft(await generateDraft(source, directory, { provider: config.provider, signal: combined, allowRetry: true }));
+      const draft = { ...generated, post: withDisclaimer(generated.post), igCaption: withDisclaimer(generated.igCaption) };
       await update('reviewing');
       const reviews = await reviewDraft(source, draft, directory, { signal: combined });
       const notesFile = path.join(directory, 'research-notes.md');
       await writeFile(notesFile, `${draft.notes}\n\n## 主張與出處\n\n${draft.claims.map(c => `- ${c.text}\n  - ${c.locator}：${c.quote}`).join('\n')}`, { mode: 0o600 });
-      result = { draft, metadata: { paper: source.paper, reviews, draftProvider: config.provider } };
+      result = { draft, metadata: { paper: source.paper, reviews, draftProvider: config.provider, sourceNumbers: sourceNumberSet(analysisText(source).text) } };
       files = [...sourceArtifacts(source),
         { path: notesFile, name: 'research-notes.md', contentType: 'text/markdown' }, { path: path.join(directory, 'reviews.json'), name: 'reviews.json', contentType: 'application/json' }];
     } else if (job.phase === 'review') {

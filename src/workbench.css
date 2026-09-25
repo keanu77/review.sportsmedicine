@@ -55,9 +55,17 @@
 .wb-manage .wb-form { margin-top: 0; }
 .wb-button.is-danger { border-color: #e2b4ad; color: #9b2c1f; }
 .wb-link-button { display: inline-flex; align-items: center; min-height: 44px; margin-left: 8px; padding: 0 4px; border: 0; background: none; color: #9b2c1f; font-size: 12px; font-weight: 600; text-decoration: underline; cursor: pointer; }
-.wb-reviewers span { display: inline-block; margin-right: 10px; }
-.wb-reviewers .is-ok::before { content: "● "; color: #16875a; }
-.wb-reviewers .is-off::before { content: "● "; color: #b42318; }
+.wb-reviewer-status span { display: inline-block; margin-right: 10px; }
+.wb-reviewer-status .is-ok::before { content: "● "; color: #16875a; }
+.wb-reviewer-status .is-off::before { content: "● "; color: #b42318; }
+.wb-check { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; }
+.wb-check input { width: 20px; height: 20px; min-height: 0; flex: none; }
+.wb-gate { display: grid; gap: 10px; margin: 12px 0; }
+.wb-gate.is-pass { color: #16603f; font-size: 13px; }
+.wb-gate-list { margin: 6px 0 0; padding-left: 18px; }
+.wb-evidence li.is-locked { border-left: 4px solid #16875a; padding-left: 10px; }
+.wb-evidence li.is-rejected { border-left: 4px solid #b42318; padding-left: 10px; opacity: .75; }
+.wb-revise { margin-top: 16px; padding-top: 16px; border-top: 1px solid #dbe5f0; }
 .wb-upload { display: grid; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #dbe5f0; min-width: 0; }
 .wb-upload-title { font-size: 14px; font-weight: 700; }
 .wb-upload label { display: grid; gap: 7px; min-width: 0; font-size: 12px; font-weight: 600; }

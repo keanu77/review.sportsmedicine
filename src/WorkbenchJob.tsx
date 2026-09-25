@@ -8,6 +8,8 @@ import { errorText, fetchArtifact, privateApi } from "./privateApi";
 import { describeJobError } from "./jobError";
 import ManualSourceUpload, { canUploadSource } from "./ManualSourceUpload";
 import JobManagement from "./JobManagement";
+import ClaimsPanel from "./ClaimsPanel";
+import QualityGate, { gateResult } from "./QualityGate";
 
 export const STATUS_LABELS: Record<JobStatus, string> = { queued: "排隊中", running: "處理中", needs_review: "待你審閱", completed: "輸出完成", failed: "執行失敗", cancelled: "已取消" };
 const PALETTES: [Design["palette"], string][] = [["blue", "白藍 · 專業"], ["cyan", "青藍"], ["emerald", "翡翠綠"], ["orange-light", "柔橘"], ["gold", "金色"], ["orange", "暖橘"], ["sky", "天空藍"],
@@ -23,7 +25,7 @@ const STYLES: [Design["style"], string, string][] = [
 ];
 const IMAGE_STYLES: [Design["imageStyle"], string][] = [["photo", "寫實照片"], ["illustration", "插畫"], ["flat", "扁平向量"], ["watercolor", "水彩手繪"], ["film", "底片復古"], ["none", "純文字設計"]];
 const FORMATS: [Design["format"], string][] = [["portrait", "直式 · 4:5"], ["square", "正方形 · 1:1"], ["story", "限動 · 9:16"]];
-const STAGES: Record<string, string> = { queued: "等待 Mac 接手", researching: "查核全文", research: "查核全文與建立草稿", resolving: "尋找開放全文", drafting: "撰寫草稿", reviewing: "模型審核", review: "重新審核目前草稿", downloading: "取得原始全文", generating_image: "製作情境圖片", uploading: "儲存製作結果", needs_review: "等待你確認草稿", rendering: "製作圖文", render: "製作圖文", completed: "素材已可下載", failed: "需要處理錯誤", cancelled: "已取消", lease_expired: "Mac 連線中斷，需要手動重試" };
+const STAGES: Record<string, string> = { queued: "等待 Mac 接手", researching: "查核全文", research: "查核全文與建立草稿", resolving: "尋找開放全文", revising: "依審核意見修訂草稿", drafting: "撰寫草稿", reviewing: "模型審核", review: "重新審核目前草稿", downloading: "取得原始全文", generating_image: "製作情境圖片", uploading: "儲存製作結果", needs_review: "等待你確認草稿", rendering: "製作圖文", render: "製作圖文", completed: "素材已可下載", failed: "需要處理錯誤", cancelled: "已取消", lease_expired: "Mac 連線中斷，需要手動重試" };
 function record(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function string(value: unknown): string { return typeof value === "string" ? value : typeof value === "number" ? String(value) : ""; }
 function safeUrl(value: unknown): string | null { const raw = string(value); try { const url = new URL(raw); return ["https:", "http:"].includes(url.protocol) ? url.href : null; } catch { return null; } }
@@ -44,6 +46,7 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
   const [saveBlocked, setSaveBlocked] = useState(Boolean(cached?.pendingSave && !synced));
   const [uncertainSave, setUncertainSave] = useState(Boolean(cached?.pendingSave && !synced));
   const [savedAt, setSavedAt] = useState(job.draftSavedAt || "");
+  const [gateAccepted, setGateAccepted] = useState(false);
   const request = useRef<AbortController | null>(null);
   const pendingDraft = useRef<string | null>(null);
   const dirty = uncertainSave || JSON.stringify(draft) !== baseline || (busy === "draft" && JSON.stringify(draft) !== pendingDraft.current);
@@ -79,7 +82,7 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
     try {
       const result = await privateApi<{ job: Job }>(`/jobs/${encodeURIComponent(job.id)}/${action}`, {
         method: action === "draft" ? "PATCH" : "POST", signal: controller.signal,
-        ...(action === "draft" ? { body: { revision, draft, ...(uncertainSave ? { checkpoint: true } : {}) } } : action === "render" ? { body: { revision, design } } : action === "review" ? { body: { revision } } : {}),
+        ...(action === "draft" ? { body: { revision, draft, ...(uncertainSave ? { checkpoint: true } : {}) } } : action === "render" ? { body: { revision, design, ...(gateAccepted ? { acceptWarnings: true } : {}) } } : action === "review" ? { body: { revision } } : {}),
       });
       if (controller.signal.aborted || !isPrivateSessionActive()) return;
       if (action === "draft") { setBaseline(JSON.stringify(result.job.draft)); setDraft(current => JSON.stringify(current) === sentDraft ? result.job.draft : current); setRevision(result.job.revision); setSavedAt(result.job.draftSavedAt || new Date().toISOString()); setSaveBlocked(false); setUncertainSave(false); }
@@ -102,6 +105,8 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
   const editCard = (pageIndex: number, cardIndex: number, field: "title" | "body", value: string) => changeDraft(current => current ? { ...current, pages: current.pages.map((page, index) => index === pageIndex ? { ...page, cards: page.cards?.map((card, cardNumber) => cardNumber === cardIndex ? { ...card, [field]: value } : card) } : page) } : current);
 
   const jobError = job.error ? describeJobError(job.error) : null;
+  const gate = draft ? gateResult(draft, job) : null;
+  const gateBlocked = Boolean(gate && (gate.errors.some(issue => !issue.overridable) || (gate.errors.some(issue => issue.overridable) && !gateAccepted)));
   return <div className="wb-job" aria-busy={Boolean(busy)}>
     <section className="wb-panel">
       <div className="wb-section-heading"><p className="wb-eyebrow">CURRENT PROJECT</p><span className={`wb-status status-${job.status}`}>{STATUS_LABELS[job.status]}</span></div>
@@ -142,12 +147,10 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
 
     {draft && <DraftHistory job={job} disabled={!editable || Boolean(busy) || dirty || conflict} onUpdate={onUpdate} />}
 
-    {draft && <section className="wb-panel"><h2>主張與來源片段</h2><p className="wb-small">下列為生成時保存的依據。修改草稿後，請重新核對數字、族群與語意是否仍相符。</p>
-      {draft.claims.length ? <ol className="wb-evidence">{draft.claims.map((claim, index) => <li key={index}><p>{claim.text}</p><span className="wb-small">{claim.locator || "未提供定位"}</span><blockquote>{claim.quote || "未提供來源引文"}</blockquote></li>)}</ol> : <p className="wb-notice">此草稿沒有可顯示的證據片段。</p>}
-    </section>}
+    {job.draft && <ClaimsPanel job={job} editable={editable} onUpdate={onUpdate} />}
 
     {draft && <section className="wb-panel"><button className="wb-button" disabled={!editable || Boolean(busy) || dirty || conflict} onClick={() => void operate("review")}>重新審核目前版本</button><p className="wb-small">以已儲存草稿與原始全文重新執行模型審核；不會改寫草稿或重新生圖。</p></section>}
-    <ReviewPanel job={job} edited={dirty || job.metadata.reviewsStale === true} />
+    <ReviewPanel job={job} edited={dirty || job.metadata.reviewsStale === true} editable={editable && !dirty} onUpdate={onUpdate} />
 
     {draft && <section className="wb-panel"><p className="wb-eyebrow">ART DIRECTION</p><h2>圖文製作</h2><p className="wb-small">套用目前已儲存文字。改色或更換版型後可重新輸出。</p>
       <fieldset className="wb-design" disabled={!editable || Boolean(busy)}>
@@ -157,7 +160,8 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
         <label>尺寸<select aria-label="尺寸" value={design.format} onChange={event => setDesign({ ...design, format: event.target.value as Design["format"] })}>{FORMATS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
       </fieldset>
       {STYLES.find(([value]) => value === design.style)?.[2] && <p className="wb-small">{STYLES.find(([value]) => value === design.style)?.[2]}</p>}
-      <button className="wb-button is-primary" onClick={() => void operate("render")} disabled={!editable || Boolean(busy) || dirty || conflict}>{busy === "render" ? "正在排入製作…" : job.status === "completed" ? "重新製作圖文 →" : "確認已核對，製作圖文 →"}</button>
+      {gate && <QualityGate result={gate} accepted={gateAccepted} onAccept={setGateAccepted} />}
+      <button className="wb-button is-primary" onClick={() => void operate("render")} disabled={!editable || Boolean(busy) || dirty || conflict || gateBlocked}>{busy === "render" ? "正在排入製作…" : job.status === "completed" ? "重新製作圖文 →" : "確認已核對，製作圖文 →"}</button>
       {dirty && <p className="wb-small">還有文字尚未儲存，請先完成上方儲存。</p>}
     </section>}
 

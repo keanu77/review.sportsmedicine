@@ -90,7 +90,7 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
           return json({ runs: await store.reviews(id) });
         }
       }
-      const jobPath = path.match(/^\/jobs\/([^/]+)(?:\/(draft|render|cancel|retry|restore|review|restart))?$/);
+      const jobPath = path.match(/^\/jobs\/([^/]+)(?:\/(draft|render|cancel|retry|restore|review|restart|claims|revise))?$/);
       if (jobPath) {
         const id = safeId(jobPath[1]); const action = jobPath[2];
         if (!action && method === 'GET') return json({ job: await store.get(id) });
@@ -124,7 +124,24 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         }
         if (action === 'render' && method === 'POST') {
           const data = await body(request);
-          return json({ job: await store.render(id, validateRevision(data.revision), validateDesign(data.design)) });
+          const revision = validateRevision(data.revision), design = validateDesign(data.design);
+          const accepted = await store.gate(id, revision, data.acceptWarnings === true);
+          return json({ job: await store.render(id, revision, design, accepted) });
+        }
+        if (action === 'claims' && method === 'PATCH') {
+          const data = await body(request);
+          if (typeof data.key !== 'string' || !/^[0-9a-f]{16}$/.test(data.key)) throw new ValidationError('Invalid claim key');
+          if (!['locked', 'rejected', 'pending'].includes(data.status)) throw new ValidationError('Invalid claim status');
+          const note = data.note === undefined ? '' : text(data.note, 'note', 500, { empty: true });
+          return json({ job: await store.decideClaim(id, data.key, data.status, note) });
+        }
+        if (action === 'revise' && method === 'POST') {
+          const data = await body(request);
+          const revision = validateRevision(data.revision);
+          if (!Array.isArray(data.findings) || data.findings.length > 20 || !data.findings.every(ref => ['claude', 'gemini', 'grok'].includes(ref?.provider) && Number.isInteger(ref.index) && ref.index >= 0 && ref.index < 100)) throw new ValidationError('findings must list up to 20 reviewer findings');
+          const instructions = data.instructions === undefined ? '' : text(data.instructions, 'instructions', 1000, { empty: true });
+          if (!data.findings.length && !instructions.trim()) throw new ValidationError('Choose findings or describe the change');
+          return json({ job: await store.revise(id, revision, data.findings, instructions.trim()) });
         }
         if (action === 'cancel' && method === 'POST') return json({ job: await store.cancel(id) });
         if (action === 'retry' && method === 'POST') return json({ job: await store.retry(id) });

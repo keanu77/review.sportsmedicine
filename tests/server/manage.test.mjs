@@ -111,10 +111,12 @@ test('render accepts every new design option and rejects unknown ones', async (t
   const f = await fixture(); t.after(f.close);
   const job = await drafted(f);
   const design = { palette: 'clash', style: 'seamless', imageStyle: 'film', format: 'story' };
+  await f.approve(job.id);
   const response = await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: job.revision, design } });
   assert.equal(response.status, 200); assert.deepEqual((await response.json()).job.design, design);
   const queued = await read(f, job.id);
   for (const bad of [{ ...design, style: 'neon' }, { ...design, palette: 'rainbow' }, { ...design, imageStyle: 'clay' }, { ...design, format: 'banner' }]) {
+    await f.approve(job.id);
     assert.equal((await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: queued.revision, design: bad } })).status, 400);
   }
 });
