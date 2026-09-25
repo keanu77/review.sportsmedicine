@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtemp, writeFile, readFile, symlink, rm, readdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { loadImage, validateManifest, render } from './render-hybrid.mjs';
+import { loadImage, validateManifest, render, buildHTML } from './render-hybrid.mjs';
 
 const manifest = () => ({ version:1,title:'跑步傷害',design:{palette:'blue',style:'clinical',imageStyle:'photo',format:'square',brand:'吳易澄醫師｜運動醫學',footer:'版型示範'},pages:[{id:'cover',layout:'cover',title:'跑步疼痛\n先停下來了解',subtitle:'注意身體發出的訊號'},{id:'body',layout:'content',title:'先記錄三件事',cards:[{title:'什麼時候痛？',body:'記錄疼痛出現的時間。'},{title:'哪個位置痛？',body:'注意疼痛的位置與範圍。'},{title:'活動有改變嗎？',body:'記錄近期訓練量與恢復狀況。'}]}],cover:{title:'跑步傷害',subtitle:'讀懂身體發出的訊號'} });
 
@@ -91,4 +91,34 @@ test('every style also lays out a hero image on the cover in square and story fo
       assert.equal(result.report.results.find(item=>item.id==='cover').imageUsed,true);
     }
   } finally {await rm(tmp,{recursive:true,force:true});}
+});
+
+test('imageFit accepts cover|contain and contain is emitted as object-fit', () => {
+  const m=manifest();m.pages[0].image='x.png';m.pages[0].imageAlt='示意';m.pages[0].imageFit='stretch';
+  assert.throws(()=>validateManifest(m),/imageFit/);
+  m.pages[0].imageFit='contain';validateManifest(m);
+  const html=buildHTML(m,m.pages[0],{image:{data:'data:image/png;base64,AA=='}});
+  assert.match(html,/object-fit:contain/);
+});
+
+test('story text stays inside the IG safe zone for every style, and the wide cover never takes format rules', async () => {
+  const { createRequire } = await import('node:module');
+  const { chromium } = createRequire(import.meta.url)('playwright');
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage({ viewport: { width: 1080, height: 1920 } });
+    for (const style of ['clinical','editorial','bold','contrast','notebook','journal','roadmap','seamless']) {
+      const m = manifest(); m.design = { ...m.design, style, format: 'story' };
+      for (const p of m.pages) {
+        await page.setContent(buildHTML(m, p, { index: 0 }));
+        const outside = await page.evaluate(() => [...document.querySelectorAll('[data-check]')].flatMap(el => {
+          const range = document.createRange(); range.selectNodeContents(el);
+          return [...range.getClientRects()].filter(r => r.width > 0 && (r.top < 228 || r.bottom > 1522 || r.right > 932)).map(r => `${el.tagName}@${Math.round(r.top)},${Math.round(r.right)}`);
+        }));
+        assert.deepEqual(outside, [], `${style}/${p.id}`);
+      }
+    }
+    const wide = buildHTML({ ...manifest(), design: { ...manifest().design, format: 'story' } }, manifest().cover, { wide: true });
+    assert.doesNotMatch(wide.match(/<body class="([^"]*)"/)[1], /\bstory\b/);
+  } finally { await browser.close(); }
 });

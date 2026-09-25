@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFile, realpath, stat, mkdir, mkdtemp, rename, rm, writeFile, access } from 'node:fs/promises';
 import path from 'node:path';
+import { realpathSync } from 'node:fs';
 import os from 'node:os';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -60,6 +61,7 @@ function validatePageText(p, key) {
   text(p.title, `${key}.title`, true);
   for (const name of ['subtitle', 'image', 'imageAlt', 'caption']) text(p[name], `${key}.${name}`);
   if (p.image && !p.imageAlt?.trim()) throw new Error(`${key}.imageAlt is required when image is provided`);
+  if (p.imageFit !== undefined && !['cover', 'contain'].includes(p.imageFit)) throw new Error(`${key}.imageFit must be cover or contain`);
   if (p.imagePosition !== undefined && (!p.imagePosition || ['x','y'].some(axis => !Number.isFinite(p.imagePosition[axis]) || p.imagePosition[axis] < 0 || p.imagePosition[axis] > 100))) throw new Error(`${key}.imagePosition requires x/y percentages from 0 to 100`);
 }
 
@@ -89,7 +91,8 @@ export function buildHTML(manifest, page, { index = 0, image = null, wide = fals
   const height = wide ? 630 : FORMATS[d.format];
   const total = manifest.pages.length;
   const position = page.imagePosition ?? {x:50,y:50};
-  const figure = image ? `<figure class="figure" data-check><img src="${image.data}" alt="${escape(page.imageAlt ?? '')}" style="object-position:${Number(position.x)}% ${Number(position.y)}%">${page.caption ? `<figcaption data-check>${escape(page.caption)}</figcaption>` : ''}</figure>` : '';
+  const contain = page.imageFit === 'contain';
+  const figure = image ? `<figure class="figure${contain ? ' contain' : ''}" data-check><img src="${image.data}" alt="${escape(page.imageAlt ?? '')}" style="object-fit:${contain ? 'contain' : 'cover'};object-position:${Number(position.x)}% ${Number(position.y)}%">${page.caption ? `<figcaption data-check>${escape(page.caption)}</figcaption>` : ''}</figure>` : '';
   const cards = (page.cards ?? []).map((c, i) => `<article class="card" data-check><div class="card-number" aria-hidden="true">${String(i + 1).padStart(2, '0')}</div><div class="card-copy"><h2 data-check>${escape(c.title)}</h2><p data-check>${escape(c.body)}</p></div></article>`).join('');
   return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><style>
   *{box-sizing:border-box}html,body{margin:0;width:${wide ? 1200 : 1080}px;height:${height}px}body{font-family:'PingFang TC','Noto Sans TC','Heiti TC',-apple-system,BlinkMacSystemFont,sans-serif;color:${dark ? '#fafafa' : '#0f172a'};background:${dark ? '#0a0a0a' : background ?? '#ffffff'};-webkit-font-smoothing:antialiased}
@@ -97,18 +100,19 @@ export function buildHTML(manifest, page, { index = 0, image = null, wide = fals
   .canvas{width:100%;height:100%;padding:48px 60px 34px;display:grid;grid-template-rows:36px minmax(0,1fr) 42px;gap:26px;border-top:10px solid var(--accent)}
   .topbar,.footer{display:flex;align-items:center;justify-content:space-between;gap:20px}.topbar{font-size:20px;font-weight:700;color:var(--accent);letter-spacing:1px}.topbar span:last-child{color:var(--muted);font-size:18px;letter-spacing:0}.footer{border-top:1px solid var(--border);padding-top:14px;font-size:18px;color:var(--muted)}.footer .number{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--accent);font-weight:700}
   .body{min-height:0;display:flex;flex-direction:column;gap:24px}.heading{flex:none}h1,h2,p,figure{margin:0}h1{font-size:61px;line-height:1.22;letter-spacing:-1px;font-weight:800;white-space:pre-line;overflow-wrap:anywhere}.subtitle{font-size:29px;line-height:1.5;margin-top:15px;color:var(--muted);white-space:pre-line;overflow-wrap:anywhere}.cover h1{font-size:76px;line-height:1.17}.outro h1{font-size:69px}.cards{display:flex;flex-direction:column;gap:16px;flex:none}.card{display:flex;gap:20px;padding:23px 26px;background:var(--surface);border:1px solid var(--border);border-radius:18px}.card-number{font-size:24px;color:var(--accent);font-weight:700;padding-top:6px}.card-copy{min-width:0;flex:1}h2{font-size:31px;line-height:1.35;font-weight:750;white-space:pre-line;overflow-wrap:anywhere}.card p{font-size:27px;line-height:1.48;color:var(--muted);margin-top:7px;white-space:pre-line;overflow-wrap:anywhere}
-  .figure{flex:1;min-height:220px;position:relative;border-radius:22px;overflow:hidden;background:var(--surface)}.figure img{position:absolute;width:100%;height:100%;object-fit:cover;display:block}.figure figcaption{position:absolute;bottom:14px;left:16px;right:16px;width:fit-content;max-width:calc(100% - 32px);padding:5px 10px;border-radius:5px;background:#ffffffed;color:#334155;font-size:17px;line-height:1.4}.cover .figure{min-height:350px}.no-image.cover .body,.no-image.outro .body{justify-content:center}.no-image.cover h1{font-size:91px}.no-image.cover .subtitle{font-size:36px;max-width:900px}.no-image .cards{gap:22px}.no-image .card{padding:30px}.no-image .card p{font-size:30px;line-height:1.55}.no-image.content .heading{margin-bottom:18px}
+  .figure{flex:1;min-height:220px;position:relative;border-radius:22px;overflow:hidden;background:var(--surface)}.figure.contain{background:#fff;border:1px solid var(--border)}.figure img{position:absolute;width:100%;height:100%;object-fit:cover;display:block}.figure figcaption{position:absolute;bottom:14px;left:16px;right:16px;width:fit-content;max-width:calc(100% - 32px);padding:5px 10px;border-radius:5px;background:#ffffffed;color:#334155;font-size:17px;line-height:1.4}.cover .figure{min-height:350px}.no-image.cover .body,.no-image.outro .body{justify-content:center}.no-image.cover h1{font-size:91px}.no-image.cover .subtitle{font-size:36px;max-width:900px}.no-image .cards{gap:22px}.no-image .card{padding:30px}.no-image .card p{font-size:30px;line-height:1.55}.no-image.content .heading{margin-bottom:18px}
   .editorial .canvas{border-top-width:0;padding-top:42px;grid-template-rows:40px minmax(0,1fr) 42px;gap:30px}.editorial .topbar{border-bottom:2px solid var(--accent);padding-bottom:16px}.editorial h1{font-weight:900;font-size:66px;letter-spacing:-2px}.editorial.cover h1{font-size:82px}.editorial .card{background:transparent;border:none;border-top:1px solid var(--border);border-radius:0;padding:18px 0}.editorial .card-number{font-size:33px;padding-top:0}.editorial .figure{border-radius:0}.editorial .subtitle{border-left:5px solid var(--accent);padding-left:20px}
   .wide .canvas{padding:34px 48px 28px;grid-template-rows:30px minmax(0,1fr) 35px;gap:22px}.wide .body{display:grid;grid-template-columns:${image ? '1fr 1fr' : '1fr'};gap:38px;align-items:center}.wide .heading{min-width:0}.wide h1,.wide.no-image.cover h1,.wide.editorial.cover h1{font-size:${image ? 61 : 78}px;line-height:1.2}.wide .subtitle{font-size:26px}.wide .figure{height:100%;min-height:0}.wide .footer{font-size:16px}.wide .topbar{font-size:18px}
   .body{padding-top:12px;padding-bottom:6px}.editorial .topbar{padding-bottom:0}
+  .portrait .body{justify-content:center;gap:32px}.portrait h1{font-size:68px}.portrait .card p{font-size:30px}.portrait h2{font-size:34px}.portrait .figure{flex:none;height:440px}.story .canvas{padding:230px 150px 400px 72px}.story .body{justify-content:center;gap:40px}.story .topbar{font-size:24px}.story .footer{font-size:21px}.story h1{font-size:84px}.story.cover h1,.story.no-image.cover h1{font-size:96px}.story.outro h1{font-size:84px}.story .subtitle{font-size:38px}.story .cards{gap:26px}.story .card{padding:34px 36px}.story h2{font-size:46px}.story .card p{font-size:38px}.story .card-number{font-size:30px}.story .figure{flex:none;height:560px}
   ${styleCSS(d.style, { wide, dark })}
-  </style></head><body class="${escape(d.style)} ${escape(page.layout ?? 'cover')} ${image ? 'has-image' : 'no-image'} ${wide ? 'wide' : ''} ${escape(d.format)}">${decoration(d.style, { index, total, wide, height })}<main class="canvas"><header class="topbar" data-region="header"><span data-check>${escape(manifest.title ?? '運動醫學')}</span><span data-check>${escape(d.brand)}</span></header><section class="body" data-region="body"><div class="heading" data-check><h1 data-check>${escape(page.title)}</h1>${page.subtitle ? `<p class="subtitle" data-check>${escape(page.subtitle)}</p>` : ''}</div>${cards ? `<div class="cards" data-check>${cards}</div>` : ''}${figure}</section><footer class="footer" data-region="footer"><span data-check>${escape(d.footer ?? '')}</span><span class="number" data-check>${wide ? 'SPORTS MEDICINE' : `${String(index + 1).padStart(2, '0')} / ${String(manifest.pages.length).padStart(2, '0')}`}</span></footer></main></body></html>`;
+  </style></head><body class="${escape(d.style)} ${escape(page.layout ?? 'cover')} ${image ? 'has-image' : 'no-image'} ${wide ? 'wide' : escape(d.format)}">${decoration(d.style, { index, total, wide, height })}<main class="canvas"><header class="topbar" data-region="header"><span data-check>${escape(manifest.title ?? '運動醫學')}</span><span data-check>${escape(d.brand)}</span></header><section class="body" data-region="body"><div class="heading" data-check><h1 data-check>${escape(page.title)}</h1>${page.subtitle ? `<p class="subtitle" data-check>${escape(page.subtitle)}</p>` : ''}</div>${cards ? `<div class="cards" data-check>${cards}</div>` : ''}${figure}</section><footer class="footer" data-region="footer"><span data-check>${escape(d.footer ?? '')}</span><span class="number" data-check>${wide ? 'SPORTS MEDICINE' : `${String(index + 1).padStart(2, '0')} / ${String(manifest.pages.length).padStart(2, '0')}`}</span></footer></main></body></html>`;
 }
 
 // Per-style rules layered on the base layout. Decorations are pseudo-elements or
 // aria-hidden backgrounds outside the checked text regions.
 function styleCSS(style, { wide, dark }) {
-  const common = '.story.no-image .body{justify-content:center}.story .canvas{padding-top:120px;padding-bottom:110px}.story h1{font-size:72px}.story.cover h1{font-size:92px}.story .card p{font-size:31px}.story .subtitle{font-size:33px}';
+  const common = '';
   const rules = {
     bold: `body{background:var(--accent);color:var(--on-accent)}.bold{--muted:var(--on-accent)}.bold .canvas{border-top:0}.bold .topbar,.bold .topbar span:last-child,.bold .footer,.bold .footer .number{color:var(--on-accent);opacity:.9}.bold .footer{border-top-color:currentColor}
       .bold .heading{padding-top:12px}.bold h1{font-size:${wide ? 72 : 88}px;font-weight:900;letter-spacing:-2px;line-height:1.2}.bold.cover h1{font-size:${wide ? 80 : 112}px}.bold .subtitle{display:inline-block;background:var(--surface);color:var(--accent);padding:6px 16px;border-radius:6px;font-weight:700}
@@ -258,7 +262,9 @@ export async function render(manifestPath, outputDir, { textOnly = false, signal
   } finally { signal?.removeEventListener('abort', abort);if(browser)await browser.close();await rm(staging,{recursive:true,force:true}); }
 }
 
-if (process.argv[1] && path.resolve(process.argv[1])===fileURLToPath(import.meta.url)) {
+// Compare real paths: skills run this file through a symlink (e.g. fb-renew/scripts/render-hybrid.mjs).
+const invokedDirectly = () => { try { return Boolean(process.argv[1]) && realpathSync(path.resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url)); } catch { return false; } };
+if (invokedDirectly()) {
   const args=process.argv.slice(2),flags=args.filter(a=>a.startsWith('--')),positional=args.filter(a=>!a.startsWith('--'));
   if (positional.length!==2 || flags.some(f=>f!=='--text-only')) { console.error('Usage: node render-hybrid.mjs <manifest.json> <output-dir> [--text-only]');process.exitCode=1; }
   else render(...positional,{textOnly:flags.includes('--text-only')}).then(r=>console.log(JSON.stringify({outputDir:r.outputDir,backup:r.backup,pages:r.report.results.length,passed:true},null,2))).catch(e=>{console.error(e.message);process.exitCode=1;});
