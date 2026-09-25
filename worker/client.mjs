@@ -3,7 +3,7 @@ import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
-import { resolvePaper, downloadPaper, loadPaper } from './paper.mjs';
+import { resolvePaper, downloadPaper, importManualPaper, loadPaper } from './paper.mjs';
 import { generateDraft } from './draft.mjs';
 import { reviewDraft } from './review.mjs';
 import { renderPackage } from './render.mjs';
@@ -32,6 +32,24 @@ export class WorkerAPI {
     let result; try { result = JSON.parse(bytes); } catch { throw new Error(`任務 API 未回傳 JSON（HTTP ${response.status}），請檢查部署與存取設定`); }
     if (!response.ok) throw Object.assign(new Error(result.error?.message ?? `HTTP ${response.status}`), { code: result.error?.code, status: response.status });
     return result;
+  }
+  // The owner-uploaded PDF is readable only with this attempt's lease.
+  async source(job, leaseToken, signal) {
+    const expected = job.metadata?.manualSource;
+    if (!/^[a-f0-9]{64}$/.test(expected?.sha256 ?? '')) throw new Error('任務沒有有效的上傳全文紀錄');
+    const timeout = AbortSignal.timeout(120000);
+    const response = await this.fetcher(`${this.config.origin}/api/worker/jobs/${job.id}/source`, {
+      method: 'GET', redirect: 'error', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+      headers: { Authorization: `Bearer ${this.config.token}`, 'X-Lease-Token': leaseToken },
+    });
+    if (!response.ok) {
+      let message = `HTTP ${response.status}`;
+      try { message = (await response.json()).error?.message ?? message; } catch {}
+      throw Object.assign(new Error(message), { status: response.status });
+    }
+    const bytes = Buffer.from(await response.arrayBuffer());
+    if (createHash('sha256').update(bytes).digest('hex') !== expected.sha256) throw new Error('上傳檔案雜湊不符，請重新上傳 PDF');
+    return bytes;
   }
   async upload(job, leaseToken, file, signal) {
     const bytes = await readFile(file.path), hash = createHash('sha256').update(bytes).digest('hex');
@@ -75,9 +93,11 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
     if (job.phase === 'research') {
       const directory = path.join(jobDir, 'research');
       await update('resolving');
-      const paper = await resolvePaper(job.input, { email: config.email, title: job.title && job.title !== job.input ? job.title : undefined, signal: combined });
+      const manual = job.metadata?.manualSource;
+      const paper = await resolvePaper(job.input, { email: config.email, title: job.title && job.title !== job.input ? job.title : undefined, signal: combined, requireFullText: !manual });
       await update('downloading');
-      const source = await downloadPaper(paper, directory, { signal: combined });
+      const source = manual ? await importManualPaper(paper, directory, await api.source(job, leaseToken, combined), manual, { signal: combined })
+        : await downloadPaper(paper, directory, { signal: combined });
       await update('drafting');
       // A newly queued retry is an explicit owner action; never independently requeue model work.
       const draft = validateDraft(await generateDraft(source, directory, { provider: config.provider, signal: combined, allowRetry: true }));

@@ -287,6 +287,47 @@ test("classified and legacy full-text failures explain the next step at 360px wi
   expect(state.mutations).toEqual([]);
 });
 
+test("owner uploads a PDF for a failed research job with checksum and revision, then sees it queued", async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  const failed = sampleJob({ id: "job-manual", status: "failed", stage: "failed", draft: null, revision: 4, metadata: {},
+    error: { code: "FULLTEXT_BOT_CHECK", message: "這篇有公開全文，但來源網站要求瀏覽器驗證。", recoverable: true } });
+  const state = await apiFixture(page, [failed]);
+  const pdf = Buffer.from(`%PDF-1.7\n${"owner article ".repeat(40)}`);
+  let upload: { url: string; headers: Record<string, string>; body: Buffer } | null = null;
+  await page.route("**/api/private/jobs/job-manual/source*", async route => {
+    const request = route.request();
+    upload = { url: request.url(), headers: request.headers(), body: request.postDataBuffer() ?? Buffer.alloc(0) };
+    const job = { ...failed, status: "queued" as const, stage: "queued", error: null, revision: 5, metadata: { manualSource: { name: "shoulder.pdf", size: pdf.length, sha256: "x", uploadedAt: "2026-09-25T00:00:00Z" } } };
+    state.jobs[0] = job;
+    await route.fulfill({ json: { job } });
+  });
+  await page.goto("/workbench/");
+  const button = page.getByRole("button", { name: "上傳並重新製作", exact: true });
+  await expect(button).toBeDisabled();
+  await page.getByLabel(/選擇 PDF/).setInputFiles({ name: "notes.html", mimeType: "text/html", buffer: Buffer.from("<html>login</html>") });
+  await button.click();
+  await expect(page.getByRole("alert").filter({ hasText: "不是 PDF" })).toBeVisible();
+  expect(upload).toBeNull();
+  await page.getByLabel(/選擇 PDF/).setInputFiles({ name: "shoulder.pdf", mimeType: "application/pdf", buffer: pdf });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await button.click();
+  await expect(page.getByText("使用你上傳的 PDF：shoulder.pdf")).toBeVisible();
+  await expect(page.getByRole("button", { name: "上傳並重新製作" })).toHaveCount(0);
+  expect(new URL(upload!.url).searchParams.get("revision")).toBe("4");
+  expect(upload!.headers["content-type"]).toBe("application/pdf");
+  expect(upload!.headers["x-content-sha256"]).toBe(createHash("sha256").update(pdf).digest("hex"));
+  expect(decodeURIComponent(upload!.headers["x-file-name"])).toBe("shoulder.pdf");
+  expect(Buffer.compare(upload!.body, pdf)).toBe(0);
+  expect(state.mutations).toEqual([]);
+});
+
+test("jobs that already have a draft never offer a replacement source upload", async ({ page }) => {
+  await apiFixture(page, [sampleJob({ status: "failed", stage: "failed", error: { code: "PROCESSING_FAILED", message: "render failed", recoverable: true } })]);
+  await page.goto("/workbench/");
+  await expect(page.getByRole("button", { name: "重試任務", exact: true })).toBeVisible();
+  await expect(page.getByText("上傳自己下載的全文 PDF")).toHaveCount(0);
+});
+
 test("idle edits autosave and display the saved time", async ({ page }) => {
   await page.clock.install(); const state = await apiFixture(page); await page.goto('/workbench/');
   await page.getByLabel('Facebook 貼文').fill('自動儲存的文字');

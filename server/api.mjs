@@ -102,6 +102,21 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         if (action === 'cancel' && method === 'POST') return json({ job: await store.cancel(id) });
         if (action === 'retry' && method === 'POST') return json({ job: await store.retry(id) });
       }
+      const sourcePath = path.match(/^\/jobs\/([^/]+)\/source$/);
+      if (sourcePath && method === 'PUT') {
+        const id = safeId(sourcePath[1]); const revision = validateRevision(Number(url.searchParams.get('revision')));
+        const previousKey = await store.manualSourceTarget(id, revision);
+        if ((request.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase() !== 'application/pdf') throw new ApiError(415, 'PDF_REQUIRED', 'Upload the article as a PDF');
+        if (!/^[a-f0-9]{64}$/i.test(request.headers.get('X-Content-SHA256') || '')) throw new ApiError(400, 'CHECKSUM_REQUIRED', 'Provide the PDF SHA-256');
+        const file = await validateUpload(request);
+        const bucket = storage(env), key = `jobs/${id}/manual/${crypto.randomUUID()}`;
+        await bucket.put(key, file.bytes, { httpMetadata: { contentType: file.contentType }, customMetadata: { sha256: file.sha256 }, sha256: file.sha256 });
+        let job;
+        try { job = await store.attachManualSource(id, revision, { key, name: file.name, size: file.size, sha256: file.sha256, uploadedAt: new Date(clock()).toISOString() }); }
+        catch (error) { await bucket.delete(key).catch(() => {}); throw error; }
+        if (previousKey && previousKey !== key) await bucket.delete(previousKey).catch(() => {});
+        return json({ job });
+      }
       const filePath = path.match(/^\/jobs\/([^/]+)\/files\/([^/]+)$/);
       if (filePath && method === 'GET') {
         const artifact = await store.artifact(safeId(filePath[1]), safeId(filePath[2], 'file id'));
@@ -117,6 +132,18 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         const capabilities = data.capabilities ?? {};
         if ((!Array.isArray(capabilities) && (typeof capabilities !== 'object' || !capabilities)) || JSON.stringify(capabilities).length > 16384) throw new ValidationError('capabilities must be a small object or array');
         return json({ ...await store.claim(safeId(data.workerId, 'workerId'), capabilities), credentialExpiresAt: worker.expiresAt });
+      }
+      const sourcePath = path.match(/^\/jobs\/([^/]+)\/source$/);
+      if (sourcePath && method === 'GET') {
+        const id = safeId(sourcePath[1]);
+        const { row: active } = await store.lease(id, request.headers.get('X-Lease-Token'));
+        const source = JSON.parse(active.metadata || '{}').manualSource;
+        // Only this job's owner-upload prefix is readable, whatever metadata claims.
+        if (!source?.key?.startsWith(`jobs/${id}/manual/`)) throw new ApiError(404, 'NOT_FOUND', 'This job has no uploaded source');
+        const object = await storage(env).get(source.key);
+        if (!object) throw new ApiError(404, 'ARTIFACT_MISSING', 'The uploaded source is unavailable');
+        if (object.size !== source.size || object.customMetadata?.sha256 !== source.sha256) throw new ApiError(502, 'ARTIFACT_INTEGRITY', 'Uploaded source integrity could not be verified');
+        return new Response(object.body, { headers: { ...privateHeaders, 'Content-Type': 'application/pdf', 'Content-Length': String(source.size), 'X-Content-SHA256': source.sha256 } });
       }
       const filePath = path.match(/^\/jobs\/([^/]+)\/files\/([^/]+)$/);
       if (filePath && method === 'PUT') {

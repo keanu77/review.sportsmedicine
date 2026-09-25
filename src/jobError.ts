@@ -10,6 +10,7 @@ const TITLES: Record<string, string> = {
   FULLTEXT_IDENTITY: "取得的檔案不是這篇文獻",
   FULLTEXT_TEMPORARY: "全文來源暫時無法連線",
   FULLTEXT_SOURCE_UNAVAILABLE: "公開全文來源失效",
+  FULLTEXT_MANUAL_MISMATCH: "上傳的 PDF 不是這篇文獻",
   WORKER_INTERRUPTED: "處理中斷",
 };
 const LEGACY_FULLTEXT = "未取得可驗證全文";

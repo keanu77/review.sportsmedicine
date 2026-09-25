@@ -51,6 +51,11 @@
 .wb-alert { background: #fff6ef; border: 1px solid #e7ccab; color: #704614; margin-bottom: 16px; }
 .wb-alert a { display: inline-flex; min-height: 44px; align-items: center; text-decoration: underline; }
 .wb-alert .wb-button { margin-top: 10px; }
+.wb-upload { display: grid; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid #dbe5f0; min-width: 0; }
+.wb-upload-title { font-size: 14px; font-weight: 700; }
+.wb-upload label { display: grid; gap: 7px; min-width: 0; font-size: 12px; font-weight: 600; }
+.wb-upload .wb-button { justify-self: start; }
+.wb-upload .wb-alert { margin-bottom: 0; }
 .wb-notice { background: #edf4fc; color: #3a5d88; margin-top: 12px; }
 .wb-page-editor { display: grid; gap: 12px; padding: 14px; border: 1px solid #dce7f4; border-radius: 10px; background: #f8faff; min-width: 0; }
 .wb-page-editor h4 { font-size: 12px; }

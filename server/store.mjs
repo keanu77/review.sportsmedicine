@@ -9,6 +9,12 @@ const iso = (value) => new Date(value).toISOString();
 export function publicArtifact(row) {
   return { id: row.id, name: row.name, contentType: row.content_type, size: row.size, sha256: row.sha256 };
 }
+// The private storage key of an uploaded source stays server-side.
+function ownerMetadata(metadata) {
+  if (!metadata.manualSource) return metadata;
+  const { key, ...manualSource } = metadata.manualSource;
+  return { ...metadata, manualSource };
+}
 export function createStore(db, clock = Date.now) {
   const prepare = (sql, ...args) => db.prepare(sql).bind(...args);
   const first = (sql, ...args) => prepare(sql, ...args).first();
@@ -31,7 +37,7 @@ export function createStore(db, clock = Date.now) {
       id: value.id, input: value.input, title: value.title, status: value.status, phase: value.review_requested ? 'review' : value.phase,
       draftRevision: snapshot?.revision ?? null, draftSavedAt: snapshot ? iso(snapshot.created_at) : null,
       stage: value.stage, revision: value.revision, draft: parse(value.draft), design: parse(value.design),
-      metadata: parse(value.metadata, {}), artifacts: artifacts.map(publicArtifact), error: parse(value.error),
+      metadata: ownerMetadata(parse(value.metadata, {})), artifacts: artifacts.map(publicArtifact), error: parse(value.error),
       createdAt: iso(value.created_at), updatedAt: iso(value.updated_at),
     };
   }
@@ -116,6 +122,18 @@ export function createStore(db, clock = Date.now) {
         metadata=CASE WHEN review_requested=1 AND EXISTS(SELECT 1 FROM review_runs WHERE job_id=jobs.id AND id=json_extract(jobs.metadata,'$.reviewRequest.runId'))
           THEN json_set(metadata,'$.reviewRequest',json_object('runId',?,'draftRevision',(SELECT max(revision) FROM draft_versions WHERE job_id=jobs.id))) ELSE metadata END
         WHERE id=? AND status IN ('failed','cancelled') RETURNING *`, clock(), crypto.randomUUID(), id));
+    },
+    // An owner-supplied PDF is an explicit new attempt for research that never
+    // produced a draft; later phases keep their verified source.
+    async manualSourceTarget(id, revision) {
+      const current = await row(id);
+      if (current.revision !== revision || !['failed','cancelled'].includes(current.status) || current.phase !== 'research' || current.review_requested || current.draft !== null) throw conflict();
+      return parse(current.metadata, {}).manualSource?.key ?? null;
+    },
+    attachManualSource(id, revision, source) {
+      return changed(prepare(`UPDATE jobs SET status='queued',stage='queued',revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
+        metadata=json_set(metadata,'$.manualSource',json(?))
+        WHERE id=? AND revision=? AND status IN ('failed','cancelled') AND phase='research' AND review_requested=0 AND draft IS NULL RETURNING *`, clock(), JSON.stringify(source), id, revision));
     },
     async claim(workerId, capabilities) {
       await expire();

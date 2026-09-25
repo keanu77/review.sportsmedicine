@@ -1,5 +1,5 @@
 import { XMLParser } from 'fast-xml-parser';
-import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, rename, rm } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -58,7 +58,8 @@ async function pmcPaper(pmcid, expected, signal) {
     sourceUrl: `https://pmc.ncbi.nlm.nih.gov/articles/${pmcid}/`, provider: 'PMC', checkedAt: new Date().toISOString() };
 }
 
-export async function resolvePaper(input, { email = process.env.REVIEW_CONTACT_EMAIL, title, signal, getJSON = remoteJSON, getBytes = remoteBytes } = {}) {
+// requireFullText=false resolves identity only, for checking an owner-supplied PDF.
+export async function resolvePaper(input, { email = process.env.REVIEW_CONTACT_EMAIL, title, signal, getJSON = remoteJSON, getBytes = remoteBytes, requireFullText = true } = {}) {
   const identifier = parseIdentifier(input);
   let ids = { [identifier.kind]: identifier.value };
   let conversionError;
@@ -85,21 +86,21 @@ export async function resolvePaper(input, { email = process.env.REVIEW_CONTACT_E
     }
     if (!ids.doi) throw conversionError ?? new Error('未找到可取得的 PMC 全文或 DOI');
     const { candidates, metadata, indexErrors } = await collectCandidates(ids.doi, { email, signal, getJSON });
-    if (!candidates.length) {
+    if (!candidates.length && requireFullText) {
       const failure = acquisitionFailure([], { indexUnavailable: indexErrors.length === (email ? 3 : 2) });
       throw Object.assign(new Error(failure.message), { failureCode: failure.code });
     }
     if (!metadata.title) throw new Error('公開全文索引沒有提供文獻標題，無法核對身分');
-    const first = candidates[0];
+    const first = candidates[0] ?? {};
     paper = { id: `doi:${ids.doi}`, doi: ids.doi, pmid: ids.pmid ?? null, title: metadata.title, year: metadata.year,
       authors: metadata.authors ?? [], journal: metadata.journal,
       citation: `${metadata.title}. ${metadata.journal ?? ''}. ${metadata.year ?? ''}. doi:${ids.doi}`,
-      license: first.license, version: first.version, pdfUrl: first.pdfUrl,
+      license: first.license ?? null, version: first.version ?? null, pdfUrl: first.pdfUrl ?? null,
       sourceUrl: first.landingUrl ?? `https://doi.org/${ids.doi}`, provider: first.provider,
       candidates: candidates.slice(0, MAX_CANDIDATES), checkedAt: new Date().toISOString() };
   }
   if (title && normalizedTitle(title) !== normalizedTitle(paper.title)) throw new Error('索引標題與取得的文獻不一致，請以 DOI／PMID 重新核對');
-  if (!paper.pdfUrl && !paper.xmlUrl && !paper.candidates?.length) throw new Error('沒有可取得的 PDF 或 XML 全文');
+  if (requireFullText && !paper.pdfUrl && !paper.xmlUrl && !paper.candidates?.length) throw new Error('沒有可取得的 PDF 或 XML 全文');
   return paper;
 }
 
@@ -145,6 +146,34 @@ export async function loadPaper(directory, { signal } = {}) {
   if (!structured && !text) throw new Error('全文沒有可核對的 XML 或 PDF，請先執行 prepare');
   return { paper, text, metadataFile, pdfFile, textFile, xmlFile,
     structuredText: structured?.structuredText ?? null, locators: structured?.locators ?? null };
+}
+
+// An owner-supplied PDF passes the same identity checks as a downloaded one.
+// It carries no inferred licence or public URL: the owner obtained it privately.
+export async function importManualPaper(paper, directory, bytes, upload, { signal, extractPDF = async (file, options) => (await runProcess('pdftotext', ['-enc', 'UTF-8', file, '-'], options)).stdout } = {}) {
+  signal?.throwIfAborted();
+  const hash = value => createHash('sha256').update(value).digest('hex');
+  if (bytes.length !== upload.size || hash(bytes) !== upload.sha256) throw new Error('上傳檔案雜湊不符，請重新上傳 PDF');
+  if (bytes.subarray(0, 5).toString() !== '%PDF-') throw new Error('上傳的檔案不是 PDF');
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  const metadataFile = path.join(directory, 'source.json'), pdfFile = path.join(directory, 'paper.pdf'), textFile = path.join(directory, 'paper.txt');
+  const temporary = path.join(directory, 'paper.upload.pdf');
+  await writeFile(temporary, bytes, { mode: 0o600 });
+  const text = await extractPDF(temporary, { signal });
+  try { verifyPDF(bytes, text, paper); }
+  catch (error) {
+    await rm(temporary, { force: true });
+    throw Object.assign(new Error(`上傳的 PDF 未通過文獻核對：${error.message}。請確認上傳的是這篇文獻的正式全文。`), { failureCode: 'FULLTEXT_MANUAL_MISMATCH' });
+  }
+  await rename(temporary, pdfFile); await writeFile(textFile, text, { mode: 0o600 });
+  const { candidates, acquisitionAttempts, xmlUrl, ...identity } = paper;
+  for (const field of ['xmlSha256', 'xmlError', 'xmlDownloadedAt', 'xmlExtractionVersion', 'pdfError']) delete identity[field];
+  const verified = { ...identity, provider: '手動上傳', license: null, version: null, pdfUrl: null, xmlUrl: null,
+    sourceUrl: paper.doi ? `https://doi.org/${paper.doi}` : paper.pmid ? `https://pubmed.ncbi.nlm.nih.gov/${paper.pmid}/` : null,
+    manualUpload: upload, fullTextAvailable: true, fullTextVerified: true, fullTextFormat: 'pdf', pdfAvailable: true, pdfStatus: 'available',
+    xmlAvailable: false, xmlStatus: 'unavailable', sha256: hash(bytes), textSha256: hash(text), textExtractionVersion: 1, downloadedAt: upload.uploadedAt };
+  await writeFile(metadataFile, JSON.stringify(verified, null, 2), { mode: 0o600 });
+  return { paper: verified, text, pdfFile, textFile, metadataFile, structuredText: null, locators: null, xmlFile: null, structuredFile: null };
 }
 
 export async function downloadPaper(paper, directory, { signal, fetchBytes = remoteBytes, pause = ms => delay(ms, undefined, { signal }), extractPDF = async (file, options) => (await runProcess('pdftotext', ['-enc', 'UTF-8', file, '-'], options)).stdout } = {}) {

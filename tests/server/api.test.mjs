@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { generateKeyPair, SignJWT } from 'jose';
 import { fixture, fixtureDraft } from './helpers.mjs';
 import { normalizeInput, validateDraft } from '../../shared/validation.mjs';
@@ -335,4 +336,74 @@ test('JATS source archives remain private downloads; HTML cannot masquerade as X
   assert.equal((await f.complete(job.id,leaseToken,['jats'])).status,200);
   const download=await f.call(`/jobs/${job.id}/files/jats?inline=1`);assert.equal(download.status,200);assert.match(download.headers.get('Content-Disposition'),/^attachment/);assert.equal(await download.text(),xml);
   assert.equal((await f.call(`/jobs/${job.id}/files/jats`,{role:'anonymous'})).status,401);
+});
+
+const manualPdf = Buffer.from(`%PDF-1.7\n${'owner supplied article '.repeat(20)}`);
+const manualHash = createHash('sha256').update(manualPdf).digest('hex');
+async function failResearch(f) {
+  const job = await f.create(); const { leaseToken } = await f.claim();
+  await f.call(`/jobs/${job.id}/fail`, { role: 'worker', method: 'POST', data: { leaseToken, code: 'FULLTEXT_BOT_CHECK', message: 'blocked' } });
+  return (await (await f.call(`/jobs/${job.id}`)).json()).job;
+}
+const putSource = (f, job, { revision = job.revision, bytes = manualPdf, headers = {}, role = 'owner' } = {}) => f.call(`/jobs/${job.id}/source?revision=${revision}`, {
+  method: 'PUT', role, raw: bytes, headers: { 'Content-Type': 'application/pdf', 'X-File-Name': encodeURIComponent('我的全文.pdf'), 'X-Content-SHA256': createHash('sha256').update(bytes).digest('hex'), ...headers } });
+
+test('owner uploads a PDF for a failed research job; it is stored privately and the job is explicitly requeued', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const failed = await failResearch(f);
+  const response = await putSource(f, failed);
+  assert.equal(response.status, 200);
+  const { job } = await response.json();
+  assert.equal(job.status, 'queued'); assert.equal(job.phase, 'research'); assert.equal(job.error, null); assert.equal(job.revision, failed.revision + 1);
+  assert.deepEqual(Object.keys(job.metadata.manualSource).sort(), ['name', 'sha256', 'size', 'uploadedAt']);
+  assert.equal(job.metadata.manualSource.name, '我的全文.pdf'); assert.equal(job.metadata.manualSource.sha256, manualHash);
+  const keys = [...f.objects.keys()].filter(key => key.includes('/manual/'));
+  assert.equal(keys.length, 1); assert.ok(keys[0].startsWith(`jobs/${job.id}/manual/`));
+  assert.equal(job.artifacts.length, 0, 'uploaded source is not a downloadable output artifact');
+});
+
+test('manual source upload rejects non-PDF bytes, wrong checksum, stale revision, active jobs and worker credentials', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const failed = await failResearch(f);
+  assert.equal((await putSource(f, failed, { bytes: Buffer.from('<html>login</html>') })).status, 400);
+  assert.equal((await putSource(f, failed, { headers: { 'X-Content-SHA256': 'a'.repeat(64) } })).status, 400);
+  assert.equal((await putSource(f, failed, { headers: { 'Content-Type': 'image/png', 'X-File-Name': 'a.png' } })).status, 415);
+  assert.equal((await putSource(f, failed, { revision: failed.revision - 1 })).status, 409);
+  assert.equal((await putSource(f, failed, { role: 'worker' })).status, 404);
+  assert.equal((await putSource(f, failed, { headers: { Origin: 'https://evil.example' } })).status, 403);
+  assert.equal([...f.objects.keys()].filter(key => key.includes('/manual/')).length, 0, 'rejected uploads leave no stored object');
+  const queued = await f.create();
+  assert.equal((await putSource(f, queued)).status, 409);
+});
+
+test('replacing a manual PDF deletes the previous private object', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const failed = await failResearch(f);
+  const { job } = await (await putSource(f, failed)).json();
+  const { leaseToken } = await f.claim();
+  await f.call(`/jobs/${job.id}/fail`, { role: 'worker', method: 'POST', data: { leaseToken, code: 'FULLTEXT_MANUAL_MISMATCH', message: 'wrong' } });
+  const again = (await (await f.call(`/jobs/${job.id}`)).json()).job;
+  const other = Buffer.from(`%PDF-1.7\n${'another article '.repeat(20)}`);
+  assert.equal((await putSource(f, again, { bytes: other })).status, 200);
+  const keys = [...f.objects.keys()].filter(key => key.includes('/manual/'));
+  assert.equal(keys.length, 1);
+  assert.equal(f.objects.get(keys[0]).customMetadata.sha256, createHash('sha256').update(other).digest('hex'));
+});
+
+test('the worker reads the manual PDF only with the active lease of that job', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const failed = await failResearch(f);
+  await putSource(f, failed);
+  assert.equal((await f.call(`/jobs/${failed.id}/source`, { role: 'worker', headers: { 'X-Lease-Token': '0'.repeat(64) } })).status, 409);
+  const { job, leaseToken } = await f.claim();
+  assert.equal(job.id, failed.id);
+  const response = await f.call(`/jobs/${job.id}/source`, { role: 'worker', headers: { 'X-Lease-Token': leaseToken } });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('Content-Type'), 'application/pdf');
+  assert.equal(response.headers.get('X-Content-SHA256'), manualHash);
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), manualPdf);
+  const withoutSource = await f.create();
+  await f.call(`/jobs/${job.id}/cancel`, { method: 'POST' });
+  const next = await f.claim(); assert.equal(next.job.id, withoutSource.id);
+  assert.equal((await f.call(`/jobs/${withoutSource.id}/source`, { role: 'worker', headers: { 'X-Lease-Token': next.leaseToken } })).status, 404);
 });

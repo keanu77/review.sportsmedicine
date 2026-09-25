@@ -21,20 +21,20 @@ export class PrivateApiError extends Error {
   constructor(public code: string, message: string, public status = 0) { super(message); }
 }
 
-export async function privateApi<T>(path: string, options: { method?: string; body?: unknown; signal?: AbortSignal } = {}): Promise<T> {
+export async function privateApi<T>(path: string, options: { method?: string; body?: unknown; raw?: { body: BodyInit; headers: Record<string, string> }; timeoutMs?: number; signal?: AbortSignal } = {}): Promise<T> {
   assertPrivateSession();
   const controller = new AbortController();
   const abort = () => controller.abort();
   const unsubscribe = onPrivateSessionLock(abort);
   if (options.signal?.aborted) abort();
   else options.signal?.addEventListener("abort", abort, { once: true });
-  const timer = window.setTimeout(abort, 20000);
+  const timer = window.setTimeout(abort, options.timeoutMs ?? 20000);
   try {
     controller.signal.throwIfAborted();
     const response = await fetch(`/api/private${path}`, {
       method: options.method ?? "GET", credentials: "same-origin", cache: "no-store", signal: controller.signal,
-      headers: { Accept: "application/json", ...(options.body !== undefined ? { "Content-Type": "application/json" } : {}) },
-      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+      headers: { Accept: "application/json", ...(options.body !== undefined ? { "Content-Type": "application/json" } : {}), ...options.raw?.headers },
+      ...(options.raw ? { body: options.raw.body } : options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
     });
     if (!response.headers.get("content-type")?.includes("application/json")) {
       throw new PrivateApiError("API_UNAVAILABLE", "私人服務尚未可用，或登入已失效。純靜態預覽無法建立任務；請開啟已設定私人服務的工作台。", response.status);
@@ -53,6 +53,22 @@ export async function privateApi<T>(path: string, options: { method?: string; bo
     clearTimeout(timer);
     options.signal?.removeEventListener("abort", abort);
   }
+}
+
+export const MAX_SOURCE_PDF_BYTES = 32 * 1024 * 1024;
+
+/** Owner-supplied PDF for a research job; the server stores it privately and requeues the job. */
+export async function uploadSourcePdf(job: Pick<Job, "id" | "revision">, file: File, signal?: AbortSignal): Promise<Job> {
+  if (file.size > MAX_SOURCE_PDF_BYTES) throw new PrivateApiError("FILE_TOO_LARGE", "PDF 超過 32 MB，請改用較小的檔案。");
+  const bytes = await file.arrayBuffer();
+  if (new TextDecoder().decode(bytes.slice(0, 5)) !== "%PDF-") throw new PrivateApiError("NOT_PDF", "這個檔案不是 PDF，請確認下載的是全文 PDF 而不是網頁。");
+  const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)), value => value.toString(16).padStart(2, "0")).join("");
+  const name = /\.pdf$/i.test(file.name) && !/^[. ]|[. ]$/.test(file.name.slice(0, -4)) ? file.name : "paper.pdf";
+  const result = await privateApi<{ job: Job }>(`/jobs/${encodeURIComponent(job.id)}/source?revision=${job.revision}`, {
+    method: "PUT", signal, timeoutMs: 120000,
+    raw: { body: bytes, headers: { "Content-Type": "application/pdf", "X-File-Name": encodeURIComponent(name.slice(-180)), "X-Content-SHA256": digest } },
+  });
+  return result.job;
 }
 
 export function errorText(error: unknown): string {

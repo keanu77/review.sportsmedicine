@@ -9,6 +9,7 @@ test("classified full-text failures get a heading and keep the worker's next ste
   assert.equal(described.hint, null);
   assert.equal(describeJobError({ code: "FULLTEXT_TEMPORARY", message: "x" }).title, "全文來源暫時無法連線");
   assert.equal(describeJobError({ code: "FULLTEXT_BOT_CHECK", message: "x" }).title, "公開全文需在瀏覽器下載");
+  assert.equal(describeJobError({ code: "FULLTEXT_MANUAL_MISMATCH", message: "x" }).title, "上傳的 PDF 不是這篇文獻");
 });
 
 test("legacy publisher 403 failures get an explanation instead of a retry promise", () => {

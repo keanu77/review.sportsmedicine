@@ -1,7 +1,8 @@
 /** Local integration only: actual Wrangler/workerd D1 + R2, no cloud resources. */
 import assert from 'node:assert/strict';
 import { spawn, execFile } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { promisify } from 'node:util';
@@ -36,6 +37,15 @@ try {
   const now = Date.now();
   const seed = `INSERT INTO jobs (id,input,title,status,phase,stage,revision,design,created_at,updated_at) VALUES ('smoke-job','PMC12345','Local binding smoke','queued','research','queued',1,'{"palette":"blue","style":"clinical","imageStyle":"none","format":"portrait"}',${now},${now});`;
   await command(['d1', 'execute', 'DB', '--local', '--persist-to', scratch, '--command', seed]);
+  // Owner JWTs cannot be minted locally and the R2 CLI cannot attach the sha256 metadata the
+  // private PUT route writes, so this checks the lease gate and the integrity refusal on real R2.
+  const manualPdf = Buffer.from(`%PDF-1.7\n${'owner supplied article '.repeat(20)}`);
+  const manualHash = createHash('sha256').update(manualPdf).digest('hex');
+  const manualKey = 'jobs/manual-job/manual/local-smoke';
+  const manualFile = resolve(scratch, 'manual.pdf'); await writeFile(manualFile, manualPdf);
+  await command(['r2', 'object', 'put', `review-private-artifacts/${manualKey}`, '--local', '--persist-to', scratch, '--file', manualFile, '--content-type', 'application/pdf']);
+  const manualMetadata = JSON.stringify({ manualSource: { key: manualKey, name: 'manual.pdf', size: manualPdf.length, sha256: manualHash, uploadedAt: new Date(now).toISOString() } });
+  await command(['d1', 'execute', 'DB', '--local', '--persist-to', scratch, '--command', `INSERT INTO jobs (id,input,title,status,phase,stage,revision,design,metadata,created_at,updated_at) VALUES ('manual-job','10.1234/manual','Manual upload smoke','queued','research','queued',1,'{"palette":"blue","style":"clinical","imageStyle":"none","format":"portrait"}','${manualMetadata}',${now + 1},${now + 1});`]);
   processHandle = spawn(process.execPath, [wrangler, 'pages', 'dev', 'public', '--ip', '127.0.0.1', '--port', String(port), '--persist-to', scratch, '--binding', `WORKER_TOKEN=${workerToken}`, '--binding', `APP_ORIGIN=${origin}`, '--binding', `WORKER_TOKEN_ISSUED_AT=${new Date(now - 60000).toISOString()}`, '--binding', `WORKER_TOKEN_EXPIRES_AT=${new Date(now + 86400000).toISOString()}`, '--binding', 'OWNER_EMAIL=owner@example.com', '--binding', 'ACCESS_TEAM_DOMAIN=test.cloudflareaccess.com', '--binding', 'ACCESS_AUD=test-audience', '--log-level', 'warn'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
   processHandle.stdout.on('data', (chunk) => { logs += chunk; });
   processHandle.stderr.on('data', (chunk) => { logs += chunk; });
@@ -76,8 +86,15 @@ try {
   assert.equal(complete.data.job.status, 'needs_review');
   assert.equal(complete.data.job.artifacts[0].sha256, artifact.sha256);
   assert.equal((await api(`/jobs/${job.id}/complete`, { leaseToken, draft, artifacts: ['source'] })).response.status, 409);
+  const manualClaim = await api('/claim', { workerId: 'smoke', capabilities: {} });
+  assert.equal(manualClaim.data.job.id, 'manual-job');
+  assert.equal(manualClaim.data.job.metadata.manualSource.key, undefined, 'storage key never leaves the server');
+  const source = await fetch(`${origin}/api/worker/jobs/manual-job/source`, { headers: { Authorization: `Bearer ${workerToken}`, 'X-Lease-Token': manualClaim.data.leaseToken } });
+  assert.equal(source.status, 502, 'an object without its recorded checksum is never served');
+  assert.equal((await fetch(`${origin}/api/worker/jobs/manual-job/source`, { headers: { Authorization: `Bearer ${workerToken}`, 'X-Lease-Token': leaseToken } })).status, 409);
+  assert.equal((await api('/jobs/manual-job/fail', { leaseToken: manualClaim.data.leaseToken, code: 'FULLTEXT_MANUAL_MISMATCH', message: 'fixture' })).response.status, 200);
   assert.equal((await api('/claim', { workerId: 'smoke', capabilities: {} })).data.job, null);
-  console.log('PASS: real local Pages Functions + D1/R2; atomic claim, authenticated upload, idempotent retry, conflicting retry rejection, hash, heartbeat, completion, stale lease, anonymous owner/file denial.');
+  console.log('PASS: real local Pages Functions + D1/R2; atomic claim, lease-bound owner-upload read with integrity refusal, authenticated upload, idempotent retry, conflicting retry rejection, hash, heartbeat, completion, stale lease, anonymous owner/file denial.');
   console.log('Owner JWT success is covered by signed-JWT tests; no local authentication bypass is enabled.');
 } catch (error) {
   if (logs) console.error(logs);
