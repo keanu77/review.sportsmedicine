@@ -123,6 +123,47 @@ export function createStore(db, clock = Date.now) {
           THEN json_set(metadata,'$.reviewRequest',json_object('runId',?,'draftRevision',(SELECT max(revision) FROM draft_versions WHERE job_id=jobs.id))) ELSE metadata END
         WHERE id=? AND status IN ('failed','cancelled') RETURNING *`, clock(), crypto.randomUUID(), id));
     },
+    // Deletes every database record of a job that is not running; returns false on a stale revision.
+    async remove(id, revision) {
+      const idle = "EXISTS (SELECT 1 FROM jobs WHERE id=? AND revision=? AND status<>'running')";
+      const results = await db.batch([
+        prepare(`DELETE FROM review_dispositions WHERE run_id IN (SELECT id FROM review_runs WHERE job_id=?) AND ${idle}`, id, id, revision),
+        prepare(`DELETE FROM review_runs WHERE job_id=? AND ${idle}`, id, id, revision),
+        prepare(`DELETE FROM draft_versions WHERE job_id=? AND ${idle}`, id, id, revision),
+        prepare(`DELETE FROM artifacts WHERE job_id=? AND ${idle}`, id, id, revision),
+        prepare("DELETE FROM jobs WHERE id=? AND revision=? AND status<>'running' RETURNING id", id, revision),
+      ]);
+      if (!results.at(-1).results?.[0]) { await row(id); throw conflict(); }
+    },
+    // Fresh research for a drafted job: the worker discards its cached source and model output.
+    restart(id, revision) {
+      return changed(prepare(`UPDATE jobs SET status='queued',phase='research',review_requested=0,stage='queued',revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
+        metadata=json_set(json_remove(metadata,'$.reviewRequest'),'$.restartRequest',json(?))
+        WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed','failed','cancelled') RETURNING *`, clock(), JSON.stringify({ id: crypto.randomUUID(), requestedAt: new Date(clock()).toISOString() }), id, revision));
+    },
+    // Identity is editable only before a draft exists; a PDF uploaded for another identifier is dropped.
+    async updateIdentity(id, revision, input, title) {
+      const current = await row(id);
+      if (current.revision !== revision || current.draft !== null || !['queued','failed','cancelled'].includes(current.status)) throw conflict();
+      const changedInput = current.input !== input;
+      const job = await changed(prepare(`UPDATE jobs SET input=?,title=?,revision=revision+1,updated_at=?,
+        metadata=CASE WHEN ?=1 THEN json_remove(metadata,'$.manualSource') ELSE metadata END
+        WHERE id=? AND revision=? AND draft IS NULL AND status IN ('queued','failed','cancelled') RETURNING *`, input, title, clock(), changedInput ? 1 : 0, id, revision));
+      return { job, droppedKey: changedInput ? parse(current.metadata, {}).manualSource?.key ?? null : null };
+    },
+    async detachManualSource(id, revision) {
+      const current = await row(id);
+      const key = parse(current.metadata, {}).manualSource?.key;
+      if (!key || current.revision !== revision || current.status === 'running') throw conflict();
+      const job = await changed(prepare(`UPDATE jobs SET revision=revision+1,updated_at=?,metadata=json_remove(metadata,'$.manualSource')
+        WHERE id=? AND revision=? AND status<>'running' AND json_type(metadata,'$.manualSource') IS NOT NULL RETURNING *`, clock(), id, revision));
+      return { job, key };
+    },
+    async unknownJobs(ids) {
+      if (!ids.length) return [];
+      const known = new Set((await all(`SELECT id FROM jobs WHERE id IN (${ids.map(() => '?').join(',')})`, ...ids)).map(value => value.id));
+      return ids.filter(id => !known.has(id));
+    },
     // An owner-supplied PDF is an explicit new attempt for research that never
     // produced a draft; later phases keep their verified source.
     async manualSourceTarget(id, revision) {
@@ -220,6 +261,8 @@ export function createStore(db, clock = Date.now) {
       // Both conditional statements execute in one D1 transaction. Cancellation cannot interleave.
       const results = await db.batch([
         prepare("UPDATE artifacts SET committed=0 WHERE job_id=? AND phase='render' AND attempt_id<>? AND EXISTS (SELECT 1 FROM jobs WHERE id=? AND status='running' AND phase='render' AND lease_hash=? AND lease_expires_at>?)", id, active.attempt_id, id, hash, now),
+        // New research (first run or restart) replaces earlier research files instead of listing both.
+        prepare("UPDATE artifacts SET committed=0 WHERE job_id=? AND phase='research' AND attempt_id<>? AND EXISTS (SELECT 1 FROM jobs WHERE id=? AND status='running' AND phase='research' AND review_requested=0 AND lease_hash=? AND lease_expires_at>?)", id, active.attempt_id, id, hash, now),
         prepare(`UPDATE artifacts SET committed=1 WHERE job_id=? AND attempt_id=? AND id IN (${placeholders}) AND EXISTS (SELECT 1 FROM jobs WHERE id=? AND status='running' AND lease_hash=? AND lease_expires_at>?)`, id, active.attempt_id, ...ids, id, hash, now),
         ...(hasReviews ? [prepare(`INSERT INTO review_runs(id,job_id,draft_revision,reviews,created_at)
           SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM jobs WHERE id=? AND status='running' AND lease_hash=? AND lease_expires_at>?)`, runId, id, draftRevision, JSON.stringify(payload.metadata.reviews), now, id, hash, now)] : []),

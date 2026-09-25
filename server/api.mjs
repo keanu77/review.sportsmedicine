@@ -19,6 +19,17 @@ function storage(env) {
   if (!env.ARTIFACTS) throw new ApiError(503, 'STORAGE_NOT_CONFIGURED', 'Artifact storage is not configured');
   return env.ARTIFACTS;
 }
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+// Removes every object under a job prefix, including files from failed or replaced attempts.
+async function deletePrefix(bucket, prefix) {
+  let cursor;
+  do {
+    const page = await bucket.list({ prefix, cursor });
+    const keys = page.objects.map(object => object.key);
+    if (keys.length) await bucket.delete(keys);
+    cursor = page.truncated ? page.cursor : undefined;
+  } while (cursor);
+}
 function fileIds(value) {
   if (!Array.isArray(value) || value.length < 1 || value.length > MAX_ATTEMPT_FILES || new Set(value).size !== value.length) throw new ValidationError(`artifacts must contain 1–${MAX_ATTEMPT_FILES} unique file IDs`);
   return value.map((id) => safeId(id, 'file id'));
@@ -79,10 +90,26 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
           return json({ runs: await store.reviews(id) });
         }
       }
-      const jobPath = path.match(/^\/jobs\/([^/]+)(?:\/(draft|render|cancel|retry|restore|review))?$/);
+      const jobPath = path.match(/^\/jobs\/([^/]+)(?:\/(draft|render|cancel|retry|restore|review|restart))?$/);
       if (jobPath) {
         const id = safeId(jobPath[1]); const action = jobPath[2];
         if (!action && method === 'GET') return json({ job: await store.get(id) });
+        if (!action && method === 'DELETE') {
+          await store.remove(id, validateRevision(Number(url.searchParams.get('revision'))));
+          // Database rows go first so a storage failure never leaves a job pointing at missing files.
+          await deletePrefix(storage(env), `jobs/${id}/`);
+          return json({ deleted: id });
+        }
+        if (!action && method === 'PATCH') {
+          const data = await body(request);
+          const { job, droppedKey } = await store.updateIdentity(id, validateRevision(data.revision), normalizeInput(data.input), data.title === undefined ? '' : text(data.title, 'title', 1000, { empty: true }));
+          if (droppedKey) await storage(env).delete(droppedKey).catch(() => {});
+          return json({ job });
+        }
+        if (action === 'restart' && method === 'POST') {
+          const data = await body(request);
+          return json({ job: await store.restart(id, validateRevision(data.revision)) });
+        }
         if (action === 'draft' && method === 'PATCH') {
           const data = await body(request);
           return json({ job: await store.edit(id, validateRevision(data.revision), validateDraft(data.draft), null, data.checkpoint === true) });
@@ -117,6 +144,11 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         if (previousKey && previousKey !== key) await bucket.delete(previousKey).catch(() => {});
         return json({ job });
       }
+      if (sourcePath && method === 'DELETE') {
+        const { job, key } = await store.detachManualSource(safeId(sourcePath[1]), validateRevision(Number(url.searchParams.get('revision'))));
+        await storage(env).delete(key).catch(() => {});
+        return json({ job });
+      }
       const filePath = path.match(/^\/jobs\/([^/]+)\/files\/([^/]+)$/);
       if (filePath && method === 'GET') {
         const artifact = await store.artifact(safeId(filePath[1]), safeId(filePath[2], 'file id'));
@@ -127,6 +159,11 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
       }
     } else {
       if (path === '/health' && method === 'GET') return json({ ok: true, activeJobs: await store.activeJobs(), credentialExpiresAt: worker.expiresAt });
+      if (path === '/workspace/unknown' && method === 'POST') {
+        const data = await body(request);
+        if (!Array.isArray(data.ids) || data.ids.length > 500 || !data.ids.every(id => typeof id === 'string' && UUID.test(id))) throw new ValidationError('ids must be at most 500 job UUIDs');
+        return json({ unknown: await store.unknownJobs([...new Set(data.ids)]) });
+      }
       if (path === '/claim' && method === 'POST') {
         const data = await body(request);
         const capabilities = data.capabilities ?? {};

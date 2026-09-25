@@ -94,7 +94,10 @@ try {
   assert.equal((await fetch(`${origin}/api/worker/jobs/manual-job/source`, { headers: { Authorization: `Bearer ${workerToken}`, 'X-Lease-Token': leaseToken } })).status, 409);
   assert.equal((await api('/jobs/manual-job/fail', { leaseToken: manualClaim.data.leaseToken, code: 'FULLTEXT_MANUAL_MISMATCH', message: 'fixture' })).response.status, 200);
   assert.equal((await api('/claim', { workerId: 'smoke', capabilities: {} })).data.job, null);
-  console.log('PASS: real local Pages Functions + D1/R2; atomic claim, lease-bound owner-upload read with integrity refusal, authenticated upload, idempotent retry, conflicting retry rejection, hash, heartbeat, completion, stale lease, anonymous owner/file denial.');
+  const unknownId = '00000000-0000-4000-8000-000000000001';
+  const unknown = await api('/workspace/unknown', { ids: [unknownId] });
+  assert.equal(unknown.response.status, 200); assert.deepEqual(unknown.data.unknown, [unknownId]);
+  console.log('PASS: real local Pages Functions + D1/R2; atomic claim, lease-bound owner-upload read with integrity refusal, workspace cleanup lookup, authenticated upload, idempotent retry, conflicting retry rejection, hash, heartbeat, completion, stale lease, anonymous owner/file denial.');
   console.log('Owner JWT success is covered by signed-JWT tests; no local authentication bypass is enabled.');
 } catch (error) {
   if (logs) console.error(logs);

@@ -117,6 +117,13 @@ export function readRecovery(owner: string, job: string): { snapshot?: EditorSna
     return { snapshot: { ...value, pendingSave: value.pendingSave || !previousKey } };
   } catch { return { error: '無法讀取本機復原副本；請確認瀏覽器允許儲存資料。' }; }
 }
+/** A deleted job leaves no local recovery copy in any tab of this browser. */
+export function removeRecovery(owner: string, job: string): void {
+  try {
+    for (const key of Object.keys(localStorage).filter(key => key.startsWith(baseKey(owner, job)))) localStorage.removeItem(key);
+    sessionStorage.removeItem(baseKey(owner, job));
+  } catch { /* Storage may be unavailable; the server copy is already gone. */ }
+}
 export function writeRecovery(owner: string, job: string, snapshot: EditorSnapshot, dirty: boolean): string | null {
   if (!isPrivateSessionActive()) return null;
   try {

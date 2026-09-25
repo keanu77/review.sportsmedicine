@@ -95,6 +95,8 @@ test("owner session opens source, honest reviewer states and editable cards", as
 });
 
 test("save sends expected revision; render uses newly saved text and selected design", async ({ page }) => {
+  // Smooth scrolling can outlast the 1.5 s autosave; this test is about the explicit save click.
+  await page.emulateMedia({ reducedMotion: "reduce" });
   const state = await apiFixture(page); await page.goto("/workbench/");
   await page.getByLabel("Facebook 貼文").fill("已人工核對的文字");
   await page.getByRole("button", { name: "儲存文字", exact: true }).click();
@@ -326,6 +328,85 @@ test("jobs that already have a draft never offer a replacement source upload", a
   await page.goto("/workbench/");
   await expect(page.getByRole("button", { name: "重試任務", exact: true })).toBeVisible();
   await expect(page.getByText("上傳自己下載的全文 PDF")).toHaveCount(0);
+});
+
+function captureMutations(page: Page, pattern: string, respond: (request: { method: string; url: URL; body: any }) => unknown) {
+  const seen: { method: string; url: URL; body: any }[] = [];
+  return page.route(pattern, async route => {
+    const request = route.request(); if (request.method() === "GET") return route.fallback();
+    const entry = { method: request.method(), url: new URL(request.url()), body: request.postData() ? request.postDataJSON() : null };
+    seen.push(entry); await route.fulfill({ json: respond(entry) });
+  }).then(() => seen);
+}
+
+test("delete asks first, sends the revision, and removes the job from the list for good", async ({ page }) => {
+  const doomed = sampleJob({ id: "job-doomed", title: "Doomed paper", status: "failed", stage: "failed", revision: 7, createdAt: "2026-09-22T00:00:00Z" });
+  const other = sampleJob({ id: "job-other", title: "Other paper", createdAt: "2026-09-21T00:00:00Z" });
+  const state = await apiFixture(page, [doomed, other]);
+  const seen = await captureMutations(page, "**/api/private/jobs/job-doomed?*", () => { state.jobs = state.jobs.filter(job => job.id !== "job-doomed"); return { deleted: "job-doomed" }; });
+  await page.goto("/workbench/");
+  await expect(page.getByRole("heading", { name: "Doomed paper" })).toBeVisible();
+  page.once("dialog", dialog => { expect(dialog.message()).toContain("永久刪除"); void dialog.dismiss(); });
+  await page.getByRole("button", { name: "刪除任務", exact: true }).click();
+  expect(seen).toHaveLength(0);
+  page.once("dialog", dialog => void dialog.accept());
+  await page.getByRole("button", { name: "刪除任務", exact: true }).click();
+  await expect(page.getByText("任務已刪除。")).toBeVisible();
+  await expect(page.getByRole("button", { name: /Doomed paper/ })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Other paper" })).toBeVisible();
+  expect(seen.map(entry => [entry.method, entry.url.searchParams.get("revision")])).toEqual([["DELETE", "7"]]);
+});
+
+test("a running job offers no delete, restart or identity edit", async ({ page }) => {
+  await apiFixture(page, [sampleJob({ status: "running", stage: "drafting", draft: null })]);
+  await page.goto("/workbench/");
+  await expect(page.getByRole("button", { name: "取消任務", exact: true })).toBeVisible();
+  for (const name of ["刪除任務", "從頭重跑", "編輯標題／DOI"]) await expect(page.getByRole("button", { name, exact: true })).toHaveCount(0);
+});
+
+test("restart confirms model usage, refuses while edits are unsaved, and posts the revision", async ({ page }) => {
+  const state = await apiFixture(page, [sampleJob({ status: "completed", stage: "completed", revision: 9 })]);
+  const seen = await captureMutations(page, "**/api/private/jobs/job-test-1/restart", () => {
+    const job = { ...state.jobs[0], status: "queued" as const, stage: "queued", phase: "research" as const, revision: 10 }; state.jobs[0] = job; return { job };
+  });
+  await page.goto("/workbench/");
+  await page.getByLabel("Facebook 貼文").fill("尚未儲存的修改");
+  await page.getByRole("button", { name: "從頭重跑", exact: true }).click();
+  await expect(page.getByRole("alert").filter({ hasText: "尚未儲存" })).toBeVisible();
+  expect(seen).toHaveLength(0);
+  await page.getByLabel("Facebook 貼文").fill("初始 Facebook 草稿");
+  page.once("dialog", dialog => { expect(dialog.message()).toContain("模型用量"); void dialog.accept(); });
+  await page.getByRole("button", { name: "從頭重跑", exact: true }).click();
+  await expect(page.getByText("排隊中").first()).toBeVisible();
+  expect(seen.map(entry => [entry.method, entry.body])).toEqual([["POST", { revision: 9 }]]);
+});
+
+test("identity edit before a draft sends the new identifier and title; removing an uploaded PDF asks first", async ({ page }) => {
+  const failed = sampleJob({ id: "job-edit", title: "Old title", input: "10.1234/typo", status: "failed", stage: "failed", draft: null, revision: 3,
+    metadata: { manualSource: { name: "mine.pdf", size: 10, sha256: "x", uploadedAt: "2026-09-25T00:00:00Z" } } });
+  const state = await apiFixture(page, [failed]);
+  const seen = await captureMutations(page, "**/api/private/jobs/job-edit**", entry => {
+    const current = state.jobs[0];
+    const job = entry.method === "PATCH" ? { ...current, input: "10.5555/fixed", title: entry.body.title, revision: current.revision + 1, metadata: {} }
+      : { ...current, revision: current.revision + 1, metadata: {} };
+    state.jobs[0] = job; return { job };
+  });
+  await page.goto("/workbench/");
+  await expect(page.getByText("使用你上傳的 PDF：mine.pdf")).toBeVisible();
+  await page.getByRole("button", { name: "編輯標題／DOI", exact: true }).click();
+  const form = page.locator(".wb-manage form");
+  await form.getByLabel("DOI、PMID 或 PMCID").fill("10.5555/fixed");
+  await expect(form.getByText("之前上傳的 PDF 會一併移除")).toBeVisible();
+  await form.getByLabel("文獻標題（選填）").fill("Fixed title");
+  await form.getByRole("button", { name: "儲存標題與識別碼" }).click();
+  await expect(page.getByRole("heading", { name: "Fixed title" })).toBeVisible();
+  expect(seen[0].method).toBe("PATCH"); expect(seen[0].body).toEqual({ revision: 3, input: "10.5555/fixed", title: "Fixed title" });
+  state.jobs[0] = { ...state.jobs[0], metadata: { manualSource: { name: "second.pdf", size: 10, sha256: "y", uploadedAt: "2026-09-25T00:00:00Z" } }, revision: 5 };
+  await page.reload();
+  page.once("dialog", dialog => void dialog.accept());
+  await page.getByRole("button", { name: "移除上傳的 PDF", exact: true }).click();
+  await expect(page.getByText(/使用你上傳的 PDF/)).toHaveCount(0);
+  expect(seen[1].method).toBe("DELETE"); expect(seen[1].url.pathname).toBe("/api/private/jobs/job-edit/source"); expect(seen[1].url.searchParams.get("revision")).toBe("5");
 });
 
 test("idle edits autosave and display the saved time", async ({ page }) => {

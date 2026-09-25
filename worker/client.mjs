@@ -1,7 +1,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, readdir, rm } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { resolvePaper, downloadPaper, importManualPaper, loadPaper } from './paper.mjs';
 import { generateDraft } from './draft.mjs';
@@ -71,6 +71,32 @@ export function sourceArtifacts(source) {
   ];
 }
 
+const JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+// Delete local folders of jobs the owner deleted. Only UUID folders the server
+// explicitly reports as unknown are removed; any API failure removes nothing.
+export async function pruneWorkspace(api, workspace, { signal } = {}) {
+  const local = (await readdir(workspace, { withFileTypes: true })).filter(entry => entry.isDirectory() && JOB_ID.test(entry.name)).map(entry => entry.name);
+  if (!local.length) return [];
+  const { unknown } = await api.call('/workspace/unknown', { data: { ids: local.slice(0, 500) }, signal });
+  const removable = (Array.isArray(unknown) ? unknown : []).filter(id => local.includes(id));
+  for (const id of removable) await rm(path.join(workspace, id), { recursive: true, force: true });
+  return removable;
+}
+
+// An owner restart discards cached source and model output once per request.
+export async function prepareResearchDirectory(directory, restartRequest) {
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  if (!restartRequest) return;
+  const id = safeId(restartRequest.id, 'restart request');
+  const marker = path.join(directory, '.restart-request');
+  let handled = null; try { handled = await readFile(marker, 'utf8'); } catch {}
+  if (handled === id) return;
+  await rm(directory, { recursive: true, force: true });
+  await mkdir(directory, { recursive: true, mode: 0o700 });
+  await writeFile(marker, id, { mode: 0o600 });
+}
+
 export async function processJob(api, claimed, config, { signal, onStage = console.log } = {}) {
   const { job, leaseToken } = claimed;
   safeId(job.id, 'job id');
@@ -92,6 +118,7 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
     let files, result;
     if (job.phase === 'research') {
       const directory = path.join(jobDir, 'research');
+      await prepareResearchDirectory(directory, job.metadata?.restartRequest);
       await update('resolving');
       const manual = job.metadata?.manualSource;
       const paper = await resolvePaper(job.input, { email: config.email, title: job.title && job.title !== job.input ? job.title : undefined, signal: combined, requireFullText: !manual });
@@ -148,11 +175,17 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
   } finally { clearInterval(timer); controller.abort(new Error('工作執行結束')); }
 }
 
+const PRUNE_INTERVAL_MS = 6 * 3600000;
 export async function runWorker(config, { once = false, signal, onStage = console.log, capabilities = {} } = {}) {
   await mkdir(config.workspace, { recursive: true, mode: 0o700 });
   const api = new WorkerAPI(config);
-  let lastExpiryWarning = 0;
+  let lastExpiryWarning = 0, lastPrune = 0;
   while (!signal?.aborted) {
+    if (Date.now() - lastPrune > PRUNE_INTERVAL_MS) {
+      lastPrune = Date.now();
+      try { const removed = await pruneWorkspace(api, config.workspace, { signal }); if (removed.length) onStage(`已清除 ${removed.length} 個已刪除任務的本機資料`); }
+      catch (error) { if (signal?.aborted) break; onStage(`本機資料清理略過：${error.message}`); }
+    }
     try {
       const claimed = await api.call('/claim', { data: { workerId: config.workerId, capabilities: { ...capabilities, draftProvider: config.provider, reviewDraft: true } }, signal });
       if (Date.parse(claimed.credentialExpiresAt) - Date.now() <= 14 * 86400000 && Date.now() - lastExpiryWarning > 86400000) {

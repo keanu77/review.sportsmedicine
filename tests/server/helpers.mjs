@@ -47,7 +47,12 @@ export async function fixture() {
     DB: sqliteD1(), OWNER_EMAIL: 'owner@example.com', ACCESS_TEAM_DOMAIN: 'test.cloudflareaccess.com', ACCESS_AUD: 'test-audience', WORKER_TOKEN: '0123456789abcdef0123456789abcdef',
     ARTIFACTS: {
       async put(key, bytes, options) { objects.set(key, { bytes, ...options }); return {}; },
-      async delete(key) { objects.delete(key); },
+      async delete(keys) { for (const key of [keys].flat()) objects.delete(key); },
+      async list({ prefix = '', cursor } = {}) {
+        const keys = [...objects.keys()].filter(key => key.startsWith(prefix)).sort();
+        const start = cursor ? Number(cursor) : 0, page = keys.slice(start, start + 2);
+        return { objects: page.map(key => ({ key })), truncated: start + 2 < keys.length, cursor: String(start + 2) };
+      },
       async get(key) { const object = objects.get(key); return object ? { body: object.bytes, size: object.bytes.length, customMetadata: object.customMetadata } : null; },
     },
   };

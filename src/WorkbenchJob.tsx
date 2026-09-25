@@ -7,6 +7,7 @@ export type { EditorSnapshot } from "./draftRecovery";
 import { errorText, fetchArtifact, privateApi } from "./privateApi";
 import { describeJobError } from "./jobError";
 import ManualSourceUpload, { canUploadSource } from "./ManualSourceUpload";
+import JobManagement from "./JobManagement";
 
 export const STATUS_LABELS: Record<JobStatus, string> = { queued: "排隊中", running: "處理中", needs_review: "待你審閱", completed: "輸出完成", failed: "執行失敗", cancelled: "已取消" };
 const PALETTES: [Design["palette"], string][] = [["blue", "白藍 · 專業"], ["cyan", "青藍"], ["emerald", "翡翠綠"], ["orange-light", "柔橘"], ["gold", "金色"], ["orange", "暖橘"], ["sky", "天空藍"]];
@@ -15,7 +16,7 @@ function record(value: unknown): Record<string, unknown> { return value && typeo
 function string(value: unknown): string { return typeof value === "string" ? value : typeof value === "number" ? String(value) : ""; }
 function safeUrl(value: unknown): string | null { const raw = string(value); try { const url = new URL(raw); return ["https:", "http:"].includes(url.protocol) ? url.href : null; } catch { return null; } }
 
-export default function WorkbenchJob({ job, onUpdate, cache, owner }: { job: Job; owner: string; onUpdate: (job: Job) => void; cache: React.MutableRefObject<Map<string, EditorSnapshot>> }) {
+export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: { job: Job; owner: string; onUpdate: (job: Job) => void; onDelete: (id: string) => void; cache: React.MutableRefObject<Map<string, EditorSnapshot>> }) {
   const [recovery] = useState(() => owner ? readRecovery(owner, job.id) : {});
   const cached = cache.current.get(`${owner}/${job.id}`) ?? recovery.snapshot;
   const synced = cached && JSON.stringify(cached.draft) === JSON.stringify(job.draft) && (!cached.pendingSave || job.revision > cached.revision);
@@ -89,7 +90,6 @@ export default function WorkbenchJob({ job, onUpdate, cache, owner }: { job: Job
   const editCard = (pageIndex: number, cardIndex: number, field: "title" | "body", value: string) => changeDraft(current => current ? { ...current, pages: current.pages.map((page, index) => index === pageIndex ? { ...page, cards: page.cards?.map((card, cardNumber) => cardNumber === cardIndex ? { ...card, [field]: value } : card) } : page) } : current);
 
   const jobError = job.error ? describeJobError(job.error) : null;
-  const manualSource = job.metadata.manualSource ? record(job.metadata.manualSource) : null;
   return <div className="wb-job" aria-busy={Boolean(busy)}>
     <section className="wb-panel">
       <div className="wb-section-heading"><p className="wb-eyebrow">CURRENT PROJECT</p><span className={`wb-status status-${job.status}`}>{STATUS_LABELS[job.status]}</span></div>
@@ -101,7 +101,7 @@ export default function WorkbenchJob({ job, onUpdate, cache, owner }: { job: Job
         {["queued", "running", "needs_review"].includes(job.status) && <button className="wb-button is-quiet" disabled={Boolean(busy)} onClick={() => void operate("cancel")}>{busy === "cancel" ? "取消中…" : "取消任務"}</button>}
         {["failed", "cancelled"].includes(job.status) && <button className="wb-button" disabled={Boolean(busy)} onClick={() => void operate("retry")}>{busy === "retry" ? "重新排隊中…" : "重試任務"}</button>}
       </div>
-      {manualSource && !canUploadSource(job) && <p className="wb-small wb-wrap">使用你上傳的 PDF：{string(manualSource.name)}</p>}
+      <JobManagement job={job} dirty={dirty || designDirty} onUpdate={onUpdate} onDelete={onDelete} />
       {canUploadSource(job) && <ManualSourceUpload key={job.revision} job={job} onUpdate={onUpdate} />}
     </section>
 

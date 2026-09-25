@@ -3,7 +3,7 @@ import { flushSync } from "react-dom";
 import type { Design, Job } from "../shared/contracts";
 import { errorText, latestJob, mergeJobList, privateApi } from "./privateApi";
 import WorkbenchJob, { STATUS_LABELS, type EditorSnapshot } from "./WorkbenchJob";
-import { clearExpiredRecoveries, isPrivateSessionActive, logoutPrivateSession, watchPrivateSession } from "./draftRecovery";
+import { clearExpiredRecoveries, isPrivateSessionActive, logoutPrivateSession, removeRecovery, watchPrivateSession } from "./draftRecovery";
 import "./workbench.css";
 
 interface Session { email: string; worker: { lastSeen: string; capabilities: unknown } | null; workerCredentialExpiresAt?: string }
@@ -28,6 +28,8 @@ export default function Workbench() {
   const createController = useRef<AbortController | null>(null);
   const editorCache = useRef(new Map<string, EditorSnapshot>());
   const selectedRef = useRef(selected);
+  // A poll started before a delete must not bring the deleted job back.
+  const deleted = useRef(new Set<string>());
   selectedRef.current = selected;
 
   useEffect(() => {
@@ -54,8 +56,9 @@ export default function Workbench() {
         if (controller.signal.aborted || !isPrivateSessionActive()) return;
         if (!nextSession.email || !Array.isArray(list.jobs)) throw new Error("私人服務回應格式無法辨識。");
         setSession(nextSession);
-        setJobs(current => mergeJobList(current, list.jobs));
-        setSelected(current => current ?? list.jobs[0]?.id ?? null);
+        const visible = list.jobs.filter(item => !deleted.current.has(item.id));
+        setJobs(current => mergeJobList(current, visible).filter(item => !deleted.current.has(item.id)));
+        setSelected(current => current ?? visible[0]?.id ?? null);
         setError("");
       } catch (cause) {
         if (!controller.signal.aborted && isPrivateSessionActive()) setError(errorText(cause));
@@ -94,8 +97,18 @@ export default function Workbench() {
 
   const updateJob = (next: Job) => {
     if (!isPrivateSessionActive()) return;
+    if (deleted.current.has(next.id)) return;
     if (selectedRef.current === next.id) setJob(current => latestJob(current, next));
     setJobs(current => mergeJobList(current, [next]));
+  };
+  const deleteJob = (id: string) => {
+    if (!isPrivateSessionActive()) return;
+    deleted.current.add(id);
+    editorCache.current.delete(`${session?.email || ""}/${id}`);
+    if (session?.email) removeRecovery(session.email, id);
+    const remaining = jobs.filter(item => item.id !== id);
+    setJobs(remaining); setJob(null); selectedRef.current = remaining[0]?.id ?? null; setSelected(remaining[0]?.id ?? null);
+    setNotice("任務已刪除。");
   };
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -176,7 +189,7 @@ export default function Workbench() {
 
       <div className="wb-main">
         {detailError && <div role="alert" className="wb-alert">{detailError}</div>}
-        {job ? <WorkbenchJob key={job.id} job={job} onUpdate={updateJob} cache={editorCache} owner={session?.email || ""} /> : selected ? <div className="wb-panel" role="status">{detailError ? "無法取得任務，請重新整理後再試。" : "正在取得任務…"}</div> : <section className="wb-empty"><div aria-hidden="true" className="wb-paper-icon">↗</div><p className="wb-eyebrow">YOUR NEXT STORY</p><h2>把重點，留給讀者。</h2><p>這裡會保留論文來源、草稿與每次審核結果。<br />確認文字後，再生成可以下載的社群素材。</p><div className="wb-empty-cards" aria-hidden="true"><div /><div /><div /></div></section>}
+        {job ? <WorkbenchJob key={job.id} job={job} onUpdate={updateJob} onDelete={deleteJob} cache={editorCache} owner={session?.email || ""} /> : selected ? <div className="wb-panel" role="status">{detailError ? "無法取得任務，請重新整理後再試。" : "正在取得任務…"}</div> : <section className="wb-empty"><div aria-hidden="true" className="wb-paper-icon">↗</div><p className="wb-eyebrow">YOUR NEXT STORY</p><h2>把重點，留給讀者。</h2><p>這裡會保留論文來源、草稿與每次審核結果。<br />確認文字後，再生成可以下載的社群素材。</p><div className="wb-empty-cards" aria-hidden="true"><div /><div /><div /></div></section>}
       </div>
     </div>
     <p className="wb-footer">私人檔案只提供登入者下載。工作台輸出檔案，由你確認後自行發布至 FB／IG。</p>
