@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { canonicalPaperId, doiOf, paperAliases, paperKey, sourceInput, uniquePapers, workbenchUrl } from "../../src/identity.ts";
+import { canonicalPaperId, doiOf, paperAliases, paperKey, sourceInput, uniquePapers } from "../../src/identity.ts";
 import { toBibTeX, toVancouver } from "../../src/citation.ts";
 import { enrichItem } from "../../src/enrich.ts";
 import { studyTypeOf } from "../../src/studyType.ts";
@@ -15,8 +15,7 @@ test("identifier selection never sends an arbitrary publisher URL; legacy title 
   assert.equal(canonicalPaperId(enriched), "doi:10.1234/acl(2026)");
   assert.ok(paperAliases(enriched).includes(paperKey(item)));
   assert.ok(paperAliases(enriched).includes("pmid:12345678"));
-  assert.equal(new URL(workbenchUrl(item), "https://review.test").searchParams.has("input"), false);
-  assert.equal(new URL(workbenchUrl(enriched), "https://review.test").searchParams.get("input"), "10.1234/acl(2026)");
+  assert.equal(sourceInput(enriched), "10.1234/acl(2026)");
 });
 
 test("DOI parsing preserves valid parentheses, omits tracking query, tolerates malformed percent encoding", () => {

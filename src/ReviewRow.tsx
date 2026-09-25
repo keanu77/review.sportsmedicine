@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { copyText, toBibTeX, toVancouver } from "./citation";
 import { studyTypeLabel } from "./studyType";
-import { canonicalPaperId, workbenchUrl } from "./identity";
+import { canonicalPaperId } from "./identity";
 import type { Item } from "./types";
 
 // 單篇文獻列。主索引的疾病展開清單、搜尋結果與「本月新增」共用。
@@ -143,7 +143,6 @@ export default function ReviewRow({
 
           <div className="mt-1.5 flex flex-wrap items-center gap-2 print:hidden">
             <a href={`#paper=${encodeURIComponent(canonicalPaperId(item))}`} className={`${ACTION_CLASS} border border-linestrong text-body hover:bg-surface-alt dark:text-body-dark dark:border-linestrong-dark`} onClick={onOpen}>文獻詳情</a>
-            <a href={workbenchUrl(item)} className={`${ACTION_CLASS} border border-brand/30 text-brand hover:bg-brand/10 dark:text-brand-dark`}>製作社群素材</a>
             {item.free && (
               <a
                 href={item.freeUrl || item.url}

@@ -38,7 +38,7 @@ test("public details have stable identifiers and distinguish free flags from ver
   await results.getByRole("link", { name: "文獻詳情", exact: true }).click();
   await expect(page).toHaveURL(/#paper=doi%3A10\.1234%2Fprior/);
   await expect(page.getByText(/尚未逐篇驗證 PDF 與再利用授權/)).toBeVisible();
-  await expect(page.getByRole("link", { name: "製作社群素材", exact: true })).toHaveAttribute("href", /input=10\.1234%2Fprior/);
+  await expect(page.locator('a[href*="workbench"]')).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("An Umbrella Review Following PRIOR Guideline");
 });
@@ -53,9 +53,19 @@ test("same-title papers with different DOIs keep separate sources and favorites"
   await page.goto("/?q=PRIOR");
   const rows = page.getByRole("region", { name: "搜尋結果" }).getByRole("listitem");
   await expect(rows).toHaveCount(2);
-  await expect(rows.nth(0).getByRole("link", { name: "製作社群素材" })).toHaveAttribute("href", /input=10\.1234%2Fsecond/);
-  await expect(rows.nth(1).getByRole("link", { name: "製作社群素材" })).toHaveAttribute("href", /input=10\.1234%2Ffirst/);
+  await expect(rows.nth(0).getByRole("link", { name: "文獻詳情" })).toHaveAttribute("href", /doi%3A10\.1234%2Fsecond/);
+  await expect(rows.nth(1).getByRole("link", { name: "文獻詳情" })).toHaveAttribute("href", /doi%3A10\.1234%2Ffirst/);
   await rows.nth(0).getByRole("button", { name: "收藏", exact: true }).click();
   await expect(rows.nth(0).getByRole("button", { name: "已收藏", exact: true })).toBeVisible();
   await expect(rows.nth(1).getByRole("button", { name: "收藏", exact: true })).toBeVisible();
+});
+
+test("public pages never link to the private workbench, which stays reachable by typing its path", async ({ page }) => {
+  await sourceFixture(page); await page.goto("/?q=PRIOR");
+  await expect(page.getByRole("region", { name: "搜尋結果" }).getByRole("listitem").first()).toBeVisible();
+  await expect(page.locator('a[href*="workbench"]')).toHaveCount(0);
+  await expect(page.getByText("私人工作台")).toHaveCount(0);
+  await page.goto("/workbench/");
+  await expect(page.getByRole("navigation", { name: "主要導覽" }).getByRole("link", { name: "私人工作台" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("navigation", { name: "主要導覽" }).getByRole("link", { name: "公開文獻索引" })).toBeVisible();
 });

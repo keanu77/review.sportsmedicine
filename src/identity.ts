@@ -123,10 +123,3 @@ export function uniquePapers(items: Item[]): Item[] {
   }
   return [...groups].map(group => ({ ...group.item, identityAliases: [...group.aliases] }));
 }
-
-export function workbenchUrl(item: Item): string {
-  const params = new URLSearchParams({ title: item.title });
-  const input = sourceInput(item);
-  if (input) params.set("input", input);
-  return `/workbench/?${params}`;
-}

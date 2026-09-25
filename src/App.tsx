@@ -16,7 +16,8 @@ export default function App() {
       <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-3 px-4 pt-3">
         <nav aria-label="主要導覽" className="flex flex-wrap gap-2 text-sm">
           <a href="/" aria-current={!isWorkbench ? "page" : undefined} className="inline-flex min-h-11 items-center rounded px-2 font-medium text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand-dark">公開文獻索引</a>
-          <a href="/workbench/" aria-current={isWorkbench ? "page" : undefined} className="inline-flex min-h-11 items-center rounded px-2 font-medium text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand-dark">私人工作台</a>
+          {/* The private workbench is reached by typing /workbench/; public pages never link to it. */}
+          {isWorkbench && <a href="/workbench/" aria-current="page" className="inline-flex min-h-11 items-center rounded px-2 font-medium text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand-dark">私人工作台</a>}
         </nav>
         <a
           href="https://sportsmedicine.tw/"
