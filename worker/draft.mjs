@@ -51,7 +51,7 @@ export async function runDraftModel(provider, prompt, directory, { signal, prefi
 // Owner-requested revision: apply the chosen verified findings and gate issues to
 // the saved draft. Locked claims are put back verbatim after the model runs, so
 // the owner's Gate A decisions stay valid; rejected claims never return.
-export async function reviseDraft(source, draft, request, directory, { signal, provider = process.env.REVIEW_MODEL_PROVIDER ?? 'codex', allowRetry = false, run = runDraftModel } = {}) {
+export async function reviseDraft(source, draft, request, directory, { signal, provider = process.env.REVIEW_MODEL_PROVIDER ?? 'claude', allowRetry = false, run = runDraftModel } = {}) {
   if (!['codex', 'claude'].includes(provider)) throw new Error('REVIEW_MODEL_PROVIDER 只能是 codex 或 claude');
   if (!/^[a-zA-Z0-9-]{1,64}$/.test(request?.id ?? '')) throw new Error('修訂請求缺少識別碼');
   if (!request.lockedClaims?.length) throw new Error('沒有已鎖定的主張，請先在研究主張鎖定至少一條再修訂');
@@ -71,7 +71,7 @@ export async function reviseDraft(source, draft, request, directory, { signal, p
   return revised;
 }
 
-export async function generateDraft(source, directory, { signal, provider = process.env.REVIEW_MODEL_PROVIDER ?? 'codex', allowRetry = false } = {}) {
+export async function generateDraft(source, directory, { signal, provider = process.env.REVIEW_MODEL_PROVIDER ?? 'claude', allowRetry = false } = {}) {
   if (!['codex', 'claude'].includes(provider)) throw new Error('REVIEW_MODEL_PROVIDER 只能是 codex 或 claude');
   const analysis = analysisText(source);
   if (analysis.text.length > 160000) throw new Error('全文超過第一版單篇處理上限；需要分段全文分析，未產生摘要替代稿');

@@ -72,13 +72,17 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
           return json({ job: await store.create({ input: normalizeInput(data.input), title: data.title === undefined ? '' : text(data.title, 'title', 1000, { empty: true }), design: validateDesign(data.design) }) }, 201);
         }
       }
+      if (path === '/reviewer-stats' && method === 'GET') {
+        // Twelve months of seat results for the monthly seat review.
+        return json({ stats: await store.reviewerStats(clock() - 366 * 86400000) });
+      }
       const versionsPath = path.match(/^\/jobs\/([^/]+)\/versions(?:\/(\d+))?$/);
       if (versionsPath && method === 'GET') {
         const id = safeId(versionsPath[1]);
         return versionsPath[2] ? json({ version: await store.version(id, validateRevision(Number(versionsPath[2]))) })
           : json({ versions: await store.versions(id, url.searchParams.has('before') ? validateRevision(Number(url.searchParams.get('before'))) : undefined) });
       }
-      const reviewsPath = path.match(/^\/jobs\/([^/]+)\/reviews(?:\/([^/]+)\/findings\/(claude|gemini|grok)\/(\d+))?$/);
+      const reviewsPath = path.match(/^\/jobs\/([^/]+)\/reviews(?:\/([^/]+)\/findings\/(codex|claude|gemini|grok)\/(\d+))?$/);
       if (reviewsPath) {
         const id = safeId(reviewsPath[1]);
         if (!reviewsPath[2] && method === 'GET') return json({ runs: await store.reviews(id) });
@@ -86,8 +90,8 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
           const data = await body(request);
           if (!['pending','resolved','rejected'].includes(data.status)) throw new ValidationError('Invalid finding status');
           const reason = text(data.reason ?? '', 'reason', 2000, { empty: data.status !== 'rejected' });
-          await store.disposition(id, safeId(reviewsPath[2]), reviewsPath[3], Number(reviewsPath[4]), data.status, reason);
-          return json({ runs: await store.reviews(id) });
+          const job = await store.disposition(id, safeId(reviewsPath[2]), reviewsPath[3], Number(reviewsPath[4]), data.status, reason);
+          return json({ runs: await store.reviews(id), job });
         }
       }
       const jobPath = path.match(/^\/jobs\/([^/]+)(?:\/(draft|render|cancel|retry|restore|review|restart|claims|revise))?$/);
@@ -125,8 +129,7 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         if (action === 'render' && method === 'POST') {
           const data = await body(request);
           const revision = validateRevision(data.revision), design = validateDesign(data.design);
-          const accepted = await store.gate(id, revision, data.acceptWarnings === true);
-          return json({ job: await store.render(id, revision, design, accepted) });
+          return json({ job: await store.render(id, revision, design, await store.gate(id, revision, data.acceptWarnings === true)) });
         }
         if (action === 'claims' && method === 'PATCH') {
           const data = await body(request);
@@ -138,7 +141,7 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         if (action === 'revise' && method === 'POST') {
           const data = await body(request);
           const revision = validateRevision(data.revision);
-          if (!Array.isArray(data.findings) || data.findings.length > 20 || !data.findings.every(ref => ['claude', 'gemini', 'grok'].includes(ref?.provider) && Number.isInteger(ref.index) && ref.index >= 0 && ref.index < 100)) throw new ValidationError('findings must list up to 20 reviewer findings');
+          if (!Array.isArray(data.findings) || data.findings.length > 20 || !data.findings.every(ref => ['codex', 'claude', 'gemini', 'grok'].includes(ref?.provider) && Number.isInteger(ref.index) && ref.index >= 0 && ref.index < 100)) throw new ValidationError('findings must list up to 20 reviewer findings');
           const instructions = data.instructions === undefined ? '' : text(data.instructions, 'instructions', 1000, { empty: true });
           if (!data.findings.length && !instructions.trim()) throw new ValidationError('Choose findings or describe the change');
           return json({ job: await store.revise(id, revision, data.findings, instructions.trim()) });

@@ -4,6 +4,8 @@ import type { Design, Job } from "../shared/contracts";
 import { errorText, latestJob, mergeJobList, privateApi } from "./privateApi";
 import WorkbenchJob, { STATUS_LABELS, type EditorSnapshot } from "./WorkbenchJob";
 import { clearExpiredRecoveries, isPrivateSessionActive, logoutPrivateSession, removeRecovery, watchPrivateSession } from "./draftRecovery";
+import ReviewerStats from "./ReviewerStats";
+import { REVIEW_SEATS } from "../shared/quality.mjs";
 import "./workbench.css";
 
 interface Session { email: string; worker: { lastSeen: string; capabilities: unknown } | null; workerCredentialExpiresAt?: string }
@@ -138,7 +140,7 @@ export default function Workbench() {
   const credentialExpiresSoon = Number.isFinite(credentialExpiry) && credentialExpiry - Date.now() <= 14 * 86400000;
   const capabilities = session?.worker?.capabilities as { imageGeneration?: { available?: boolean }; reviewers?: Record<string, { available?: boolean; fix?: string }> } | undefined;
   const reviewers = Object.entries(capabilities?.reviewers ?? {});
-  const REVIEWER_NAMES: Record<string, string> = { claude: "Claude", gemini: "Gemini", grok: "Grok" };
+  const REVIEWER_NAMES = Object.fromEntries(Object.entries(REVIEW_SEATS).map(([name, seat]) => [name, `${seat.label}（${seat.role}）`]));
 
   if (locked) return <section className="workbench wb-panel" aria-labelledby="workbench-locked-heading">
     <h1 id="workbench-locked-heading">工作台已鎖定</h1>
@@ -189,6 +191,7 @@ export default function Workbench() {
         <section className="wb-panel" aria-labelledby="jobs-heading"><div className="wb-section-heading"><h2 id="jobs-heading">製作紀錄</h2><span className="wb-small">{jobs.length} 件</span></div>
           {jobs.length ? <ul className="wb-job-list">{jobs.map(item => <li key={item.id}><button onClick={() => setSelected(item.id)} aria-pressed={selected === item.id} className={selected === item.id ? "is-selected" : ""}><span className="wb-job-name">{item.title || item.input}</span><span className="wb-small">{STATUS_LABELS[item.status]} · {new Date(item.updatedAt).toLocaleDateString("zh-TW")}</span></button></li>)}</ul> : <p className="wb-small">{session ? "還沒有任務。加入一篇論文，開始製作。" : "登入私人工作台後顯示製作紀錄。"}</p>}
         </section>
+        <ReviewerStats enabled={Boolean(session)} />
       </aside>
 
       <div className="wb-main">

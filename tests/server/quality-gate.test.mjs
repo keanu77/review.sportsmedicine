@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fixture, fixtureDraft } from './helpers.mjs';
+import { fixture, fixtureDraft, primaryReview } from './helpers.mjs';
 import { claimKey } from '../../shared/quality.mjs';
 
 const read = async (f, id) => (await (await f.call(`/jobs/${id}`)).json()).job;
-async function drafted(f, draft = fixtureDraft, metadata = { source: 'full-text' }) {
+async function drafted(f, draft = fixtureDraft, metadata = { source: 'full-text', reviews: [primaryReview()] }) {
   const job = await f.create(); const { leaseToken } = await f.claim();
   await f.upload(job.id, leaseToken);
   await f.call(`/jobs/${job.id}/complete`, { method: 'POST', role: 'worker', data: { leaseToken, artifacts: ['source'], draft, metadata } });
@@ -51,7 +51,7 @@ test('hard errors such as simplified characters block; source-number mismatches 
   const blocked = await render(f, await read(f, simplified.id), { acceptWarnings: true });
   assert.equal(blocked.status, 409); assert.match((await blocked.json()).error.message, /簡體字/);
 
-  const numbers = await drafted(f, { ...fixtureDraft, post: '約85%在8週內回場' }, { sourceNumbers: ['12', '30'] });
+  const numbers = await drafted(f, { ...fixtureDraft, post: '約85%在8週內回場' }, { sourceNumbers: ['12', '30'], reviews: [primaryReview()] });
   await decide(f, numbers, fixtureDraft.claims[0], 'locked');
   const current = await read(f, numbers.id);
   const needsAck = await render(f, current);
@@ -94,4 +94,57 @@ test('revise needs a draft, a matching revision and something to do', async (t) 
   assert.equal((await f.call(`/jobs/${job.id}/revise`, { method: 'POST', data: { revision: job.revision, findings: [] } })).status, 400);
   assert.equal((await f.call(`/jobs/${job.id}/revise`, { method: 'POST', data: { revision: job.revision, findings: [], instructions: 'x'.repeat(1001) } })).status, 400);
   assert.equal((await f.call(`/jobs/${job.id}/revise`, { method: 'POST', data: { revision: job.revision, findings: [], instructions: '改短一點' } })).status, 200);
+});
+
+test('gate B: rendering waits for every primary finding; the rejection list is frozen with the render', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const finding = { severity: 'high', claim: '分母錯誤', reason: '原文 n=40', suggestion: '改為 40', locator: 'p:2', quote: 'n=40 athletes' };
+  const job = await drafted(f, fixtureDraft, { reviews: [primaryReview([finding, { ...finding, claim: '誇大療效' }]), { provider: 'grok', status: 'ran', findings: [finding] }] });
+  await decide(f, job, fixtureDraft.claims[0], 'locked');
+  const blocked = await render(f, await read(f, job.id));
+  assert.equal(blocked.status, 409); assert.match((await blocked.json()).error.message, /主審 Codex 還有 2 條/);
+  const { runs } = await (await f.call(`/jobs/${job.id}/reviews`)).json();
+  const settle = (index, status, reason = '') => f.call(`/jobs/${job.id}/reviews/${runs[0].id}/findings/codex/${index}`, { method: 'PATCH', data: { status, reason } });
+  assert.equal((await settle(1, 'rejected')).status, 400, 'a rejection needs a reason');
+  await settle(0, 'resolved');
+  const settled = await (await settle(1, 'rejected', '原文第 3 頁明寫 improved')).json();
+  assert.equal(settled.job.id, job.id, 'the updated job comes back for the gate');
+  assert.deepEqual(settled.job.metadata.reviewDispositions['codex:1'], { status: 'rejected', reason: '原文第 3 頁明寫 improved' });
+  const current = await read(f, job.id);
+  const queued = await render(f, current);
+  assert.equal(queued.status, 200, 'the open grok finding does not block');
+  const { job: rendering } = await queued.json();
+  assert.deepEqual(rendering.metadata.primaryRejections.map(item => [item.index, item.claim, item.rejection]), [[1, '誇大療效', '原文第 3 頁明寫 improved']]);
+});
+
+test('a job without a successful primary review cannot render until it is re-reviewed', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const job = await drafted(f, fixtureDraft, { reviews: [{ provider: 'codex', status: 'failed', error: 'timeout', findings: [] }] });
+  await decide(f, job, fixtureDraft.claims[0], 'locked');
+  const refused = await render(f, await read(f, job.id), { acceptWarnings: true });
+  assert.equal(refused.status, 409); assert.match((await refused.json()).error.message, /重新審核/);
+});
+
+test('seat statistics count confirmed and rejected findings and average durations per month', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const finding = { severity: 'low', claim: 'c', reason: 'r', suggestion: 's', locator: '', quote: '' };
+  const job = await drafted(f, fixtureDraft, { reviews: [primaryReview([finding, finding, finding]), { provider: 'grok', status: 'failed', findings: [], durationSeconds: 600 }] });
+  const { runs } = await (await f.call(`/jobs/${job.id}/reviews`)).json();
+  const settle = (index, status, reason = '') => f.call(`/jobs/${job.id}/reviews/${runs[0].id}/findings/codex/${index}`, { method: 'PATCH', data: { status, reason } });
+  await settle(0, 'resolved'); await settle(1, 'resolved'); await settle(2, 'rejected', '原文有寫');
+  const { stats } = await (await f.call('/reviewer-stats')).json();
+  const codex = stats.find(item => item.provider === 'codex'), grok = stats.find(item => item.provider === 'grok');
+  assert.deepEqual({ runs: codex.runs, ran: codex.ran, findings: codex.findings, resolved: codex.resolved, rejected: codex.rejected, averageSeconds: codex.averageSeconds }, { runs: 1, ran: 1, findings: 3, resolved: 2, rejected: 1, averageSeconds: 300 });
+  assert.deepEqual({ ran: grok.ran, averageSeconds: grok.averageSeconds }, { ran: 0, averageSeconds: 600 });
+  assert.match(codex.month, /^\d{4}-\d{2}$/);
+  assert.equal((await f.call('/reviewer-stats', { role: 'worker' })).status >= 400, true, 'owner only');
+});
+
+test('revise accepts primary findings by provider name', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const finding = { severity: 'high', claim: '分母錯誤', reason: 'r', suggestion: '改為 40', locator: 'p:2', quote: 'n=40 athletes' };
+  const job = await drafted(f, fixtureDraft, { reviews: [primaryReview([finding])] });
+  const response = await f.call(`/jobs/${job.id}/revise`, { method: 'POST', data: { revision: job.revision, findings: [{ provider: 'codex', index: 0 }] } });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).job.metadata.reviseRequest.findings[0].provider, 'codex');
 });

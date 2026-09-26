@@ -1,6 +1,6 @@
 import { ApiError, conflict, staleLease } from './errors.mjs';
 import { sha256 } from './auth.mjs';
-import { claimKey, checkDraft } from '../shared/quality.mjs';
+import { claimKey, checkDraft, primaryRejections } from '../shared/quality.mjs';
 
 export const LEASE_MS = 120000;
 export const MAX_ATTEMPT_FILES = 32;
@@ -87,12 +87,39 @@ export function createStore(db, clock = Date.now) {
       return Promise.all(runs.map(async run => ({ id: run.id, draftRevision: run.draft_revision, createdAt: iso(run.created_at), reviews: parse(run.reviews, []),
         dispositions: (await all('SELECT * FROM review_dispositions WHERE run_id=?', run.id)).map(d => ({ provider: d.provider, findingIndex: d.finding_index, status: d.status, reason: d.reason, draftRevision: d.draft_revision, updatedAt: iso(d.updated_at) })) })));
     },
+    // Findings of the job's current run are mirrored into metadata so the gate can
+    // read them; like claim decisions this keeps the job revision.
     async disposition(id, runId, provider, index, status, reason) {
       const review = await first('SELECT * FROM review_runs WHERE job_id=? AND id=?', id, runId);
       if (!review || !parse(review.reviews, []).find(r => r.provider === provider)?.findings?.[index]) throw new ApiError(404, 'NOT_FOUND', 'Review finding not found');
       const snapshot = await first('SELECT revision FROM draft_versions WHERE job_id=? ORDER BY revision DESC LIMIT 1', id);
       await run(`INSERT INTO review_dispositions(run_id,provider,finding_index,status,reason,draft_revision,updated_at) VALUES(?,?,?,?,?,?,?)
         ON CONFLICT(run_id,provider,finding_index) DO UPDATE SET status=excluded.status,reason=excluded.reason,draft_revision=excluded.draft_revision,updated_at=excluded.updated_at`, runId, provider, index, status, reason, snapshot.revision, clock());
+      const current = await row(id), metadata = parse(current.metadata, {});
+      if (metadata.reviewRunId !== runId) return serialize(current);
+      const decisions = { ...(metadata.reviewDispositions ?? {}) };
+      if (status === 'pending') delete decisions[`${provider}:${index}`];
+      else decisions[`${provider}:${index}`] = { status, reason };
+      return changed(prepare('UPDATE jobs SET metadata=?,updated_at=? WHERE id=? AND revision=? AND updated_at=? RETURNING *',
+        JSON.stringify({ ...metadata, reviewDispositions: decisions }), clock(), id, current.revision, current.updated_at));
+    },
+    // Per-seat review record for the monthly seat review: a resolved finding counts
+    // as confirmed, a rejected one as a false alarm.
+    async reviewerStats(since) {
+      const runs = await all('SELECT id,reviews,created_at FROM review_runs WHERE created_at>=? ORDER BY created_at', since);
+      const settled = await all('SELECT d.run_id,d.provider,d.status FROM review_dispositions d JOIN review_runs r ON r.id=d.run_id WHERE r.created_at>=?', since);
+      const stats = {};
+      const seat = (month, provider) => (stats[`${month}\u0000${provider}`] ??= { month, provider, runs: 0, ran: 0, findings: 0, resolved: 0, rejected: 0, seconds: 0, timed: 0 });
+      const monthOf = new Map(runs.map(item => [item.id, iso(item.created_at).slice(0, 7)]));
+      for (const item of runs) for (const review of parse(item.reviews, [])) {
+        const entry = seat(monthOf.get(item.id), review.provider);
+        entry.runs++;
+        if (review.status === 'ran') { entry.ran++; entry.findings += review.findings?.length ?? 0; }
+        if (Number.isFinite(review.durationSeconds)) { entry.seconds += review.durationSeconds; entry.timed++; }
+      }
+      for (const d of settled) if (d.status === 'resolved' || d.status === 'rejected') seat(monthOf.get(d.run_id), d.provider)[d.status]++;
+      return Object.values(stats).map(({ seconds, timed, ...entry }) => ({ ...entry, averageSeconds: timed ? Math.round(seconds / timed) : null }))
+        .sort((a, b) => b.month.localeCompare(a.month) || a.provider.localeCompare(b.provider));
     },
     async review(id, revision) {
       const snapshot = await first('SELECT revision FROM draft_versions WHERE job_id=? ORDER BY revision DESC LIMIT 1', id);
@@ -118,18 +145,19 @@ export function createStore(db, clock = Date.now) {
       const current = await row(id);
       if (current.revision !== revision || current.draft === null) throw conflict();
       const metadata = parse(current.metadata, {});
-      const { errors } = checkDraft(parse(current.draft), { claimReview: metadata.claimReview, sourceNumbers: metadata.sourceNumbers });
+      const { errors } = checkDraft(parse(current.draft), { claimReview: metadata.claimReview, sourceNumbers: metadata.sourceNumbers, review: { reviews: metadata.reviews, dispositions: metadata.reviewDispositions } });
       const hard = errors.filter(issue => !issue.overridable), soft = errors.filter(issue => issue.overridable);
       const describe = issues => issues.slice(0, 4).map(issue => `${issue.where}：${issue.message}`).join('；') + (issues.length > 4 ? `；另有 ${issues.length - 4} 項` : '');
       if (hard.length) throw new ApiError(409, 'QUALITY_GATE', `製作前檢查未通過：${describe(hard)}`);
       if (soft.length && !acceptWarnings) throw new ApiError(409, 'QUALITY_GATE', `需要確認後才能製作：${describe(soft)}`);
-      return [...new Set(soft.map(issue => issue.code))];
+      return { acceptedCodes: [...new Set(soft.map(issue => issue.code))], rejections: primaryRejections(metadata.reviews, metadata.reviewDispositions) };
     },
-    render(id, revision, design, acceptedCodes = []) {
+    // The primary rejection list is frozen with the render so the ZIP shows what the doctor approved.
+    render(id, revision, design, { acceptedCodes = [], rejections = [] } = {}) {
       const acceptance = acceptedCodes.length ? JSON.stringify({ codes: acceptedCodes, at: new Date(clock()).toISOString() }) : null;
       return changed(prepare(`UPDATE jobs SET status='queued',phase='render',review_requested=0,stage='queued',design=?,revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
-        metadata=CASE WHEN ? IS NULL THEN json_remove(metadata,'$.gateAcceptance') ELSE json_set(metadata,'$.gateAcceptance',json(?)) END
-        WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, JSON.stringify(design), clock(), acceptance, acceptance, id, revision));
+        metadata=json_set(CASE WHEN ? IS NULL THEN json_remove(metadata,'$.gateAcceptance') ELSE json_set(metadata,'$.gateAcceptance',json(?)) END,'$.primaryRejections',json(?))
+        WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, JSON.stringify(design), clock(), acceptance, acceptance, JSON.stringify(rejections), id, revision));
     },
     // Gate A decision on one claim. It keeps the job revision so unsaved editor
     // text is not flagged as conflicting; updated_at guards concurrent writes.
@@ -296,12 +324,12 @@ export function createStore(db, clock = Date.now) {
       const previousVersion = await first('SELECT revision FROM draft_versions WHERE job_id=? ORDER BY revision DESC LIMIT 1', id);
       const draftRevision = reviewing ? previousMetadata.reviewRequest?.draftRevision : draft === active.draft && previousVersion ? previousVersion.revision : active.revision + 1;
       if (active.phase === 'research') {
-        if (hasReviews) Object.assign(nextMetadata, { reviews: payload.metadata.reviews, reviewsStale: false, reviewsDraftRevision: draftRevision, reviewRunId: runId });
+        if (hasReviews) Object.assign(nextMetadata, { reviews: payload.metadata.reviews, reviewsStale: false, reviewsDraftRevision: draftRevision, reviewRunId: runId, reviewDispositions: {} });
         else if (previousMetadata.reviews != null) nextMetadata.reviewsStale = true;
         else delete nextMetadata.reviewsStale;
       } else {
         // Rendering cannot re-review the draft or refresh inherited review evidence.
-        for (const key of ['reviews', 'reviewsStale', 'reviewsDraftRevision', 'reviewRunId', 'reviewRequest']) {
+        for (const key of ['reviews', 'reviewsStale', 'reviewsDraftRevision', 'reviewRunId', 'reviewRequest', 'reviewDispositions']) {
           if (Object.hasOwn(previousMetadata, key)) nextMetadata[key] = previousMetadata[key];
           else delete nextMetadata[key];
         }

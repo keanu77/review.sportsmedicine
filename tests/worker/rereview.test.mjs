@@ -17,16 +17,16 @@ test('review worker uses the saved draft and hashed original, never replaces dra
   const draft = { ...fixtureDraft, post: '人工修改後的版本' };
   const directory = path.join(workspace, 'job-review', 'reviews', 'run-test'); await mkdir(directory, { recursive: true });
   const sourceHash = createHash('sha256').update(`jats-v1\0${source.structuredText}`).update(JSON.stringify(draft)).digest('hex');
-  for (const provider of ['claude','gemini','grok']) await writeFile(path.join(directory, `review-${provider}.json`), JSON.stringify({ provider, status: 'ran', sourceHash, summary: 'Cached fixture for exact draft', findings: [] }));
+  for (const provider of ['codex','claude','gemini','grok']) await writeFile(path.join(directory, `review-${provider}.json`), JSON.stringify({ provider, status: 'ran', sourceHash, summary: 'Cached fixture for exact draft', findings: [] }));
   // Request markers prohibit accidental new calls if the expected cache is not used.
-  for (const provider of ['claude','gemini','grok']) await writeFile(path.join(directory, `review-${provider}-request.json`), '{}');
+  for (const provider of ['codex','claude','gemini','grok']) await writeFile(path.join(directory, `review-${provider}-request.json`), '{}');
   const calls = [], uploads = [];
   const api = { call: async (route, options) => { calls.push({ route, data: options.data }); return {}; }, upload: async (_job, _lease, file) => { uploads.push(file.name); return 'review-file'; } };
   const job = { id: 'job-review', phase: 'review', draft, metadata: { paper: source.paper, reviewRequest: { runId: 'run-test', draftRevision: 7 } } };
   await processJob(api, { job, leaseToken: 'fixture' }, { workspace }, { onStage: () => {} });
   const result = calls.find(call => call.route.endsWith('/complete')).data;
   assert.equal(result.draft, undefined);
-  assert.equal(result.metadata.reviews.length, 3);
+  assert.equal(result.metadata.reviews.length, 4);
   assert.deepEqual(uploads, ['reviews.json']);
   const count = calls.filter(call => call.route.endsWith('/complete')).length;
   job.metadata.paper.xmlSha256 = 'changed-version';

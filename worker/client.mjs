@@ -17,7 +17,7 @@ export function workerConfig(env = process.env) {
   if (url.username || url.password || url.search || url.hash || url.pathname !== '/' || (url.protocol !== 'https:' && !(url.protocol === 'http:' && ['127.0.0.1','localhost'].includes(url.hostname)))) throw new Error('REVIEW_API_URL 必須是 HTTPS 網站 origin（本機測試可用 localhost）');
   if (!env.REVIEW_WORKER_TOKEN || env.REVIEW_WORKER_TOKEN.length < 32) throw new Error('請先設定 REVIEW_WORKER_TOKEN（至少 32 字元）');
   return { origin: url.origin, token: env.REVIEW_WORKER_TOKEN, workspace: path.resolve(env.REVIEW_WORKSPACE ?? path.join(os.homedir(), 'review-social-workspace')),
-    workerId: env.REVIEW_WORKER_ID ?? os.hostname().replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 64), provider: env.REVIEW_MODEL_PROVIDER ?? 'codex', email: env.REVIEW_CONTACT_EMAIL };
+    workerId: env.REVIEW_WORKER_ID ?? os.hostname().replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 64), provider: env.REVIEW_MODEL_PROVIDER ?? 'claude', email: env.REVIEW_CONTACT_EMAIL };
 }
 
 export class WorkerAPI {
@@ -179,7 +179,7 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
       const fingerprint = createHash('sha256').update(JSON.stringify({ draft, design, source: { pdf: job.metadata.paper.sha256, xml: job.metadata.paper.xmlSha256 } })).digest('hex').slice(0, 24);
       const directory = path.join(jobDir, 'versions', fingerprint);
       const imageFingerprint = createHash('sha256').update(JSON.stringify({ title: job.metadata.paper.title, palette: design.palette, imageStyle: design.imageStyle })).digest('hex').slice(0, 24);
-      const rendered = await renderPackage({ draft, paper: job.metadata.paper, design }, directory, { signal: combined, allowRetry: true, imageDirectory: path.join(jobDir, 'images', imageFingerprint) });
+      const rendered = await renderPackage({ draft, paper: job.metadata.paper, design, rejections: Array.isArray(job.metadata.primaryRejections) ? job.metadata.primaryRejections : [] }, directory, { signal: combined, allowRetry: true, imageDirectory: path.join(jobDir, 'images', imageFingerprint) });
       files = rendered.files;
       result = { metadata: { render: { version: fingerprint, revision: job.revision, design, checkedAt: new Date().toISOString(), pageCount: rendered.report.results.length } } };
     } else throw new Error('不支援的工作階段');

@@ -4,6 +4,16 @@
 // numbers are checked against the verified full text, and simplified
 // characters are rejected. Pure functions only: no I/O, no Node APIs.
 
+// Review seats (Claude writes, Codex reviews). Codex had the best recall in the
+// 2026-09-25 benchmark, so its findings count by default and it must have run.
+export const PRIMARY_REVIEWER = 'codex';
+export const REVIEW_SEATS = {
+  codex: { label: 'Codex', role: '主審', note: '意見預設成立；駁回須附理由' },
+  claude: { label: 'Claude', role: '副審', note: '與寫稿同家族，不影響主審結論' },
+  grok: { label: 'Grok', role: '副審', note: '第三意見' },
+  gemini: { label: 'Gemini', role: '選配', note: '補充資訊，不作對錯判斷' },
+};
+
 export const DISCLAIMER = '本內容僅供衛教參考，無法取代醫師診察、超音波或 MRI 等影像檢查。症狀持續或惡化請就醫。';
 const DISCLAIMER_RE = /僅供衛教參考|無法取代醫師/;
 
@@ -74,7 +84,33 @@ function fields(draft) {
   return out;
 }
 
-export function checkDraft(draft, { claimReview, sourceNumbers } = {}) {
+const dispositionOf = (dispositions, index) => dispositions?.[`${PRIMARY_REVIEWER}:${index}`];
+
+// Primary findings the owner rejected, with the reason shown to the doctor.
+export function primaryRejections(reviews, dispositions) {
+  const review = (Array.isArray(reviews) ? reviews : []).find(item => item?.provider === PRIMARY_REVIEWER);
+  return (review?.findings ?? []).flatMap((finding, index) => {
+    const decision = dispositionOf(dispositions, index);
+    return decision?.status === 'rejected' ? [{ index, severity: finding.severity, claim: finding.claim, reason: finding.reason, suggestion: finding.suggestion, locator: finding.locator, quote: finding.quote, rejection: decision.reason }] : [];
+  });
+}
+
+export function rejectionsMarkdown(rejections) {
+  const head = `# 主審（${REVIEW_SEATS[PRIMARY_REVIEWER].label}）駁回清單\n\n主審意見預設成立；以下是作者判定不成立的意見與理由，請醫師過目。\n`;
+  if (!rejections?.length) return `${head}\n沒有被駁回的主審意見。\n`;
+  return `${head}\n${rejections.map(item => `## 意見 ${item.index + 1}（${item.severity}）\n\n- 主審原意見：${item.claim}\n- 主審理由：${item.reason}\n${item.quote ? `- 原文：${item.quote}（${item.locator}）\n` : ''}- 駁回理由：${item.rejection}\n`).join('\n')}`;
+}
+
+// Gate B: the primary reviewer ran on this job and the owner settled each of its findings.
+function checkPrimary({ reviews, dispositions }, error) {
+  const { label } = REVIEW_SEATS[PRIMARY_REVIEWER];
+  const review = (Array.isArray(reviews) ? reviews : []).find(item => item?.provider === PRIMARY_REVIEWER);
+  if (review?.status !== 'ran') { error('PRIMARY_REVIEW_MISSING', '模型審核', `主審 ${label} ${review ? '這次沒有成功執行' : '尚未審核'}；請按「重新審核目前版本」`); return; }
+  const open = (review.findings ?? []).filter((_, index) => !['resolved', 'rejected'].includes(dispositionOf(dispositions, index)?.status)).length;
+  if (open) error('PRIMARY_FINDINGS_OPEN', '模型審核', `主審 ${label} 還有 ${open} 條意見未處理；每條要標「已修正」或「不採納」並附理由`);
+}
+
+export function checkDraft(draft, { claimReview, sourceNumbers, review } = {}) {
   const errors = [], warnings = [];
   const error = (code, where, message, overridable = false) => errors.push({ code, where, message, overridable });
   const warn = (code, where, message) => warnings.push({ code, where, message });
@@ -86,6 +122,7 @@ export function checkDraft(draft, { claimReview, sourceNumbers } = {}) {
   if (undecided) error('CLAIMS_UNDECIDED', '研究主張', `還有 ${undecided} 條主張尚未鎖定或駁回`);
   if (statuses.some(status => status === 'rejected')) error('CLAIM_REJECTED_PRESENT', '研究主張', '已駁回的主張仍在草稿中；請依審核修訂草稿，或手動刪除相關文字');
   if (!undecided && !statuses.includes('locked')) error('NO_LOCKED_CLAIM', '研究主張', '至少要鎖定一條主張');
+  if (review) checkPrimary(review, error);
 
   const lockedValues = new Set(draft.claims.filter(c => decisions[claimKey(c)]?.status === 'locked').flatMap(c => [...extractNumbers(c.text), ...extractNumbers(c.quote)].flatMap(valuesOf).concat((`${c.text} ${c.quote}`.match(/\d+(?:\.\d+)?/g) ?? []).map(canonical))));
   const source = Array.isArray(sourceNumbers) && sourceNumbers.length ? new Set(sourceNumbers) : null;

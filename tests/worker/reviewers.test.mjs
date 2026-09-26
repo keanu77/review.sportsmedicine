@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import { antigravityStatus, reviewerStatus, GEMINI_MODEL } from '../../worker/reviewers.mjs';
 
 test('Gemini reviews run through Antigravity, available only when a signed-in agy lists the model', async () => {
-  const listing = `Fetching available models...\n${GEMINI_MODEL}\tGemini 3.1 Pro (High)\ngemini-3.8-flash-high\tGemini 3.8 Flash (High)\n`;
+  assert.equal(GEMINI_MODEL, 'gemini-3.8-flash-high', 'Flash is the default optional seat');
+  const listing = `Fetching available models...\ngemini-3.1-pro-high\tGemini 3.1 Pro (High)\n${GEMINI_MODEL}\tGemini 3.8 Flash (High)\n`;
   let called;
   const ok = await antigravityStatus(async (command, args) => { called = [command, ...args]; return { stdout: listing, stderr: '' }; });
   assert.deepEqual(called, ['agy', 'models']);
   assert.equal(ok.available, true); assert.match(ok.detail, /Antigravity/);
-  const missing = await antigravityStatus(async () => ({ stdout: 'Fetching available models...\ngemini-3.8-flash-high\tFlash\n', stderr: '' }));
+  const missing = await antigravityStatus(async () => ({ stdout: 'Fetching available models...\ngemini-3.1-pro-high\tPro\n', stderr: '' }));
   assert.equal(missing.available, false); assert.match(missing.detail, new RegExp(GEMINI_MODEL));
   const signedOut = await antigravityStatus(async () => { throw new Error('agy 失敗 (1)：please sign in'); });
   assert.equal(signedOut.available, false); assert.match(signedOut.detail, /sign in/);

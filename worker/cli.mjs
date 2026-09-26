@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import os from 'node:os';
-import { antigravityStatus, reviewerStatus } from './reviewers.mjs';
+import { antigravityStatus, reviewerStatus, configuredReviewers, assertSeats } from './reviewers.mjs';
 import path from 'node:path';
 import { readFile, mkdir, writeFile, statfs } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +15,7 @@ import { validateDesign } from '../shared/validation.mjs';
 
 export async function doctor() {
   const checks = {};
-  for (const [tool, args] of [['node',['--version']],['codex',['login','status']],['claude',['auth','status']],['grok',['--version']],['gemini',['--version']],['pdftotext',['-v']]]) {
+  for (const [tool, args] of [['node',['--version']],['codex',['login','status']],['claude',['auth','status']],['grok',['--version']],['pdftotext',['-v']]]) {
     try { const result = await runProcess(tool, args, { timeout: 15000, env: modelEnvironment() }); checks[tool] = { available: tool !== 'claude' || JSON.parse(result.stdout).loggedIn, detail: `${result.stdout}${result.stderr}`.trim().slice(0, 500) }; }
     catch (error) { checks[tool] = { available: false, detail: error.message }; }
   }
@@ -24,7 +24,7 @@ export async function doctor() {
   const workspace = path.resolve(process.env.REVIEW_WORKSPACE ?? path.join(os.homedir(), 'review-social-workspace'));
   await mkdir(workspace, { recursive: true, mode: 0o700 });
   const disk = await statfs(workspace); checks.workspace = { available: true, path: workspace, freeBytes: disk.bavail * disk.bsize };
-  const providers = (process.env.REVIEW_REVIEWERS ?? 'claude,gemini,grok').split(',').filter(Boolean);
+  const providers = configuredReviewers();
   checks.reviewers = reviewerStatus(checks, await antigravityStatus(), providers);
   checks.imageGeneration = { available: false, detail: '需完成 image-probe 並設定 REVIEW_IMAGE_PROBE_DIR；CLI 存在不代表生圖已驗證' };
   if (process.env.REVIEW_IMAGE_PROBE_DIR) {
@@ -43,7 +43,9 @@ export async function main(args) {
   process.once('SIGINT', stop); process.once('SIGTERM', stop);
   try {
     if (command === 'run') {
-      const config = workerConfig(), capabilities = await doctor();
+      const config = workerConfig();
+      assertSeats(config.provider, configuredReviewers());
+      const capabilities = await doctor();
       for (const required of [config.provider, 'pdftotext', 'renderer']) if (!capabilities[required]?.available) throw new Error(`${required} 尚未就緒：${capabilities[required]?.detail ?? '不支援此工具'}`);
       await runWorker(config, { once: rest.includes('--once'), signal: controller.signal, capabilities, refreshCapabilities: doctor }); return;
     }

@@ -13,13 +13,14 @@ export function runProcess(command, args, { cwd, input, signal, timeout = 60000,
     };
     const abort = () => stop(signal.reason ?? new Error('工作已取消'));
     signal?.addEventListener('abort', abort, { once: true });
-    const timer = setTimeout(() => stop(new Error('工具執行逾時；重試前請檢查既有輸出')), timeout);
+    const timer = setTimeout(() => stop(Object.assign(new Error('工具執行逾時；重試前請檢查既有輸出'), { code: 'ETIMEDOUT' })), timeout);
     const collect = name => chunk => { if (name === 'out') stdout += chunk; else stderr += chunk; if (stdout.length + stderr.length > maxOutput) stop(new Error('工具輸出超過限制')); };
     child.stdout.on('data', collect('out')); child.stderr.on('data', collect('err'));
     child.on('error', error => { clearTimeout(timer); clearTimeout(killTimer); signal?.removeEventListener('abort', abort); reject(error); });
     child.on('close', code => {
       clearTimeout(timer); clearTimeout(killTimer); signal?.removeEventListener('abort', abort);
-      if (failure) reject(failure);
+      // A timed-out model may already have printed its answer; callers can recover it.
+      if (failure) reject(failure.code === 'ETIMEDOUT' ? Object.assign(failure, { stdout }) : failure);
       else if (code !== 0) reject(new Error(`${command} 失敗 (${code})：${stderr.slice(-1200)}`));
       else resolve({ stdout, stderr });
     });

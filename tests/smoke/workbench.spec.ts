@@ -11,7 +11,7 @@ export function sampleJob(overrides: Partial<Job> = {}): Job {
     id: "job-test-1", input: "PMC1234567", title: "A randomized trial in sports rehabilitation", status: "needs_review", phase: "research", stage: "needs_review", revision: 2,
     draft: { post: "初始 Facebook 草稿", igCaption: "初始 IG 草稿", notes: "待核對", pages: [{ id: "cover", layout: "cover", title: "測試封面", subtitle: "回到原始證據" }, { id: "body", layout: "content", title: "重點", cards: [{ title: "效果", body: "測試內文" }] }], claims: [{ text: "研究主張", locator: "p. 3", quote: "A test evidence excerpt." }] },
     design: { palette: "blue", style: "clinical", imageStyle: "photo", format: "portrait" },
-    metadata: { claimReview: { decisions: { [claimKey({ text: "研究主張", locator: "p. 3", quote: "A test evidence excerpt." })]: { status: "locked" } } }, paper: { title: "Test source", license: "CC BY 4.0", fullTextVerified: true, sourceUrl: "https://pmc.ncbi.nlm.nih.gov/articles/PMC1234567/" }, reviews: [{ provider: "claude", status: "unavailable", error: "尚未登入" }, { provider: "gemini", status: "ran", findings: [{ severity: "medium", claim: "研究主張", reason: "請確認族群", sourceVerified: false }] }, { provider: "grok", status: "failed", error: "逾時" }] },
+    metadata: { claimReview: { decisions: { [claimKey({ text: "研究主張", locator: "p. 3", quote: "A test evidence excerpt." })]: { status: "locked" } } }, paper: { title: "Test source", license: "CC BY 4.0", fullTextVerified: true, sourceUrl: "https://pmc.ncbi.nlm.nih.gov/articles/PMC1234567/" }, reviews: [{ provider: "codex", status: "ran", primary: true, summary: "主審沒有發現問題", findings: [] }, { provider: "claude", status: "unavailable", error: "尚未登入" }, { provider: "gemini", status: "ran", findings: [{ severity: "medium", claim: "研究主張", reason: "請確認族群", sourceVerified: false }] }, { provider: "grok", status: "failed", error: "逾時" }] },
     artifacts: [], error: null, createdAt: "2026-09-21T00:00:00Z", updatedAt: "2026-09-21T00:00:00Z", ...overrides,
   };
 }
@@ -186,7 +186,7 @@ test("completed output remains current after completion increments revision, the
   await expect(downloads.getByText(/前次輸出/)).toHaveCount(0);
   await page.getByLabel("Facebook 貼文").fill("需要重新輸出的新文案");
   await expect(downloads.getByRole("button", { name: "下載前次 ZIP", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "儲存文字", exact: true }).click();
+  // Autosave fires 1.5 s after typing; clicking "儲存文字" races it and hangs on the disabled button under load.
   await expect(page.getByText("文字已儲存。可以排入圖文製作。")).toBeVisible();
   await expect(downloads.getByText(/前次輸出，未包含目前文字／設計變更/)).toBeVisible();
   await expect(downloads.getByRole("button", { name: "下載完整 ZIP", exact: true })).toHaveCount(0);
@@ -428,11 +428,12 @@ test("new art-direction options are selectable, explain themselves and are sent 
 test("the connection panel shows each reviewer and how to fix one that is signed out", async ({ page }) => {
   await apiFixture(page);
   await page.route("**/api/private/session", route => route.fulfill({ json: { email: "owner@example.test", worker: { lastSeen: new Date().toISOString(), capabilities: { reviewers: {
-    claude: { available: true }, gemini: { available: false, fix: "在 Mac 執行 gemini，選「Login with Google」完成登入。" }, grok: { available: true } } } } } }));
+    codex: { available: true, primary: true }, claude: { available: true }, gemini: { available: false, fix: "在 Mac 執行 gemini，選「Login with Google」完成登入。" }, grok: { available: true } } } } } }));
   await page.goto("/workbench/");
-  await expect(page.getByText("Claude 可用")).toBeVisible();
-  await expect(page.getByText("Gemini 不可用")).toBeVisible();
-  await expect(page.getByText(/Gemini 目前無法審核：在 Mac 執行 gemini/)).toBeVisible();
+  await expect(page.getByText("Codex（主審） 可用")).toBeVisible();
+  await expect(page.getByText("Claude（副審） 可用")).toBeVisible();
+  await expect(page.getByText("Gemini（選配） 不可用")).toBeVisible();
+  await expect(page.getByText(/Gemini（選配） 目前無法審核：在 Mac 執行 gemini/)).toBeVisible();
 });
 
 test("gate A: claims are locked or rejected one by one, and rendering waits until every claim is decided", async ({ page }) => {
@@ -578,6 +579,31 @@ test('review findings require a rejection reason and save the disposition', asyn
   await page.getByLabel('Gemini 意見 1 處理理由').fill('原文已明確限定族群');
   await page.getByRole('button', { name: '儲存 Gemini 意見 1', exact: true }).click();
   await expect(page.getByText('意見處理紀錄已儲存。', { exact: true })).toBeVisible();
+});
+
+test('gate B: open primary findings block rendering, are pre-selected for revision, and rejections are listed', async ({ page }) => {
+  const job = sampleJob(); job.metadata.reviewRunId = 'run-1'; job.metadata.reviewsDraftRevision = 2; job.metadata.reviewsStale = false;
+  job.metadata.reviews = [{ provider: 'codex', status: 'ran', primary: true, durationSeconds: 420, summary: '一項問題', findings: [{ severity: 'high', claim: '分母寫錯', reason: '原文是 40 人', suggestion: '改成 40 人', locator: 'p. 3', quote: '', sourceVerified: false }] }];
+  await apiFixture(page, [job]);
+  const run = { id: 'run-1', draftRevision: 2, createdAt: new Date().toISOString(), reviews: job.metadata.reviews, dispositions: [] as any[] };
+  await page.route('**/api/private/jobs/*/reviews', route => route.fulfill({ json: { runs: [run] } }));
+  await page.route('**/api/private/jobs/*/reviews/run-1/findings/codex/0', route => {
+    const data = route.request().postDataJSON();
+    run.dispositions = [{ provider: 'codex', findingIndex: 0, ...data }];
+    return route.fulfill({ json: { runs: [run], job: { ...job, metadata: { ...job.metadata, reviewDispositions: { 'codex:0': data } } } } });
+  });
+  await page.goto('/workbench/');
+  await expect(page.getByText(/主審 Codex 還有 1 條意見未處理/)).toBeVisible();
+  await expect(page.getByRole('button', { name: /製作圖文/ })).toBeDisabled();
+  await expect(page.getByText(/7 分鐘/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '依 1 條意見修訂草稿', exact: true })).toBeEnabled();
+  await page.getByLabel('Codex 意見 1 處理狀態').selectOption('rejected');
+  await expect(page.getByLabel('Codex 意見 1 處理理由')).toHaveAttribute('placeholder', /原文證據/);
+  await page.getByLabel('Codex 意見 1 處理理由').fill('原文第 3 頁表 2 是 42 人');
+  await page.getByRole('button', { name: '儲存 Codex 意見 1', exact: true }).click();
+  await expect(page.locator('.wb-rejections')).toContainText('駁回理由：原文第 3 頁表 2 是 42 人');
+  await expect(page.getByText(/主審 Codex 還有/)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /依 0 條意見修訂草稿/ })).toBeDisabled();
 });
 
 test('legacy review selection retains its unknown draft version after a new review', async ({ page }) => {

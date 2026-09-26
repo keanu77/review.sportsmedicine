@@ -242,7 +242,7 @@ test('editing a reviewed draft marks reviews stale and render completion cannot 
   const f = await fixture(); t.after(f.close);
   const created = await f.create(); const research = await f.claim();
   await f.upload(created.id, research.leaseToken);
-  const reviews = [{ provider: 'claude', status: 'ran', summary: 'Checked the initial draft', findings: [] }];
+  const reviews = [{ provider: 'codex', status: 'ran', summary: 'Checked the initial draft', findings: [] }];
   const researchResponse = await f.call(`/jobs/${created.id}/complete`, { role: 'worker', method: 'POST', data: {
     leaseToken: research.leaseToken, artifacts: ['source'], draft: fixtureDraft, metadata: { reviews, reviewsStale: true },
   } });

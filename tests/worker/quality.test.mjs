@@ -76,3 +76,22 @@ test('style warnings, number extraction and disclaimer helper', () => {
   assert.equal(withDisclaimer(`內文\n\n${DISCLAIMER}`), `內文\n\n${DISCLAIMER}`);
   assert.equal(claimKey(claims[0]), claimKey({ ...claims[0] })); assert.notEqual(claimKey(claims[0]), claimKey(claims[1]));
 });
+
+test('gate B: the primary reviewer must have run and every one of its findings must be settled', async () => {
+  const { checkDraft, claimKey, primaryRejections, rejectionsMarkdown } = await import('../../shared/quality.mjs');
+  const draft = { post: '有助於改善', igCaption: '', pages: [], claims: [{ text: 't', locator: 'p:1', quote: 'q' }] };
+  const claimReview = { decisions: { [claimKey(draft.claims[0])]: { status: 'locked' } } };
+  const codes = review => checkDraft(draft, { claimReview, review }).errors.map(issue => issue.code);
+  assert.deepEqual(codes(undefined), [], 'callers that do not pass reviews keep the old behaviour');
+  assert.deepEqual(codes({ reviews: [{ provider: 'claude', status: 'ran', findings: [] }] }), ['PRIMARY_REVIEW_MISSING']);
+  assert.deepEqual(codes({ reviews: [{ provider: 'codex', status: 'failed', findings: [] }] }), ['PRIMARY_REVIEW_MISSING']);
+  const finding = { severity: 'high', claim: '分母錯誤', reason: '原文 n=40', suggestion: '改 40', locator: 'p:2', quote: 'n=40' };
+  const reviews = [{ provider: 'codex', status: 'ran', findings: [finding, { ...finding, claim: '誇大' }] }, { provider: 'grok', status: 'ran', findings: [finding] }];
+  assert.deepEqual(codes({ reviews, dispositions: { 'codex:0': { status: 'resolved' }, 'grok:0': { status: 'pending' } } }), ['PRIMARY_FINDINGS_OPEN']);
+  const dispositions = { 'codex:0': { status: 'resolved', reason: '' }, 'codex:1': { status: 'rejected', reason: '原文第 3 頁寫 improved' } };
+  assert.deepEqual(codes({ reviews, dispositions }), [], 'secondary findings never block');
+  const rejections = primaryRejections(reviews, dispositions);
+  assert.deepEqual(rejections.map(item => [item.index, item.claim, item.rejection]), [[1, '誇大', '原文第 3 頁寫 improved']]);
+  assert.match(rejectionsMarkdown(rejections), /駁回理由：原文第 3 頁寫 improved/);
+  assert.match(rejectionsMarkdown([]), /沒有被駁回/);
+});

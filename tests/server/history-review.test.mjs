@@ -5,7 +5,7 @@ import { fixture, fixtureDraft } from './helpers.mjs';
 async function ready(f) {
   const job = await f.create(), claim = await f.claim();
   await f.upload(job.id, claim.leaseToken);
-  return (await (await f.complete(job.id, claim.leaseToken)).json()).job;
+  return (await (await f.complete(job.id, claim.leaseToken, undefined, undefined, { source: 'full-text' })).json()).job;
 }
 
 test('draft snapshots survive edits; stale edits add no versions and restoring creates a new snapshot', async t => {

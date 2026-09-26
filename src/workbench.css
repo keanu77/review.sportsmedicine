@@ -119,3 +119,11 @@
 .wb-diff th, .wb-diff td { vertical-align: top; border: 1px solid #cbd5e1; padding: .6rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .wb-diff th:first-child { width: 20%; }
 .wb-decision { margin-top: 1rem; border-top: 1px solid #cbd5e1; padding-top: 1rem; }
+.wb-rejections { margin-top: 16px; padding: 12px; border: 1px solid #f0d9b5; border-radius: 8px; background: #fffaf2; }
+.wb-rejections h3 { margin: 0 0 8px; font-size: 15px; }
+.wb-rejections ul { margin: 0; padding-left: 18px; display: grid; gap: 10px; }
+.wb-rejections p { margin: 2px 0; }
+.wb-seat-stats summary { cursor: pointer; }
+.wb-table-wrap { overflow-x: auto; }
+.wb-seat-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.wb-seat-table th, .wb-seat-table td { padding: 6px 4px; border-bottom: 1px solid #dce7f4; text-align: left; white-space: nowrap; }

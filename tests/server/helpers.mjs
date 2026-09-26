@@ -38,6 +38,8 @@ export const fixtureDraft = {
   pages: [{ id: 'cover', layout: 'cover', title: '研究摘要' }],
   claims: [{ text: 'Exercise was assessed.', locator: 'Results, page 2', quote: 'Exercise was assessed.' }],
 };
+export const primaryReview = (findings = []) => ({ provider: 'codex', status: 'ran', primary: true, summary: 'fixture', findings, durationSeconds: 300 });
+
 export async function fixture() {
   const keys = await generateKeyPair('RS256');
   let time = Date.now();
@@ -70,8 +72,9 @@ export async function fixture() {
   async function upload(jobId, leaseToken, fileId = 'source') {
     return call(`/jobs/${jobId}/files/${fileId}`, { method: 'PUT', role: 'worker', headers: { 'Content-Type': 'text/plain', 'X-Lease-Token': leaseToken, 'X-File-Name': `${fileId}.txt` }, raw: 'Exercise was assessed.' });
   }
-  async function complete(jobId, leaseToken, artifacts = ['source'], draft = fixtureDraft) {
-    return call(`/jobs/${jobId}/complete`, { method: 'POST', role: 'worker', data: { leaseToken, artifacts, ...(draft ? { draft } : {}), metadata: { source: 'full-text' } } });
+  // Research runs the primary reviewer by default, so drafted jobs can pass the render gate.
+  async function complete(jobId, leaseToken, artifacts = ['source'], draft = fixtureDraft, metadata = { source: 'full-text', reviews: [primaryReview()] }) {
+    return call(`/jobs/${jobId}/complete`, { method: 'POST', role: 'worker', data: { leaseToken, artifacts, ...(draft ? { draft } : {}), metadata } });
   }
   // Gate A for tests: lock every claim of the job's current draft.
   async function approve(jobId) {
