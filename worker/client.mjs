@@ -22,8 +22,8 @@ export function workerConfig(env = process.env) {
 
 export class WorkerAPI {
   constructor(config, fetcher = fetch) { this.config = config; this.fetcher = fetcher; }
-  async call(route, { data, body, method = 'POST', headers = {}, signal } = {}) {
-    const timeout = AbortSignal.timeout(45000);
+  async call(route, { data, body, method = 'POST', headers = {}, signal, timeoutMs = 45000 } = {}) {
+    const timeout = AbortSignal.timeout(timeoutMs);
     const response = await this.fetcher(`${this.config.origin}/api/worker${route}`, {
       method, redirect: 'error', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
       headers: { Authorization: `Bearer ${this.config.token}`, ...(body ? {} : { 'Content-Type': 'application/json' }), ...headers },
@@ -99,23 +99,33 @@ export async function prepareResearchDirectory(directory, restartRequest) {
   await writeFile(marker, id, { mode: 0o600 });
 }
 
-export async function processJob(api, claimed, config, { signal, onStage = console.log } = {}) {
+// The server lease lasts 120 s. A network blip must not abandon model work that
+// is still covered by it, so only an answer from the server (stale lease, auth)
+// or 100 s without any successful heartbeat stops the job.
+export const HEARTBEAT = { intervalMs: 30000, timeoutMs: 15000, graceMs: 100000, failRetryMs: 5000 };
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+export async function processJob(api, claimed, config, { signal, onStage = console.log, heartbeat: timing = HEARTBEAT, clock = Date.now } = {}) {
   const { job, leaseToken } = claimed;
   safeId(job.id, 'job id');
   const controller = new AbortController();
   const combined = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
   const jobDir = path.join(config.workspace, job.id);
   await mkdir(jobDir, { recursive: true, mode: 0o700 });
-  let stage = 'starting', heartbeatBusy = false;
+  let stage = 'starting', heartbeatBusy = false, lastBeat = clock();
   const heartbeat = async () => {
     if (heartbeatBusy || combined.aborted) return;
     heartbeatBusy = true;
-    try { await api.call(`/jobs/${job.id}/heartbeat`, { data: { leaseToken, stage }, signal: combined }); }
-    catch (error) { controller.abort(error); }
+    try { await api.call(`/jobs/${job.id}/heartbeat`, { data: { leaseToken, stage }, signal: combined, timeoutMs: timing.timeoutMs }); lastBeat = clock(); }
+    catch (error) {
+      if (combined.aborted) return;
+      if (error.status || clock() - lastBeat >= timing.graceMs) controller.abort(error);
+      else onStage(`${job.id}: 心跳暫時失敗（${error.message}），租約內繼續工作`);
+    }
     finally { heartbeatBusy = false; }
   };
   const update = async value => { combined.throwIfAborted(); stage = value; onStage(`${job.id}: ${stage}`); await heartbeat(); combined.throwIfAborted(); };
-  const timer = setInterval(heartbeat, 30000);
+  const timer = setInterval(heartbeat, timing.intervalMs);
   try {
     let files, result;
     if (job.phase === 'research' && job.metadata?.reviseRequest?.id) {
@@ -190,7 +200,12 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
     onStage(`${job.id}: completed ${job.phase}`);
   } catch (error) {
     // The server rejects this if cancellation/expiry already revoked our lease.
-    try { await api.call(`/jobs/${job.id}/fail`, { data: { leaseToken, code: combined.aborted ? 'WORKER_INTERRUPTED' : error.failureCode ?? 'PROCESSING_FAILED', message: error.message.slice(0, 1800) } }); } catch {}
+    // Retry the report through a short outage so the owner sees the real reason, not a bare lease expiry.
+    const data = { leaseToken, code: combined.aborted ? 'WORKER_INTERRUPTED' : error.failureCode ?? 'PROCESSING_FAILED', message: error.message.slice(0, 1800) };
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try { await api.call(`/jobs/${job.id}/fail`, { data }); break; }
+      catch (reportError) { if (reportError.status || attempt === 3) break; await sleep(timing.failRetryMs ?? 5000); }
+    }
     throw error;
   } finally { clearInterval(timer); controller.abort(new Error('工作執行結束')); }
 }
