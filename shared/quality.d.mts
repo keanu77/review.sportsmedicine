@@ -17,4 +17,4 @@ export declare const PRIMARY_REVIEWER: string;
 export declare const REVIEW_SEATS: Record<string, { label: string; role: string; note: string }>;
 export declare function primaryRejections(reviews: unknown, dispositions?: ReviewDecisions): PrimaryRejection[];
 export declare function rejectionsMarkdown(rejections: PrimaryRejection[]): string;
-export declare function checkDraft(draft: Draft, context?: { claimReview?: unknown; sourceNumbers?: unknown; review?: { reviews: unknown; dispositions?: ReviewDecisions } }): { errors: QualityIssue[]; warnings: QualityIssue[] };
+export declare function checkDraft(draft: Draft, context?: { claimReview?: unknown; sourceNumbers?: unknown; review?: { reviews: unknown; dispositions?: ReviewDecisions; draftRevision?: number | null; reviewsDraftRevision?: unknown; reviewsStale?: unknown } }): { errors: QualityIssue[]; warnings: QualityIssue[] };

@@ -32,6 +32,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      - name: Install browser and video test dependencies
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y ffmpeg
       - name: Fetch and validate before replacing data
         run: |
           cp public/data/reviews-index.json "$RUNNER_TEMP/previous-index.json"
@@ -48,7 +52,6 @@ jobs:
         run: |
           npm test
           npm run build
-          npx playwright install --with-deps chromium
           npm run test:smoke -- --workers=2
           npm audit --audit-level=moderate
       - name: Record monthly public data health

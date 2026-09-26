@@ -81,7 +81,7 @@ test('gate B: the primary reviewer must have run and every one of its findings m
   const { checkDraft, claimKey, primaryRejections, rejectionsMarkdown } = await import('../../shared/quality.mjs');
   const draft = { post: '有助於改善', igCaption: '', pages: [], claims: [{ text: 't', locator: 'p:1', quote: 'q' }] };
   const claimReview = { decisions: { [claimKey(draft.claims[0])]: { status: 'locked' } } };
-  const codes = review => checkDraft(draft, { claimReview, review }).errors.map(issue => issue.code);
+  const codes = review => checkDraft(draft, { claimReview, review: review && { draftRevision: 2, reviewsDraftRevision: 2, ...review } }).errors.map(issue => issue.code);
   assert.deepEqual(codes(undefined), [], 'callers that do not pass reviews keep the old behaviour');
   assert.deepEqual(codes({ reviews: [{ provider: 'claude', status: 'ran', findings: [] }] }), ['PRIMARY_REVIEW_MISSING']);
   assert.deepEqual(codes({ reviews: [{ provider: 'codex', status: 'failed', findings: [] }] }), ['PRIMARY_REVIEW_MISSING']);

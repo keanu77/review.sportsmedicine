@@ -109,11 +109,16 @@ export function rejectionsMarkdown(rejections) {
   return `${head}\n${rejections.map(item => `## 意見 ${item.index + 1}（${item.severity}）\n\n- 主審原意見：${item.claim}\n- 主審理由：${item.reason}\n${item.quote ? `- 原文：${item.quote}（${item.locator}）\n` : ''}- 駁回理由：${item.rejection}\n`).join('\n')}`;
 }
 
-// Gate B: the primary reviewer ran on this job and the owner settled each of its findings.
-function checkPrimary({ reviews, dispositions }, error) {
+// Gate B: the primary reviewer ran on this exact saved draft and its findings are settled.
+// Job revisions also change on queue/complete; only draft snapshots identify reviewed text.
+function checkPrimary({ reviews, dispositions, draftRevision, reviewsDraftRevision, reviewsStale }, error) {
   const { label } = REVIEW_SEATS[PRIMARY_REVIEWER];
   const review = (Array.isArray(reviews) ? reviews : []).find(item => item?.provider === PRIMARY_REVIEWER);
   if (review?.status !== 'ran') { error('PRIMARY_REVIEW_MISSING', '模型審核', `主審 ${label} ${review ? '這次沒有成功執行' : '尚未審核'}；請按「重新審核目前版本」`); return; }
+  if (reviewsStale === true || !Number.isSafeInteger(draftRevision) || draftRevision < 1 || reviewsDraftRevision !== draftRevision) {
+    error('PRIMARY_REVIEW_STALE', '模型審核', '草稿已變更或審核版本不明；請至「主張與審核」按「重新審核目前版本」');
+    return;
+  }
   const open = (review.findings ?? []).filter((_, index) => !['resolved', 'rejected'].includes(dispositionOf(dispositions, index)?.status)).length;
   if (open) error('PRIMARY_FINDINGS_OPEN', '模型審核', `主審 ${label} 還有 ${open} 條意見未處理；每條要標「已修正」或「不採納」並附理由`);
 }

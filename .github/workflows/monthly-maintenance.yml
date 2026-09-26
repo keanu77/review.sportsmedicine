@@ -33,12 +33,15 @@ jobs:
       - run: npm ci
       - name: Apply compatible dependency improvements in this checkout
         run: npm update
+      - name: Install browser and video test dependencies
+        run: |
+          npx playwright install --with-deps chromium
+          sudo apt-get install -y ffmpeg
       - name: Validate data and run regression checks
         run: |
           node scripts/validate-index.mjs
           npm test
           npm run build
-          npx playwright install --with-deps chromium
           npm run test:smoke -- --workers=2
           npm run test:local-api
           npm run test:integration

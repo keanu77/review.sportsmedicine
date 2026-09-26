@@ -95,7 +95,7 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
       if (action === "draft") { setBaseline(JSON.stringify(result.job.draft)); setDraft(current => JSON.stringify(current) === sentDraft ? result.job.draft : current); setRevision(result.job.revision); setSavedAt(result.job.draftSavedAt || new Date().toISOString()); setSaveBlocked(false); setUncertainSave(false); }
       if (action === "render") { setDesign(result.job.design); setDesignBaseline(JSON.stringify(result.job.design)); }
       onUpdate(result.job);
-      setNotice(action === "draft" ? "文字已儲存。可以排入圖文製作。" : action === "render" ? "已排入圖文製作。Mac 完成後即可預覽與下載。" : action === "review" ? "已排入重新審核，將核對目前已儲存版本。" : action === "cancel" ? "任務已取消。" : "已重新排入佇列。");
+      setNotice(action === "draft" ? "文字已儲存。製作前請確認目前版本已完成審核。" : action === "render" ? "已排入圖文製作。Mac 完成後即可預覽與下載。" : action === "review" ? "已排入重新審核，將核對目前已儲存版本。" : action === "cancel" ? "任務已取消。" : "已重新排入佇列。");
     } catch (cause) { if (!controller.signal.aborted && isPrivateSessionActive()) { setError(errorText(cause)); if (action === "draft") { setSaveBlocked(true); setUncertainSave(true); } } }
     finally { request.current = null; pendingDraft.current = null; if (!controller.signal.aborted && isPrivateSessionActive()) setBusy(""); }
   };

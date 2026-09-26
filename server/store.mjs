@@ -145,7 +145,10 @@ export function createStore(db, clock = Date.now) {
       const current = await row(id);
       if (current.revision !== revision || current.draft === null) throw conflict();
       const metadata = parse(current.metadata, {});
-      const { errors } = checkDraft(parse(current.draft), { claimReview: metadata.claimReview, sourceNumbers: metadata.sourceNumbers, review: { reviews: metadata.reviews, dispositions: metadata.reviewDispositions } });
+      const snapshot = await first('SELECT revision FROM draft_versions WHERE job_id=? ORDER BY revision DESC LIMIT 1', id);
+      const { errors } = checkDraft(parse(current.draft), { claimReview: metadata.claimReview, sourceNumbers: metadata.sourceNumbers,
+        review: { reviews: metadata.reviews, dispositions: metadata.reviewDispositions, draftRevision: snapshot?.revision,
+          reviewsDraftRevision: metadata.reviewsDraftRevision, reviewsStale: metadata.reviewsStale } });
       const hard = errors.filter(issue => !issue.overridable), soft = errors.filter(issue => issue.overridable);
       const describe = issues => issues.slice(0, 4).map(issue => `${issue.where}：${issue.message}`).join('；') + (issues.length > 4 ? `；另有 ${issues.length - 4} 項` : '');
       if (hard.length) throw new ApiError(409, 'QUALITY_GATE', `製作前檢查未通過：${describe(hard)}`);

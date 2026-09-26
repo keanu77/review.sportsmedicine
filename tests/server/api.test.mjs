@@ -91,6 +91,14 @@ test('classified full-text failure codes and next-step messages round-trip to th
 
 test('draft CAS rejects stale revisions and an active render cannot change the snapshot', async (t) => {
   const f = await fixture(); t.after(f.close);
+  const rereview = async current => {
+    await f.call(`/jobs/${current.id}/review`, { method: 'POST', data: { revision: current.revision } });
+    const claimed = await f.claim({ reviewDraft: true }), fileId = `review-${current.revision}`;
+    await f.upload(current.id, claimed.leaseToken, fileId);
+    const response = await f.complete(current.id, claimed.leaseToken, [fileId], null);
+    assert.equal(response.status, 200);
+    return (await response.json()).job;
+  };
   const job = await f.create(); const { leaseToken } = await f.claim(); await f.upload(job.id, leaseToken);
   const reviewed = (await (await f.complete(job.id, leaseToken)).json()).job;
   const results = await Promise.all([1, 2].map((index) => f.call(`/jobs/${job.id}/draft`, { method: 'PATCH', data: { revision: reviewed.revision, draft: { ...fixtureDraft, post: `revision ${index}` } } })));
@@ -99,7 +107,8 @@ test('draft CAS rejects stale revisions and an active render cannot change the s
   await f.approve(job.id);
   assert.equal((await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: reviewed.revision, design: {} } })).status, 409);
   await f.approve(job.id);
-  const renderResponse = await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: edited.revision, design: { format: 'square' } } });
+  const currentReview = await rereview(edited);
+  const renderResponse = await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: currentReview.revision, design: { format: 'square' } } });
   assert.equal(renderResponse.status, 200);
   const render = (await renderResponse.json()).job;
   assert.equal((await f.call(`/jobs/${job.id}/draft`, { method: 'PATCH', data: { revision: render.revision, draft: fixtureDraft } })).status, 409);
@@ -109,15 +118,16 @@ test('draft CAS rejects stale revisions and an active render cannot change the s
   assert.equal(finished.status, 200);
   const result = (await finished.json()).job;
   assert.equal(result.status, 'completed'); assert.equal(result.draft.post, edited.draft.post);
-  assert.equal(result.artifacts.length, 2, 'research artifacts survive rendering');
+  assert.equal(result.artifacts.length, 3, 'research and review artifacts survive rendering');
   const updated = await f.call(`/jobs/${job.id}/draft`, { method: 'PATCH', data: { revision: result.revision, draft: fixtureDraft } });
   const updatedJob = (await updated.json()).job;
   assert.equal(updatedJob.status, 'needs_review');
   await f.approve(job.id);
-  await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: updatedJob.revision, design: {} } });
+  const updatedReview = await rereview(updatedJob);
+  await f.call(`/jobs/${job.id}/render`, { method: 'POST', data: { revision: updatedReview.revision, design: {} } });
   const third = await f.claim(); await f.upload(job.id, third.leaseToken, 'rerendered');
   const rerendered = (await (await f.complete(job.id, third.leaseToken, ['rerendered'], null)).json()).job;
-  assert.deepEqual(rerendered.artifacts.map((file) => file.id).sort(), ['rerendered', 'source']);
+  assert.deepEqual(rerendered.artifacts.map((file) => file.id).sort(), ['rerendered', `review-${edited.revision}`, `review-${updatedJob.revision}`, 'source'].sort());
   assert.equal((await f.call(`/jobs/${job.id}/files/rendered`)).status, 404, 'superseded render downloads are no longer visible');
 });
 
@@ -242,7 +252,7 @@ test('an image-dependent queue head does not block eligible research and text-on
   assert.equal((await (await f.call(`/jobs/${first.id}`)).json()).job.status, 'queued');
 });
 
-test('editing a reviewed draft marks reviews stale and render completion cannot refresh them', async (t) => {
+test('editing requires re-review and render completion cannot replace that review evidence', async (t) => {
   const f = await fixture(); t.after(f.close);
   const created = await f.create(); const research = await f.claim();
   await f.upload(created.id, research.leaseToken);
@@ -261,18 +271,25 @@ test('editing a reviewed draft marks reviews stale and render completion cannot 
   assert.equal(edited.metadata.reviewsStale, true);
   assert.deepEqual(edited.metadata.reviews, reviews, 'old reviews remain readable with their stale label');
   await f.approve(created.id);
-  await f.call(`/jobs/${created.id}/render`, { method: 'POST', data: { revision: edited.revision, design: { imageStyle: 'none' } } });
+  assert.equal((await f.call(`/jobs/${created.id}/render`, { method: 'POST', data: { revision: edited.revision, design: { imageStyle: 'none' } } })).status, 409);
+  await f.call(`/jobs/${created.id}/review`, { method: 'POST', data: { revision: edited.revision } });
+  const checking = await f.claim({ reviewDraft: true });
+  await f.upload(created.id, checking.leaseToken, 'current-review');
+  const currentReviews = [{ ...reviews[0], summary: 'Checked the edited draft' }];
+  const refreshed = (await (await f.complete(created.id, checking.leaseToken, ['current-review'], null, { reviews: currentReviews })).json()).job;
+  assert.equal((await f.call(`/jobs/${created.id}/render`, { method: 'POST', data: { revision: refreshed.revision, design: { imageStyle: 'none' } } })).status, 200);
   const render = await f.claim({});
-  assert.equal(render.job.metadata.reviewsStale, true);
+  assert.equal(render.job.metadata.reviewsStale, false);
   await f.upload(created.id, render.leaseToken, 'rendered');
   const completeResponse = await f.call(`/jobs/${created.id}/complete`, { role: 'worker', method: 'POST', data: {
-    leaseToken: render.leaseToken, artifacts: ['rendered'], metadata: { render: { checked: true }, reviewsStale: false, reviews: [] },
+    leaseToken: render.leaseToken, artifacts: ['rendered'], metadata: { render: { checked: true }, reviewsStale: true, reviewsDraftRevision: 999, reviews: [] },
   } });
   assert.equal(completeResponse.status, 200);
   const completed = (await completeResponse.json()).job;
   assert.equal(completed.status, 'completed');
-  assert.equal(completed.metadata.reviewsStale, true, 'rendering cannot mark the edited draft as reviewed');
-  assert.deepEqual(completed.metadata.reviews, reviews);
+  assert.equal(completed.metadata.reviewsStale, false, 'rendering cannot alter the review evidence');
+  assert.equal(completed.metadata.reviewsDraftRevision, edited.draftRevision);
+  assert.deepEqual(completed.metadata.reviews, currentReviews);
   assert.deepEqual(completed.metadata.render, { checked: true, draftRevision: edited.draftRevision });
 });
 

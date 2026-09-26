@@ -4,7 +4,10 @@ import { checkDraft, type ReviewDecisions } from "../shared/quality.mjs";
 type Issue = { code: string; where: string; message: string; overridable?: boolean };
 
 export function gateResult(draft: Draft, job: Job): { errors: Issue[]; warnings: Issue[] } {
-  return checkDraft(draft, { claimReview: job.metadata.claimReview, sourceNumbers: job.metadata.sourceNumbers, review: { reviews: job.metadata.reviews, dispositions: job.metadata.reviewDispositions as ReviewDecisions | undefined } });
+  return checkDraft(draft, { claimReview: job.metadata.claimReview, sourceNumbers: job.metadata.sourceNumbers,
+    review: { reviews: job.metadata.reviews, dispositions: job.metadata.reviewDispositions as ReviewDecisions | undefined,
+      draftRevision: job.draftRevision, reviewsDraftRevision: job.metadata.reviewsDraftRevision,
+      reviewsStale: job.metadata.reviewsStale === true || JSON.stringify(draft) !== JSON.stringify(job.draft) } });
 }
 
 /** Pre-render checks on the editor text; the server repeats them on the saved draft. */

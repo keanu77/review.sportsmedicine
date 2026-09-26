@@ -11,10 +11,10 @@ export const openTab = (page: Page, name: "草稿" | "主張與審核" | "製作
 // API fixtures test browser behavior only; they are not evidence of deployed authentication or real model output.
 export function sampleJob(overrides: Partial<Job> = {}): Job {
   return {
-    id: "job-test-1", input: "PMC1234567", title: "A randomized trial in sports rehabilitation", status: "needs_review", phase: "research", stage: "needs_review", revision: 2,
+    id: "job-test-1", input: "PMC1234567", title: "A randomized trial in sports rehabilitation", status: "needs_review", phase: "research", stage: "needs_review", revision: 2, draftRevision: 2,
     draft: { post: "初始 Facebook 草稿", igCaption: "初始 IG 草稿", notes: "待核對", pages: [{ id: "cover", layout: "cover", title: "測試封面", subtitle: "回到原始證據" }, { id: "body", layout: "content", title: "重點", cards: [{ title: "效果", body: "測試內文" }] }], claims: [{ text: "研究主張", locator: "p. 3", quote: "A test evidence excerpt." }] },
     design: { palette: "blue", style: "clinical", imageStyle: "photo", format: "portrait" },
-    metadata: { claimReview: { decisions: { [claimKey({ text: "研究主張", locator: "p. 3", quote: "A test evidence excerpt." })]: { status: "locked" } } }, paper: { title: "Test source", license: "CC BY 4.0", fullTextVerified: true, sourceUrl: "https://pmc.ncbi.nlm.nih.gov/articles/PMC1234567/" }, reviews: [{ provider: "codex", status: "ran", primary: true, summary: "主審沒有發現問題", findings: [] }, { provider: "claude", status: "unavailable", error: "尚未登入" }, { provider: "gemini", status: "ran", findings: [{ severity: "medium", claim: "研究主張", reason: "請確認族群", sourceVerified: false }] }, { provider: "grok", status: "failed", error: "逾時" }] },
+    metadata: { reviewsDraftRevision: 2, reviewsStale: false, claimReview: { decisions: { [claimKey({ text: "研究主張", locator: "p. 3", quote: "A test evidence excerpt." })]: { status: "locked" } } }, paper: { title: "Test source", license: "CC BY 4.0", fullTextVerified: true, sourceUrl: "https://pmc.ncbi.nlm.nih.gov/articles/PMC1234567/" }, reviews: [{ provider: "codex", status: "ran", primary: true, summary: "主審沒有發現問題", findings: [] }, { provider: "claude", status: "unavailable", error: "尚未登入" }, { provider: "gemini", status: "ran", findings: [{ severity: "medium", claim: "研究主張", reason: "請確認族群", sourceVerified: false }] }, { provider: "grok", status: "failed", error: "逾時" }] },
     artifacts: [], error: null, createdAt: "2026-09-21T00:00:00Z", updatedAt: "2026-09-21T00:00:00Z", ...overrides,
   };
 }
@@ -38,7 +38,13 @@ export async function apiFixture(page: Page, jobs: Job[] = [sampleJob()]) {
       const body = request.postData() ? request.postDataJSON() : null;
       state.mutations.push({ method: request.method(), path, body });
       if (state.conflict || (body?.revision && body.revision !== job.revision)) return route.fulfill({ status: 409, json: { error: { code: "CONFLICT", message: "Version conflict" } } });
-      if (match[2] === "draft") { job.draft = body.draft; job.status = "needs_review"; }
+      if (match[2] === "draft") {
+        if (JSON.stringify(job.draft) !== JSON.stringify(body.draft)) {
+          job.draftRevision = job.revision + 1;
+          job.metadata.reviewsStale = true;
+        }
+        job.draft = body.draft; job.status = "needs_review";
+      }
       if (match[2] === "review") { job.status = "queued"; job.stage = "queued"; job.phase = "review"; }
       if (match[2] === "render") { job.design = body.design; job.status = "queued"; job.stage = "queued"; job.phase = "render"; }
       if (match[2] === "cancel") { job.status = "cancelled"; job.stage = "cancelled"; }
@@ -51,6 +57,18 @@ export async function apiFixture(page: Page, jobs: Job[] = [sampleJob()]) {
   return state;
 }
 
+async function reviewCurrent(page: Page, state: Awaited<ReturnType<typeof apiFixture>>) {
+  await openTab(page, '主張與審核');
+  const review = page.getByRole('button', { name: '重新審核目前版本', exact: true });
+  await review.click();
+  await expect(page.getByText('已排入重新審核，將核對目前已儲存版本。')).toBeVisible();
+  // Only model completion is simulated; the UI receives it through the normal job poll.
+  const queued = state.jobs[0];
+  state.jobs[0] = { ...queued, status: 'needs_review', stage: 'needs_review', revision: queued.revision + 1,
+    metadata: { ...queued.metadata, reviewsDraftRevision: queued.draftRevision, reviewsStale: false } };
+  await expect(review).toBeEnabled({ timeout: 10000 });
+}
+
 test("attachment authentication failure is visible without leaving the editor", async ({ page }) => {
   await apiFixture(page, [sampleJob({ status: "completed", artifacts: [{ id: "zip-test", name: "social.zip", contentType: "application/zip", size: 1200, sha256: "a".repeat(64) }] })]);
   await page.route("**/files/zip-test", route => route.fulfill({ status: 401, json: { error: { code: "UNAUTHORIZED" } } }));
@@ -58,7 +76,7 @@ test("attachment authentication failure is visible without leaving the editor", 
   await page.getByLabel("Facebook 貼文").fill("下載失敗仍須保留的文字");
   await openTab(page, "製作與下載");
   await page.getByRole("button", { name: "下載前次 ZIP", exact: true }).click();
-  await expect(page.getByRole("alert")).toContainText("登入");
+  await expect(page.getByRole("region", { name: "預覽與下載", exact: true }).getByRole("alert")).toContainText("登入");
   await expect(page.getByLabel("Facebook 貼文")).toHaveValue("下載失敗仍須保留的文字");
 });
 
@@ -103,21 +121,39 @@ test("owner session opens source, honest reviewer states and editable cards", as
   await page.screenshot({ path: testInfo.outputPath("workbench-desktop.png"), fullPage: true });
 });
 
-test("save sends expected revision; render uses newly saved text and selected design", async ({ page }) => {
+test("saved edits block rendering until the current version is reviewed, then design changes can render", async ({ page }) => {
   // Smooth scrolling can outlast the 1.5 s autosave; this test is about the explicit save click.
   await page.emulateMedia({ reducedMotion: "reduce" });
   const state = await apiFixture(page); await page.goto("/workbench/");
   await page.getByLabel("Facebook 貼文").fill("已人工核對的文字");
   await page.getByRole("button", { name: "儲存文字", exact: true }).click();
-  await expect(page.getByText("文字已儲存。可以排入圖文製作。")).toBeVisible();
+  await expect(page.getByText("文字已儲存。製作前請確認目前版本已完成審核。")).toBeVisible();
   await openTab(page, "製作與下載");
+  await expect(page.getByText(/草稿已變更或審核版本不明/)).toBeVisible();
+  await expect(page.getByRole("button", { name: "確認已核對，製作圖文" })).toBeDisabled();
+  expect(state.mutations.some(item => item.path.endsWith("/render"))).toBe(false);
+  await reviewCurrent(page, state);
+  await openTab(page, "製作與下載");
+  await expect(page.getByRole("button", { name: "確認已核對，製作圖文" })).toBeEnabled({ timeout: 10000 });
   await page.getByLabel("色系", { exact: true }).selectOption("emerald");
   await page.getByLabel("尺寸", { exact: true }).selectOption("square");
   await page.getByRole("button", { name: "確認已核對，製作圖文" }).click();
   await expect(page.getByText("已排入圖文製作。Mac 完成後即可預覽與下載。")).toBeVisible();
   expect(state.mutations[0].body.revision).toBe(2);
   expect(state.mutations[0].body.draft.post).toBe("已人工核對的文字");
-  expect(state.mutations[1].body).toEqual({ revision: 3, design: { palette: "emerald", style: "clinical", imageStyle: "photo", format: "square" } });
+  expect(state.mutations[1].body).toEqual({ revision: 3 });
+  expect(state.mutations[2].body).toEqual({ revision: 5, design: { palette: "emerald", style: "clinical", imageStyle: "photo", format: "square" } });
+});
+
+test('a legacy review with unknown version cannot enable rendering', async ({ page }) => {
+  const job = sampleJob();
+  delete job.metadata.reviewsDraftRevision;
+  await apiFixture(page, [job]); await page.goto('/workbench/');
+  await openTab(page, '製作與下載');
+  await expect(page.getByText(/草稿已變更或審核版本不明/)).toBeVisible();
+  await expect(page.getByRole('button', { name: '確認已核對，製作圖文' })).toBeDisabled();
+  await openTab(page, '主張與審核');
+  await expect(page.getByRole('button', { name: '重新審核目前版本', exact: true })).toBeEnabled();
 });
 
 test("polling preserves unsaved edits and exposes remote revision conflict", async ({ page }) => {
@@ -186,7 +222,7 @@ test("completed output remains current after completion increments revision, the
     metadata: { ...sampleJob().metadata, render: { revision: 3 } },
     artifacts: [{ id: "zip-test", name: "social.zip", contentType: "application/zip", size: 1200, sha256: "a".repeat(64) }],
   });
-  await apiFixture(page, [job]); await page.goto("/workbench/");
+  const state = await apiFixture(page, [job]); await page.goto("/workbench/");
   const downloads = page.getByRole("region", { name: "預覽與下載", exact: true });
   await expect(downloads.getByRole("button", { name: "下載完整 ZIP", exact: true })).toBeVisible();
   await expect(downloads.getByText(/前次輸出/)).toHaveCount(0);
@@ -199,9 +235,12 @@ test("completed output remains current after completion increments revision, the
   await openTab(page, "製作與下載");
   await expect(downloads.getByRole("button", { name: "下載前次 ZIP", exact: true })).toBeVisible();
   // Autosave fires 1.5 s after typing; clicking "儲存文字" races it and hangs on the disabled button under load.
-  await expect(page.getByText("文字已儲存。可以排入圖文製作。")).toBeVisible();
+  await expect(page.getByText("文字已儲存。製作前請確認目前版本已完成審核。")).toBeVisible();
   await expect(downloads.getByText(/前次輸出，未包含目前文字／設計變更/)).toBeVisible();
   await expect(downloads.getByRole("button", { name: "下載完整 ZIP", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "確認已核對，製作圖文" })).toBeDisabled();
+  await reviewCurrent(page, state);
+  await openTab(page, "製作與下載");
   await page.getByRole("button", { name: "確認已核對，製作圖文" }).click();
   await expect(downloads.getByText(/新一輪製作尚未完成/)).toBeVisible();
 });
@@ -492,10 +531,14 @@ test("simplified characters block rendering, and source-number mismatches need a
   await openTab(page, "草稿");
   await page.getByLabel("Facebook 貼文").fill("約85%在8週內回場");
   await page.getByRole("button", { name: "儲存文字", exact: true }).click();
-  await expect(page.getByText("文字已儲存。可以排入圖文製作。")).toBeVisible();
+  await expect(page.getByText("文字已儲存。製作前請確認目前版本已完成審核。")).toBeVisible();
   await openTab(page, "製作與下載");
   await expect(page.getByText(/數字「85%」在已核對的原文中找不到/)).toBeVisible();
   await expect(render).toBeDisabled();
+  await page.getByLabel("我已回原文逐條確認，這些項目沒有問題").check();
+  await expect(render).toBeDisabled();
+  await reviewCurrent(page, state);
+  await openTab(page, "製作與下載");
   await page.getByLabel("我已回原文逐條確認，這些項目沒有問題").check();
   await render.click();
   await expect(page.getByText("已排入圖文製作。Mac 完成後即可預覽與下載。")).toBeVisible();
