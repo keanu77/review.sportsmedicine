@@ -148,3 +148,33 @@ test('revise accepts primary findings by provider name', async (t) => {
   assert.equal(response.status, 200);
   assert.equal((await response.json()).job.metadata.reviseRequest.findings[0].provider, 'codex');
 });
+
+test('one click locks every undecided claim but keeps rejections', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const claims = [fixtureDraft.claims[0], { ...fixtureDraft.claims[0], text: '第二條主張' }, { ...fixtureDraft.claims[0], text: '第三條主張' }];
+  const job = await drafted(f, { ...fixtureDraft, claims });
+  await decide(f, job, claims[1], 'rejected', '原文未支持');
+  assert.equal((await f.call(`/jobs/${job.id}/claims`, { method: 'PATCH', data: { remaining: true, status: 'rejected' } })).status, 400, 'rejections are never bulk');
+  const { job: after } = await (await f.call(`/jobs/${job.id}/claims`, { method: 'PATCH', data: { remaining: true, status: 'locked' } })).json();
+  const statuses = claims.map(claim => after.metadata.claimReview.decisions[claimKey(claim)].status);
+  assert.deepEqual(statuses, ['locked', 'rejected', 'locked']);
+  assert.equal(after.revision, job.revision, 'unsaved editor text is not invalidated');
+});
+
+test('one click marks the remaining primary findings resolved and opens gate B', async (t) => {
+  const f = await fixture(); t.after(f.close);
+  const finding = { severity: 'medium', claim: 'c', reason: 'r', suggestion: 's', locator: '', quote: '' };
+  const job = await drafted(f, fixtureDraft, { reviews: [primaryReview([finding, finding, finding])] });
+  await decide(f, job, fixtureDraft.claims[0], 'locked');
+  const { runs } = await (await f.call(`/jobs/${job.id}/reviews`)).json();
+  await f.call(`/jobs/${job.id}/reviews/${runs[0].id}/findings/codex/1`, { method: 'PATCH', data: { status: 'rejected', reason: '原文有寫' } });
+  const response = await f.call(`/jobs/${job.id}/reviews/${runs[0].id}/findings/codex/resolve-remaining`, { method: 'POST' });
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  assert.deepEqual(body.job.metadata.reviewDispositions['codex:1'], { status: 'rejected', reason: '原文有寫' }, 'an existing rejection is kept');
+  assert.equal(body.job.metadata.reviewDispositions['codex:0'].status, 'resolved');
+  assert.equal(body.job.metadata.reviewDispositions['codex:2'].status, 'resolved');
+  assert.equal(body.runs[0].dispositions.length, 3);
+  assert.equal((await render(f, await read(f, job.id))).status, 200);
+  assert.equal((await f.call(`/jobs/${job.id}/reviews/missing-run/findings/codex/resolve-remaining`, { method: 'POST' })).status, 404);
+});

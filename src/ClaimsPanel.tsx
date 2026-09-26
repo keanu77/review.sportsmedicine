@@ -18,11 +18,20 @@ export default function ClaimsPanel({ job, editable, onUpdate }: { job: Job; edi
     catch (cause) { if (isPrivateSessionActive()) setError(errorText(cause)); }
     finally { if (isPrivateSessionActive()) setBusy(""); }
   };
+  const lockRemaining = async () => {
+    if (busy || !isPrivateSessionActive()) return;
+    if (!window.confirm(`鎖定其餘 ${claims.length - decided} 條主張？\n鎖定代表你已逐條對照原文引文，確認主張正確。`)) return;
+    setBusy("all"); setError("");
+    try { onUpdate((await privateApi<{ job: Job }>(`/jobs/${encodeURIComponent(job.id)}/claims`, { method: "PATCH", body: { remaining: true, status: "locked" } })).job); }
+    catch (cause) { if (isPrivateSessionActive()) setError(errorText(cause)); }
+    finally { if (isPrivateSessionActive()) setBusy(""); }
+  };
   const decided = claims.filter(claim => decisions[claimKey(claim)]).length;
   const locked = claims.filter(claim => decisions[claimKey(claim)]?.status === "locked").length;
   return <section className="wb-panel" aria-labelledby="claims-heading">
     <div className="wb-section-heading"><h2 id="claims-heading">研究主張（製作前先鎖定）</h2><span className={decided === claims.length && locked ? "wb-status status-completed" : "wb-status status-needs_review"}>{locked} 鎖定 · {decided}/{claims.length} 已確認</span></div>
     <p className="wb-small">每條主張都附原文逐字片段。請核對後鎖定；不正確的就駁回，再用「依審核修訂草稿」把相關文字移除。鎖定的主張是修訂時不能更動的事實底線。</p>
+    {editable && decided < claims.length && <div className="wb-actions"><button type="button" className="wb-button is-primary" disabled={Boolean(busy)} onClick={() => void lockRemaining()}>{busy === "all" ? "鎖定中…" : `一鍵鎖定其餘 ${claims.length - decided} 條主張`}</button><span className="wb-small">要駁回的請先逐條駁回，再按這裡鎖定其他。</span></div>}
     <ol className="wb-evidence">{claims.map((claim, index) => {
       const key = claimKey(claim), decision = decisions[key];
       return <li key={key} className={decision ? `is-${decision.status}` : ""}>

@@ -82,6 +82,12 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         return versionsPath[2] ? json({ version: await store.version(id, validateRevision(Number(versionsPath[2]))) })
           : json({ versions: await store.versions(id, url.searchParams.has('before') ? validateRevision(Number(url.searchParams.get('before'))) : undefined) });
       }
+      const resolveAll = path.match(/^\/jobs\/([^/]+)\/reviews\/([^/]+)\/findings\/(codex|claude|gemini|grok)\/resolve-remaining$/);
+      if (resolveAll && method === 'POST') {
+        const id = safeId(resolveAll[1]);
+        const job = await store.resolveRemaining(id, safeId(resolveAll[2]), resolveAll[3]);
+        return json({ runs: await store.reviews(id), job });
+      }
       const reviewsPath = path.match(/^\/jobs\/([^/]+)\/reviews(?:\/([^/]+)\/findings\/(codex|claude|gemini|grok)\/(\d+))?$/);
       if (reviewsPath) {
         const id = safeId(reviewsPath[1]);
@@ -133,6 +139,10 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         }
         if (action === 'claims' && method === 'PATCH') {
           const data = await body(request);
+          if (data.remaining === true) {
+            if (data.status !== 'locked') throw new ValidationError('Only locking can be applied to every remaining claim');
+            return json({ job: await store.lockRemainingClaims(id) });
+          }
           if (typeof data.key !== 'string' || !/^[0-9a-f]{16}$/.test(data.key)) throw new ValidationError('Invalid claim key');
           if (!['locked', 'rejected', 'pending'].includes(data.status)) throw new ValidationError('Invalid claim status');
           const note = data.note === undefined ? '' : text(data.note, 'note', 500, { empty: true });

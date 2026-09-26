@@ -172,6 +172,27 @@ export function createStore(db, clock = Date.now) {
       return changed(prepare("UPDATE jobs SET metadata=?,updated_at=? WHERE id=? AND revision=? AND updated_at=? AND status IN ('needs_review','completed') RETURNING *",
         JSON.stringify({ ...metadata, claimReview: { decisions } }), clock(), id, current.revision, current.updated_at));
     },
+    // One-click Gate A: locks every claim the owner has not decided yet; rejections stay.
+    async lockRemainingClaims(id) {
+      const current = await row(id);
+      if (current.draft === null || !['needs_review','completed'].includes(current.status)) throw conflict();
+      const metadata = parse(current.metadata, {}), decisions = { ...(metadata.claimReview?.decisions ?? {}) };
+      const at = new Date(clock()).toISOString();
+      for (const claim of parse(current.draft).claims) decisions[claimKey(claim)] ??= { status: 'locked', decidedAt: at };
+      return changed(prepare("UPDATE jobs SET metadata=?,updated_at=? WHERE id=? AND revision=? AND updated_at=? AND status IN ('needs_review','completed') RETURNING *",
+        JSON.stringify({ ...metadata, claimReview: { decisions } }), clock(), id, current.revision, current.updated_at));
+    },
+    // One-click resolve for one reviewer: marks every finding not yet settled as resolved.
+    // Rejections need a reason, so they are never made in bulk.
+    async resolveRemaining(id, runId, provider) {
+      const review = await first('SELECT * FROM review_runs WHERE job_id=? AND id=?', id, runId);
+      const findings = parse(review?.reviews, []).find(r => r.provider === provider)?.findings;
+      if (!findings) throw new ApiError(404, 'NOT_FOUND', 'Review not found');
+      const settled = new Set((await all("SELECT finding_index FROM review_dispositions WHERE run_id=? AND provider=? AND status IN ('resolved','rejected')", runId, provider)).map(d => d.finding_index));
+      let job = await get(id);
+      for (let index = 0; index < findings.length; index++) if (!settled.has(index)) job = await this.disposition(id, runId, provider, index, 'resolved', '一鍵標為已修正');
+      return job;
+    },
     // Model revision of the saved draft: keeps locked claims verbatim, drops rejected
     // ones and applies the owner's chosen findings. Findings are copied from the
     // stored reviews, so the request never trusts client-supplied finding text.

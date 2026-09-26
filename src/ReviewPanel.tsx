@@ -11,6 +11,8 @@ function FindingDecision({ jobId, run, provider, index, onUpdate, onJob, onSettl
   const saved = run.dispositions.find(item => item.provider === provider && item.findingIndex === index);
   const [status, setStatus] = useState<ReviewDisposition['status']>(saved?.status || 'pending');
   const [reason, setReason] = useState(saved?.reason || ''), [busy, setBusy] = useState(false), [message, setMessage] = useState('');
+  // A bulk action elsewhere can settle this finding; follow the saved status.
+  useEffect(() => { if (saved?.status) setStatus(saved.status); }, [saved?.status]);
   const name = `${label(provider)} 意見 ${index + 1}`;
   const save = async () => {
     setBusy(true); setMessage('');
@@ -28,6 +30,22 @@ function FindingDecision({ jobId, run, provider, index, onUpdate, onJob, onSettl
     {message && <p className="wb-notice" role="status">{message}</p>}
   </div>;
 }
+/** Marks every primary finding not yet settled as resolved (rejections always need a reason). */
+function ResolveRemaining({ jobId, run, provider, open, onUpdate, onJob }: { jobId: string; run: ReviewRun; provider: string; open: number; onUpdate: (runs: ReviewRun[]) => void; onJob?: (job: Job) => void }) {
+  const [busy, setBusy] = useState(false), [message, setMessage] = useState('');
+  if (!open && !message) return null;
+  const resolve = async () => {
+    if (!window.confirm(`把其餘 ${open} 條${label(provider)}意見標為「已修正」？\n這代表草稿已處理這些意見；要不採納的請先逐條附理由。`)) return;
+    setBusy(true); setMessage('');
+    try {
+      const result = await privateApi<{ runs: ReviewRun[]; job?: Job }>(`/jobs/${jobId}/reviews/${run.id}/findings/${provider}/resolve-remaining`, { method: 'POST' });
+      onUpdate(result.runs); if (result.job) onJob?.(result.job); setMessage('已全部標為已修正。');
+    } catch (cause) { setMessage(errorText(cause)); }
+    finally { setBusy(false); }
+  };
+  return <div className="wb-actions">{open > 0 && <button type="button" className="wb-button is-primary" disabled={busy} onClick={() => void resolve()}>{busy ? '處理中…' : `其餘 ${open} 條${label(provider)}意見標為已修正`}</button>}{message && <span className="wb-small" role="status">{message}</span>}</div>;
+}
+
 export default function ReviewPanel({ job, edited, editable = false, onUpdate }: { job: Job; edited: boolean; editable?: boolean; onUpdate?: (job: Job) => void }) {
   const [runs, setRuns] = useState<ReviewRun[]>([]), [selected, setSelected] = useState(''), [error, setError] = useState('');
   // Findings chosen for a model revision, as provider:index into the job's current reviews.
@@ -78,7 +96,7 @@ export default function ReviewPanel({ job, edited, editable = false, onUpdate }:
       const status = text(review?.status), findings: Record<string, any>[] = Array.isArray(review?.findings) ? review.findings.map(record) : [];
       const seat = REVIEW_SEATS[provider], seconds = Number(review?.durationSeconds);
       return <details key={provider} className="wb-review" open={provider === PRIMARY_REVIEWER}><summary><strong>{label(provider)}</strong>{seat && <span className="wb-small">{seat.role}・{seat.note}</span>}<span className="wb-small">{status === 'ran' ? `已執行 · ${findings.length} 項意見` : status === 'failed' ? '執行失敗' : '未執行／無法使用'}{Number.isFinite(seconds) ? ` · ${Math.round(seconds / 60 * 10) / 10} 分鐘` : ''}</span></summary>
-        {review ? <div className="wb-review-body"><p className="wb-small">{text(review.role)} {text(review.checkedAt)}{review.recoveredAfterTimeout === true ? ' · 逾時後從紀錄取回' : ''}</p>{(review.summary || review.error) && <p>{text(review.summary) || text(review.error) || text(record(review.error).message)}</p>}
+        {review ? <div className="wb-review-body">{editable && run && current && provider === PRIMARY_REVIEWER && <ResolveRemaining jobId={job.id} run={run} provider={provider} open={findings.filter((_, index) => !['resolved', 'rejected'].includes(run.dispositions.find(item => item.provider === provider && item.findingIndex === index)?.status ?? '')).length} onUpdate={setRuns} onJob={onUpdate} />}<p className="wb-small">{text(review.role)} {text(review.checkedAt)}{review.recoveredAfterTimeout === true ? ' · 逾時後從紀錄取回' : ''}</p>{(review.summary || review.error) && <p>{text(review.summary) || text(review.error) || text(record(review.error).message)}</p>}
           {findings.map((finding, index) => <div key={`${run?.id || 'legacy'}-${index}`} className="wb-finding"><p><strong>{text(finding.severity)}</strong> · {text(finding.claim)}</p><p>{text(finding.reason)}</p>{finding.suggestion && <p>建議：{text(finding.suggestion)}</p>}{finding.quote && <blockquote>{text(finding.quote)}</blockquote>}<p className="wb-small">{text(finding.locator)} · {finding.sourceVerified === true ? '來源片段已比對' : '模型意見，未核對來源'}</p>
             {editable && current && onUpdate && <label className="wb-check"><input type="checkbox" checked={adopted.has(`${provider}:${index}`)} onChange={event => setAdopted(value => { const next = new Set(value); if (event.target.checked) next.add(`${provider}:${index}`); else next.delete(`${provider}:${index}`); return next; })} /> 修訂時採納這條意見</label>}
             {run && <FindingDecision jobId={job.id} run={run} provider={provider} index={index} onUpdate={setRuns} onJob={current ? onUpdate : undefined} onSettled={status => { if (status === 'rejected') setAdopted(value => { const next = new Set(value); next.delete(`${provider}:${index}`); return next; }); }} />}

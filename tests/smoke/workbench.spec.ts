@@ -1044,3 +1044,35 @@ test('the preview outro carries the call to action and a QR code to the paper DO
   await expect(outro.locator('.cta')).toHaveText('收藏起來，需要時再回來看');
   await expect(outro.locator('.qr figcaption')).toHaveText('掃描看原始論文');
 });
+
+test('one-click buttons lock the remaining claims and resolve the remaining primary findings', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  const claims = [{ text: '主張一', locator: 'p:1', quote: 'first quote here' }, { text: '主張二', locator: 'p:1', quote: 'second quote here' }];
+  const job = sampleJob({ draft: { ...sampleJob().draft!, claims }, metadata: { ...sampleJob().metadata, claimReview: { decisions: {} }, reviewRunId: 'run-1' } });
+  const finding = { severity: 'medium', claim: '意見', reason: '理由', suggestion: '建議', locator: '', quote: '' };
+  job.metadata.reviews = [{ provider: 'codex', status: 'ran', primary: true, findings: [finding, finding] }];
+  const state = await apiFixture(page, [job]);
+  const run = { id: 'run-1', draftRevision: 2, createdAt: new Date().toISOString(), reviews: job.metadata.reviews, dispositions: [] as any[] };
+  await page.route('**/api/private/jobs/*/reviews', route => route.fulfill({ json: { runs: [run] } }));
+  const claimCalls = await captureMutations(page, '**/api/private/jobs/job-test-1/claims', () => {
+    const decisions = Object.fromEntries(claims.map(claim => [claimKey(claim), { status: 'locked' }]));
+    state.jobs[0] = { ...state.jobs[0], metadata: { ...state.jobs[0].metadata, claimReview: { decisions } }, updatedAt: new Date().toISOString() };
+    return { job: state.jobs[0] };
+  });
+  const resolveCalls = await captureMutations(page, '**/api/private/jobs/job-test-1/reviews/run-1/findings/codex/resolve-remaining', () => {
+    run.dispositions = [0, 1].map(findingIndex => ({ provider: 'codex', findingIndex, status: 'resolved', reason: '一鍵標為已修正', draftRevision: 2, updatedAt: new Date().toISOString() }));
+    state.jobs[0] = { ...state.jobs[0], metadata: { ...state.jobs[0].metadata, reviewDispositions: { 'codex:0': { status: 'resolved' }, 'codex:1': { status: 'resolved' } } } };
+    return { runs: [run], job: state.jobs[0] };
+  });
+  await page.goto('/workbench/'); await openTab(page, '主張與審核');
+  page.on('dialog', dialog => void dialog.accept());
+  await page.getByRole('button', { name: '一鍵鎖定其餘 2 條主張', exact: true }).click();
+  await expect(page.getByText('✓ 已鎖定')).toHaveCount(2);
+  expect(claimCalls[0].body).toEqual({ remaining: true, status: 'locked' });
+  await page.getByRole('button', { name: '其餘 2 條Codex意見標為已修正', exact: true }).click();
+  await expect(page.getByText('已全部標為已修正。')).toBeVisible();
+  await expect(page.getByLabel('Codex 意見 1 處理狀態')).toHaveValue('resolved');
+  expect(resolveCalls).toHaveLength(1);
+  await openTab(page, '製作與下載');
+  await expect(page.getByText(/製作前檢查通過/)).toBeVisible();
+});
