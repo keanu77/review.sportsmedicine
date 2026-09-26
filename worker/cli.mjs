@@ -15,7 +15,7 @@ import { validateDesign } from '../shared/validation.mjs';
 
 export async function doctor() {
   const checks = {};
-  for (const [tool, args] of [['node',['--version']],['codex',['login','status']],['claude',['auth','status']],['grok',['--version']],['pdftotext',['-v']]]) {
+  for (const [tool, args] of [['node',['--version']],['codex',['login','status']],['claude',['auth','status']],['grok',['--version']],['pdftotext',['-v']],['ffmpeg',['-version']]]) {
     try { const result = await runProcess(tool, args, { timeout: 15000, env: modelEnvironment() }); checks[tool] = { available: tool !== 'claude' || JSON.parse(result.stdout).loggedIn, detail: `${result.stdout}${result.stderr}`.trim().slice(0, 500) }; }
     catch (error) { checks[tool] = { available: false, detail: error.message }; }
   }

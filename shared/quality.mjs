@@ -16,6 +16,10 @@ export const REVIEW_SEATS = {
 
 export const DISCLAIMER = '本內容僅供衛教參考，無法取代醫師診察、超音波或 MRI 等影像檢查。症狀持續或惡化請就醫。';
 const DISCLAIMER_RE = /僅供衛教參考|無法取代醫師/;
+// Short form for the last carousel page, where the full sentence does not fit.
+export const SHORT_DISCLAIMER = '僅供衛教參考，無法取代醫師診察。';
+const HASHTAG_RE = /#[^\s#]+/g;
+export const hashtags = text => String(text ?? '').match(HASHTAG_RE) ?? [];
 
 // Baseline §85 list written for this public repo from the Medical Care Act's
 // commonly prohibited guarantee wording. high = error, medium = warning.
@@ -69,8 +73,12 @@ export function claimKey(claim) {
   return a.toString(16).padStart(8, '0') + b.toString(16).padStart(8, '0');
 }
 
+// The disclaimer goes before a trailing hashtag line, so hashtags stay last on IG.
 export function withDisclaimer(text) {
-  return DISCLAIMER_RE.test(text) ? text : `${String(text).trimEnd()}\n\n${DISCLAIMER}`;
+  const body = String(text).trimEnd();
+  if (DISCLAIMER_RE.test(body)) return text;
+  const tail = body.match(/\n\s*((?:#[^\s#]+\s*)+)$/);
+  return tail ? `${body.slice(0, tail.index).trimEnd()}\n\n${DISCLAIMER}\n\n${tail[1].trim()}` : `${body}\n\n${DISCLAIMER}`;
 }
 
 // Every piece of owner-facing draft text with a human-readable location.
@@ -149,5 +157,7 @@ export function checkDraft(draft, { claimReview, sourceNumbers, review } = {}) {
     // Exports always append it (see worker/render.mjs), so a missing one never blocks.
     if (!DISCLAIMER_RE.test(text)) warn('DISCLAIMER', where, '尚未寫免責聲明；輸出時會自動附在文末');
   }
+  const tags = hashtags(draft.igCaption).length;
+  if (tags < 3 || tags > 5) warn('HASHTAGS', 'IG 文案', `hashtag 有 ${tags} 個；建議 3–5 個，放在文末`);
   return { errors, warnings };
 }

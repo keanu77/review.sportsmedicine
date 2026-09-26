@@ -17,7 +17,7 @@
     "audit:summaries": "node scripts/audit-summaries.mjs",
     "worker": "node worker/cli.mjs",
     "test:server": "node --import tsx --test tests/server/*.test.mjs",
-    "test:worker": "node --test tests/worker/*.test.mjs",
+    "test:worker": "REVIEW_VOICE_FILE=/nonexistent/wu-voice.md node --test tests/worker/*.test.mjs",
     "test:renderer": "node --test worker/renderer/*.test.mjs",
     "test:local-api": "node tests/server/wrangler-smoke.mjs",
     "test": "npm run test:server && npm run test:worker && npm run test:frontend",
@@ -31,6 +31,7 @@
     "fflate": "^0.8.3",
     "ipaddr.js": "^2.5.0",
     "jose": "^6.2.12",
+    "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

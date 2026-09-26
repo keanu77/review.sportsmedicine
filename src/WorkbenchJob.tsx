@@ -24,7 +24,7 @@ const STYLES: [Design["style"], string, string][] = [
   ["seamless", "連續長圖 · 跨頁接續", "背景曲線跨頁相連，滑動時像一整張。"],
 ];
 const IMAGE_STYLES: [Design["imageStyle"], string][] = [["photo", "寫實照片"], ["illustration", "插畫"], ["flat", "扁平向量"], ["watercolor", "水彩手繪"], ["film", "底片復古"], ["none", "純文字設計"]];
-const FORMATS: [Design["format"], string][] = [["portrait", "直式 · 4:5"], ["square", "正方形 · 1:1"], ["story", "限動 · 9:16"]];
+const FORMATS: [Design["format"], string][] = [["portrait", "直式 · 4:5"], ["square", "正方形 · 1:1"], ["story", "限動／Reel · 9:16（另附 MP4）"]];
 const STAGES: Record<string, string> = { queued: "等待 Mac 接手", researching: "查核全文", research: "查核全文與建立草稿", resolving: "尋找開放全文", revising: "依審核意見修訂草稿", drafting: "撰寫草稿", reviewing: "模型審核", review: "重新審核目前草稿", downloading: "取得原始全文", generating_image: "製作情境圖片", uploading: "儲存製作結果", needs_review: "等待你確認草稿", rendering: "製作圖文", render: "製作圖文", completed: "素材已可下載", failed: "需要處理錯誤", cancelled: "已取消", lease_expired: "Mac 連線中斷，需要手動重試" };
 function record(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function string(value: unknown): string { return typeof value === "string" ? value : typeof value === "number" ? String(value) : ""; }

@@ -122,3 +122,58 @@ test('story text stays inside the IG safe zone for every style, and the wide cov
     assert.doesNotMatch(wide.match(/<body class="([^"]*)"/)[1], /\bstory\b/);
   } finally { await browser.close(); }
 });
+
+test('number cards become large figures; other card titles stay as headings', async () => {
+  const { statParts } = await import('./render-hybrid.mjs');
+  assert.deepEqual(statParts('回歸比例99.3%'), { label: '回歸比例', value: '99.3%' });
+  assert.deepEqual(statParts('平均11.4週'), { label: '平均', value: '11.4週' });
+  assert.deepEqual(statParts('272人'), { label: '', value: '272人' });
+  assert.deepEqual(statParts('原水準60–100%'), { label: '原水準', value: '60–100%' });
+  assert.deepEqual(statParts('回場8至12週'), { label: '回場', value: '8至12週' });
+  assert.equal(statParts('僅3篇有回報'), null);
+  assert.equal(statParts('什麼時候痛？'), null);
+  const m = manifest(); m.pages[1].cards = [{ title: '回歸比例99.3%', body: '274人中272人恢復運動。' }];
+  const html = buildHTML(m, m.pages[1], { index: 1 });
+  assert.match(html, /class="stat-value" data-check>99\.3%</); assert.match(html, /<h2 data-check>回歸比例</);
+});
+
+test('outro pages carry the call to action, disclaimer and a scannable QR; bad QR URLs are refused', async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), 'hybrid-outro-'));
+  try {
+    for (const format of ['portrait', 'story']) {
+      const m = manifest(); m.design.format = format;
+      m.pages.push({ id: 'outro', layout: 'outro', title: '先釐清回場目標', subtitle: '來源：單篇系統性回顧' });
+      m.outro = { cta: '收藏起來，需要時再回來看', disclaimer: '僅供衛教參考，無法取代醫師診察。', qr: { url: 'https://doi.org/10.1177/23259671261419505', label: '掃描看原始論文' } };
+      const input = path.join(tmp, `${format}.json`), out = path.join(tmp, format);
+      await writeFile(input, JSON.stringify(m));
+      const { report } = await render(input, out, { textOnly: true });
+      assert.equal(report.results.every(item => item.checks.passed), true);
+    }
+    const m = manifest(); m.pages.push({ id: 'outro', layout: 'outro', title: '結尾' });
+    m.outro = { cta: '收藏', qr: { url: 'https://doi.org/10.1/x', label: '原始論文' } };
+    const { qrSVG } = await import('./render-hybrid.mjs');
+    const html = buildHTML(m, m.pages[2], { index: 2, qr: await qrSVG(m.outro.qr.url) });
+    assert.match(html, /class="qr-code"[^>]*><svg/); assert.match(html, /class="cta" data-check>收藏</);
+    assert.doesNotMatch(buildHTML(m, m.pages[1], { index: 1, qr: 'x' }), /class="outro-extra"/, 'only outro pages');
+    for (const url of ['http://doi.org/10.1/x', 'javascript:alert(1)', 'https://a b']) {
+      const bad = manifest(); bad.outro = { qr: { url, label: 'x' } };
+      assert.throws(() => validateManifest(bad), /https URL/);
+    }
+  } finally { await rm(tmp, { recursive: true, force: true }); }
+});
+
+test('text grows to fill sparse pages and shrinks for dense ones instead of failing', async () => {
+  const tmp = await mkdtemp(path.join(os.tmpdir(), 'hybrid-fit-'));
+  try {
+    const m = manifest(); m.design.format = 'portrait';
+    m.pages = [{ id: 'sparse', layout: 'content', title: '一個重點', cards: [{ title: '平均11.4週', body: '研究彙整結果。' }] },
+      { id: 'dense', layout: 'content', title: '先記錄三件事再來看醫師', subtitle: '把疼痛的時間、位置與訓練量寫下來', cards: Array.from({ length: 3 }, (_, i) => ({ title: `第${i + 1}件事要記錄`, body: '記錄疼痛出現的時間、位置與當天的訓練量和恢復狀況。' })) }];
+    delete m.cover;
+    const input = path.join(tmp, 'fit.json'); await writeFile(input, JSON.stringify(m));
+    const { report } = await render(input, path.join(tmp, 'out'), { textOnly: true });
+    const [sparse, dense] = report.results;
+    assert.ok(sparse.fit > 1.2, `sparse page grows (${sparse.fit})`);
+    assert.ok(dense.fit < sparse.fit, `dense page stays smaller (${dense.fit})`);
+    assert.ok(dense.fit >= 0.8);
+  } finally { await rm(tmp, { recursive: true, force: true }); }
+});

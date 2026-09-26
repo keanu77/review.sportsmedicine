@@ -54,6 +54,15 @@ export function validateManifest(manifest) {
     if (p.duration !== undefined && (!Number.isFinite(p.duration) || p.duration <= 0 || p.duration > 120)) throw new Error(`Invalid duration for ${p.id}`);
   }
   if (manifest.cover !== undefined) validatePageText(manifest.cover, 'cover');
+  if (manifest.outro !== undefined) {
+    const o = manifest.outro;
+    if (!o || typeof o !== 'object') throw new Error('outro must be an object');
+    text(o.cta, 'outro.cta'); text(o.disclaimer, 'outro.disclaimer');
+    if (o.qr !== undefined) {
+      text(o.qr?.label, 'outro.qr.label', true);
+      if (typeof o.qr.url !== 'string' || o.qr.url.length > 500 || !/^https:\/\/[^\s]+$/.test(o.qr.url)) throw new Error('outro.qr.url must be an https URL');
+    }
+  }
   return manifest;
 }
 
@@ -84,7 +93,27 @@ export async function loadImage(filename, manifestDir) {
   return { data: `data:${mime};base64,${bytes.toString('base64')}`, source: filename };
 }
 
-export function buildHTML(manifest, page, { index = 0, image = null, wide = false } = {}) {
+// A card titled "label + number" (e.g. 回歸比例99.3%) is shown as a large figure.
+const NUM = '\\d+(?:\\.\\d+)?(?:%|％)?';
+const STAT = new RegExp(`^(.{0,10}?)\\s*((?:約|<|>|≤|≥)?${NUM}(?:\\s*(?:–|—|-|~|～|至|到)\\s*${NUM})?\\s*(?:%|％|週|個月|年|天|倍|人|分|次|公斤|kg|cm|mm|歲)?)$`);
+export function statParts(title) {
+  const match = String(title).trim().match(STAT);
+  return match && title.length <= 16 ? { label: match[1].trim(), value: match[2].replace(/\s+/g, '') } : null;
+}
+function cardHTML(card, i) {
+  const stat = statParts(card.title);
+  if (stat) return `<article class="card stat" data-check><div class="stat-value" data-check>${escape(stat.value)}</div><div class="card-copy">${stat.label ? `<h2 data-check>${escape(stat.label)}</h2>` : ''}<p data-check>${escape(card.body)}</p></div></article>`;
+  return `<article class="card" data-check><div class="card-number" aria-hidden="true">${String(i + 1).padStart(2, '0')}</div><div class="card-copy"><h2 data-check>${escape(card.title)}</h2><p data-check>${escape(card.body)}</p></div></article>`;
+}
+// Outro pages end with the call to action, a QR code and the short disclaimer.
+function outroHTML(outro, qr) {
+  if (!outro) return '';
+  const code = qr ? `<figure class="qr" data-check><div class="qr-code" aria-hidden="true">${qr}</div><figcaption data-check>${escape(outro.qr.label)}</figcaption></figure>` : '';
+  const copy = [outro.cta && `<p class="cta" data-check>${escape(outro.cta)}</p>`, outro.disclaimer && `<p class="disclaimer" data-check>${escape(outro.disclaimer)}</p>`].filter(Boolean).join('');
+  return `<div class="outro-extra" data-check>${code}${copy ? `<div class="outro-copy">${copy}</div>` : ''}</div>`;
+}
+
+export function buildHTML(manifest, page, { index = 0, image = null, wide = false, qr = null } = {}) {
   const d = manifest.design;
   const [accent, surface, border, background] = PALETTES[d.palette];
   const dark = DARK.includes(d.palette);
@@ -93,7 +122,8 @@ export function buildHTML(manifest, page, { index = 0, image = null, wide = fals
   const position = page.imagePosition ?? {x:50,y:50};
   const contain = page.imageFit === 'contain';
   const figure = image ? `<figure class="figure${contain ? ' contain' : ''}" data-check><img src="${image.data}" alt="${escape(page.imageAlt ?? '')}" style="object-fit:${contain ? 'contain' : 'cover'};object-position:${Number(position.x)}% ${Number(position.y)}%">${page.caption ? `<figcaption data-check>${escape(page.caption)}</figcaption>` : ''}</figure>` : '';
-  const cards = (page.cards ?? []).map((c, i) => `<article class="card" data-check><div class="card-number" aria-hidden="true">${String(i + 1).padStart(2, '0')}</div><div class="card-copy"><h2 data-check>${escape(c.title)}</h2><p data-check>${escape(c.body)}</p></div></article>`).join('');
+  const cards = (page.cards ?? []).map(cardHTML).join('');
+  const extra = !wide && page.layout === 'outro' ? outroHTML(manifest.outro, qr) : '';
   return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><style>
   *{box-sizing:border-box}html,body{margin:0;width:${wide ? 1200 : 1080}px;height:${height}px}body{font-family:'PingFang TC','Noto Sans TC','Heiti TC',-apple-system,BlinkMacSystemFont,sans-serif;color:${dark ? '#fafafa' : '#0f172a'};background:${dark ? '#0a0a0a' : background ?? '#ffffff'};-webkit-font-smoothing:antialiased}
   :root{--accent:${accent};--surface:${surface};--border:${border};--muted:${dark ? '#d4d4d8' : '#334155'};--on-accent:${onAccent(accent)};--ink:${dark ? '#fafafa' : '#0f172a'}}
@@ -105,8 +135,11 @@ export function buildHTML(manifest, page, { index = 0, image = null, wide = fals
   .wide .canvas{padding:34px 48px 28px;grid-template-rows:30px minmax(0,1fr) 35px;gap:22px}.wide .body{display:grid;grid-template-columns:${image ? '1fr 1fr' : '1fr'};gap:38px;align-items:center}.wide .heading{min-width:0}.wide h1,.wide.no-image.cover h1,.wide.editorial.cover h1{font-size:${image ? 61 : 78}px;line-height:1.2}.wide .subtitle{font-size:26px}.wide .figure{height:100%;min-height:0}.wide .footer{font-size:16px}.wide .topbar{font-size:18px}
   .body{padding-top:12px;padding-bottom:6px}.editorial .topbar{padding-bottom:0}
   .portrait .body{justify-content:center;gap:32px}.portrait h1{font-size:68px}.portrait .card p{font-size:30px}.portrait h2{font-size:34px}.portrait .figure{flex:none;height:440px}.story .canvas{padding:230px 150px 400px 72px}.story .body{justify-content:center;gap:40px}.story .topbar{font-size:24px}.story .footer{font-size:21px}.story h1{font-size:84px}.story.cover h1,.story.no-image.cover h1{font-size:96px}.story.outro h1{font-size:84px}.story .subtitle{font-size:38px}.story .cards{gap:26px}.story .card{padding:34px 36px}.story h2{font-size:46px}.story .card p{font-size:38px}.story .card-number{font-size:30px}.story .figure{flex:none;height:560px}
+  .heading,.cards,.outro-extra{zoom:var(--fit,1)}h1{text-wrap:balance}.subtitle,.card p,.cta,.disclaimer{text-wrap:pretty}
+  .card.stat{align-items:center;gap:26px}.stat-value{flex:none;font-size:66px;line-height:1;font-weight:900;color:var(--accent);letter-spacing:-1px;font-variant-numeric:tabular-nums;white-space:nowrap}.story .stat-value{font-size:84px}.contrast .card.stat{background:var(--surface);border:2px solid var(--accent);padding:22px 26px;gap:22px}.contrast .card.stat .card-copy{display:block;border:0}.contrast .card.stat h2{background:transparent;color:var(--ink);padding:0}.contrast .card.stat p{padding:0;background:transparent}.bold .stat-value{color:var(--surface)}
+  .outro-extra{display:flex;align-items:center;gap:30px;flex:none}.qr{flex:none;display:flex;flex-direction:column;align-items:center;gap:8px}.qr-code{width:210px;height:210px;padding:12px;background:#fff;border-radius:14px;border:1px solid var(--border)}.qr-code svg{display:block;width:100%;height:100%}.qr figcaption{font-size:20px;font-weight:700;color:var(--accent)}.outro-copy{min-width:0;display:flex;flex-direction:column;gap:14px}.cta{font-size:32px;line-height:1.4;font-weight:800;color:var(--ink);white-space:pre-line;overflow-wrap:anywhere}.disclaimer{font-size:23px;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}.bold .cta{color:var(--on-accent)}.story .qr-code{width:260px;height:260px}.story .cta{font-size:40px}.story .disclaimer{font-size:26px}.story .qr figcaption{font-size:26px}.story .outro-extra{flex-direction:column;align-items:flex-start}
   ${styleCSS(d.style, { wide, dark })}
-  </style></head><body class="${escape(d.style)} ${escape(page.layout ?? 'cover')} ${image ? 'has-image' : 'no-image'} ${wide ? 'wide' : escape(d.format)}">${decoration(d.style, { index, total, wide, height })}<main class="canvas"><header class="topbar" data-region="header"><span data-check>${escape(manifest.title ?? '運動醫學')}</span><span data-check>${escape(d.brand)}</span></header><section class="body" data-region="body"><div class="heading" data-check><h1 data-check>${escape(page.title)}</h1>${page.subtitle ? `<p class="subtitle" data-check>${escape(page.subtitle)}</p>` : ''}</div>${cards ? `<div class="cards" data-check>${cards}</div>` : ''}${figure}</section><footer class="footer" data-region="footer"><span data-check>${escape(d.footer ?? '')}</span><span class="number" data-check>${wide ? 'SPORTS MEDICINE' : `${String(index + 1).padStart(2, '0')} / ${String(manifest.pages.length).padStart(2, '0')}`}</span></footer></main></body></html>`;
+  </style></head><body class="${escape(d.style)} ${escape(page.layout ?? 'cover')} ${image ? 'has-image' : 'no-image'} ${wide ? 'wide' : escape(d.format)}">${decoration(d.style, { index, total, wide, height })}<main class="canvas"><header class="topbar" data-region="header"><span data-check>${escape(manifest.title ?? '運動醫學')}</span><span data-check>${escape(d.brand)}</span></header><section class="body" data-region="body"><div class="heading" data-check><h1 data-check>${escape(page.title)}</h1>${page.subtitle ? `<p class="subtitle" data-check>${escape(page.subtitle)}</p>` : ''}</div>${cards ? `<div class="cards" data-check>${cards}</div>` : ''}${figure}${extra}</section><footer class="footer" data-region="footer"><span data-check>${escape(d.footer ?? '')}</span><span class="number" data-check>${wide ? 'SPORTS MEDICINE' : `${String(index + 1).padStart(2, '0')} / ${String(manifest.pages.length).padStart(2, '0')}`}</span></footer></main></body></html>`;
 }
 
 // Per-style rules layered on the base layout. Decorations are pseudo-elements or
@@ -192,6 +225,30 @@ export function geometryCheck() {
   return { passed: issues.length === 0, issues: [...new Set(issues)], images };
 }
 
+// Runs in the browser after geometryCheck is installed: the largest zoom in
+// [min, max] at which every text block fits, never growing past ~88% of the body.
+export function autoFit({ min, max }) {
+  const root = document.documentElement, body = document.querySelector('.body');
+  const set = value => root.style.setProperty('--fit', String(value));
+  const filled = () => { const kids = [...body.children]; if (!kids.length) return 0; const r = body.getBoundingClientRect(); return (kids.at(-1).getBoundingClientRect().bottom - kids[0].getBoundingClientRect().top) / r.height; };
+  const fits = value => { set(value); return window.__geometryCheck().passed && (value <= 1 || filled() <= 0.88); };
+  if (!fits(min)) { set(1); return 1; }
+  let low = min, high = max;
+  if (fits(max)) low = max;
+  else for (let i = 0; i < 8; i++) { const mid = (low + high) / 2; if (fits(mid)) low = mid; else high = mid; }
+  const value = Math.floor(low * 100) / 100;
+  set(value); return value;
+}
+export const FIT_RANGE = { min: 0.8, content: 1.45, headline: 1.12 };
+
+function qrcode() {
+  const local = createRequire(import.meta.url);
+  try { return local('qrcode'); } catch (e) { if (e.code === 'MODULE_NOT_FOUND') throw new Error('QR code needs the qrcode package (npm install in the renderer repo)'); throw e; }
+}
+export async function qrSVG(url) {
+  return qrcode().toString(url, { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: '#000000', light: '#ffffff' } });
+}
+
 function playwright() {
   if (process.env.FB_RENEW_PW_FROM) return createRequire(path.resolve(process.env.FB_RENEW_PW_FROM,'package.json'))('playwright');
   const local = createRequire(import.meta.url);
@@ -208,6 +265,8 @@ export async function render(manifestPath, outputDir, { textOnly = false, signal
   if (manifest.cover) pages.push({ page: {...manifest.cover, layout:'cover'}, index:0, wide:true, file:'cover-1200x630.png' });
   // Resolve all assets before creating or replacing output.
   for (const item of pages) item.image = item.page.image && !textOnly ? await loadImage(item.page.image, base) : null;
+  const qr = manifest.outro?.qr ? await qrSVG(manifest.outro.qr.url) : null;
+  for (const item of pages) item.qr = qr;
   await mkdir(out, { recursive:true });
   const staging = await mkdtemp(path.join(out, '.hybrid-staging-'));
   await mkdir(path.join(staging,'series'));
@@ -229,11 +288,14 @@ export async function render(manifestPath, outputDir, { textOnly = false, signal
       await tab.setViewportSize({width,height});
       await tab.setContent(buildHTML(manifest,item.page,item), { waitUntil:'load' });
       await tab.evaluate(async () => { await document.fonts.ready; await Promise.all([...document.images].map(i=>i.decode())); });
+      await tab.evaluate(source => { window.__geometryCheck = new Function(`return (${source})`)(); }, geometryCheck.toString());
+      const headline = item.wide || item.page.layout === 'cover';
+      const fit = await tab.evaluate(autoFit, { min: FIT_RANGE.min, max: item.wide ? 1 : headline ? FIT_RANGE.headline : FIT_RANGE.content });
       const checks = await tab.evaluate(geometryCheck);
       if (!checks.passed) throw new Error(`Page ${item.page.id ?? 'cover-1200x630'} fails layout: ${checks.issues.join('; ')}. Split or rewrite the page; no text was truncated.`);
       const png = await tab.screenshot({ path:path.join(staging,item.file), type:'png', animations:'disabled' });
       if (png.readUInt32BE(16)!==width || png.readUInt32BE(20)!==height) throw new Error('Unexpected screenshot pixel dimensions');
-      results.push({id:item.page.id??'cover-1200x630',file:item.file,width,height,imageUsed:Boolean(item.image),imageSource:item.image?.source??null,duration:item.page.duration??null,checks});
+      results.push({id:item.page.id??'cover-1200x630',file:item.file,width,height,imageUsed:Boolean(item.image),imageSource:item.image?.source??null,duration:item.page.duration??null,fit,checks});
     }
     await browser.close(); browser=null;
     const report = { renderer:OWNER,createdAt:new Date().toISOString(),manifest:source,design:manifest.design,textOnly,results };

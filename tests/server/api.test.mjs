@@ -151,14 +151,18 @@ test('upload validates file names, media signatures, hash and size before storin
     ['source.txt', 'text/plain', 'content', { 'X-Content-SHA256': '00' }, 400],
     ['source.txt', 'text/plain', 'content', { 'Content-Length': '999999999' }, 413],
     ['source.svg', 'image/svg+xml', '<svg/>', {}, 415],
+    ['reel.mp4', 'video/mp4', 'not a video file', {}, 400],
+    ['reel.mov', 'video/mp4', new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0]), {}, 400],
   ]) {
     const response = await f.call(`/jobs/${job.id}/files/test`, { method: 'PUT', role: 'worker', raw, headers: { 'X-Lease-Token': leaseToken, 'X-File-Name': encodeURIComponent(name), 'Content-Type': contentType, ...extra } });
     assert.equal(response.status, status, name);
   }
   assert.equal(f.objects.size, 0);
+  const reel = await f.call(`/jobs/${job.id}/files/reel`, { method: 'PUT', role: 'worker', raw: new Uint8Array([0, 0, 0, 24, 102, 116, 121, 112, 105, 115, 111, 109, 0, 0]), headers: { 'X-Lease-Token': leaseToken, 'X-File-Name': 'reel.mp4', 'Content-Type': 'video/mp4' } });
+  assert.equal(reel.status, 201, 'an MP4 reel with an ftyp box is accepted');
   assert.equal((await f.upload(job.id, leaseToken)).status, 201);
   assert.equal((await f.upload(job.id, leaseToken)).status, 200, 'identical retransmission returns the existing artifact');
-  assert.equal(f.objects.size, 1, 'an identical retransmission does not create an additional R2 object');
+  assert.equal(f.objects.size, 2, 'an identical retransmission does not create an additional R2 object');
 });
 
 test('bad worker credentials and owner JWT cannot authenticate worker routes', async (t) => {

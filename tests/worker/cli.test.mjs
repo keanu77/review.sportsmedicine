@@ -29,7 +29,7 @@ async function workspace(t) {
   return { directory, source };
 }
 const run = (directory, command = 'draft', extra = []) => runProcess(process.execPath, [cli, command, '--dir', directory, ...extra],
-  { env: { ...modelEnvironment(), REVIEW_MODEL_PROVIDER: 'codex', REVIEW_REVIEWERS: '' } });
+  { env: { ...modelEnvironment(), REVIEW_MODEL_PROVIDER: 'codex', REVIEW_REVIEWERS: '', REVIEW_VOICE_FILE: '/nonexistent/wu-voice.md' } });
 
 test('CLI resumes an XML-only draft without a PDF text file or a new model call', async t => {
   const { directory } = await workspace(t);
