@@ -4,7 +4,8 @@ import { runProcess, modelEnvironment } from './process.mjs';
 // 9:16 carousel pages → cross-faded MP4 (topic-flow make-reel.sh ported to Node).
 // Text lives on the images, so the reel reads without sound. No music is added.
 export const REEL = { width: 1080, height: 1920, fps: 30, fade: 0.5, crf: 20 };
-export const defaultDuration = (index, total) => index === 0 ? 3 : index === total - 1 ? 5 : 6;
+import { defaultDuration } from '../shared/manifest.mjs';
+export { defaultDuration };
 
 export function reelPlan(report, directory) {
   if (report.design?.format !== 'story') throw new Error('Reel 需要 9:16（story）版型的圖卡');

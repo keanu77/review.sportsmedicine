@@ -10,6 +10,10 @@ import ManualSourceUpload, { canUploadSource } from "./ManualSourceUpload";
 import JobManagement from "./JobManagement";
 import ClaimsPanel from "./ClaimsPanel";
 import QualityGate, { gateResult } from "./QualityGate";
+import LivePreview from "./LivePreview";
+import { CopyButton, FieldFindings } from "./DraftAids";
+import { placeFindings } from "./findingTargets";
+import { PRIMARY_REVIEWER } from "../shared/quality.mjs";
 
 export const STATUS_LABELS: Record<JobStatus, string> = { queued: "排隊中", running: "處理中", needs_review: "待你審閱", completed: "輸出完成", failed: "執行失敗", cancelled: "已取消" };
 const PALETTES: [Design["palette"], string][] = [["blue", "白藍 · 專業"], ["cyan", "青藍"], ["emerald", "翡翠綠"], ["orange-light", "柔橘"], ["gold", "金色"], ["orange", "暖橘"], ["sky", "天空藍"],
@@ -26,6 +30,8 @@ const STYLES: [Design["style"], string, string][] = [
 const IMAGE_STYLES: [Design["imageStyle"], string][] = [["photo", "寫實照片"], ["illustration", "插畫"], ["flat", "扁平向量"], ["watercolor", "水彩手繪"], ["film", "底片復古"], ["none", "純文字設計"]];
 const FORMATS: [Design["format"], string][] = [["portrait", "直式 · 4:5"], ["square", "正方形 · 1:1"], ["story", "限動／Reel · 9:16（另附 MP4）"]];
 const STAGES: Record<string, string> = { queued: "等待 Mac 接手", researching: "查核全文", research: "查核全文與建立草稿", resolving: "尋找開放全文", revising: "依審核意見修訂草稿", drafting: "撰寫草稿", reviewing: "模型審核", review: "重新審核目前草稿", downloading: "取得原始全文", generating_image: "製作情境圖片", uploading: "儲存製作結果", needs_review: "等待你確認草稿", rendering: "製作圖文", render: "製作圖文", completed: "素材已可下載", failed: "需要處理錯誤", cancelled: "已取消", lease_expired: "Mac 連線中斷，需要手動重試" };
+type Tab = "draft" | "review" | "output";
+const TABS: [Tab, string][] = [["draft", "草稿"], ["review", "主張與審核"], ["output", "製作與下載"]];
 function record(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function string(value: unknown): string { return typeof value === "string" ? value : typeof value === "number" ? String(value) : ""; }
 function safeUrl(value: unknown): string | null { const raw = string(value); try { const url = new URL(raw); return ["https:", "http:"].includes(url.protocol) ? url.href : null; } catch { return null; } }
@@ -47,6 +53,7 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
   const [uncertainSave, setUncertainSave] = useState(Boolean(cached?.pendingSave && !synced));
   const [savedAt, setSavedAt] = useState(job.draftSavedAt || "");
   const [gateAccepted, setGateAccepted] = useState(false);
+  const [tab, setTab] = useState<Tab>(job.status === "completed" ? "output" : "draft");
   const request = useRef<AbortController | null>(null);
   const pendingDraft = useRef<string | null>(null);
   const dirty = uncertainSave || JSON.stringify(draft) !== baseline || (busy === "draft" && JSON.stringify(draft) !== pendingDraft.current);
@@ -106,6 +113,8 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
 
   const jobError = job.error ? describeJobError(job.error) : null;
   const gate = draft ? gateResult(draft, job) : null;
+  const findings = draft ? placeFindings(draft, job.metadata.reviews) : new Map();
+  const openPrimary = gate?.errors.some(issue => issue.code === "PRIMARY_FINDINGS_OPEN" || issue.code === "PRIMARY_REVIEW_MISSING") ?? false;
   const gateBlocked = Boolean(gate && (gate.errors.some(issue => !issue.overridable) || (gate.errors.some(issue => issue.overridable) && !gateAccepted)));
   return <div className="wb-job" aria-busy={Boolean(busy)}>
     <section className="wb-panel">
@@ -124,6 +133,11 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
 
     <SourceMetadata metadata={job.metadata} />
 
+    {draft && <div className="wb-tabs" role="tablist" aria-label="任務分頁">{TABS.map(([value, label]) => <button key={value} type="button" role="tab" id={`tab-${value}`} aria-controls={`panel-${value}`} aria-selected={tab === value} className={tab === value ? "is-active" : ""} onClick={() => setTab(value)}>
+      {label}{value === "draft" && dirty && <span className="wb-tab-dot" aria-label="有未儲存文字" />}{value === "review" && openPrimary && <span className="wb-tab-dot" aria-label={`主審 ${PRIMARY_REVIEWER} 意見待處理`} />}</button>)}</div>}
+
+    <div role="tabpanel" id="panel-draft" aria-labelledby="tab-draft" hidden={Boolean(draft) && tab !== "draft"} className="wb-tabpanel">
+
     {draft ? <section className="wb-panel" aria-labelledby="draft-heading">
       <div className="wb-section-heading"><h2 id="draft-heading">草稿編輯</h2><span className="wb-small">{dirty ? "有尚未儲存的文字" : "文字已同步"}</span></div>
       <p className="wb-small" role="status">{busy === "draft" ? "正在自動儲存…" : savedAt ? `最後儲存：${new Date(savedAt).toLocaleString("zh-TW")}` : "停止輸入 1.5 秒後自動儲存。"}</p>
@@ -133,10 +147,13 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
       {conflict && <div className="wb-alert" role="alert"><p>遠端已更新至版本 {job.revision}；你的版本 {revision} 文字仍保留。請複製要保留的修改，再載入最新版本。</p><button className="wb-button" onClick={() => { setDraft(job.draft); setBaseline(JSON.stringify(job.draft)); setRevision(job.revision); setError(""); setSaveBlocked(false); setUncertainSave(false); }}>捨棄本頁修改，載入最新版本</button></div>}
       <fieldset disabled={!editable || (Boolean(busy) && busy !== "draft")} className="wb-form">
         <label>Facebook 貼文<textarea rows={9} maxLength={20000} value={draft.post} onChange={event => edit("post", event.target.value)} /></label>
+        <div className="wb-field-tools"><CopyButton label=" FB 貼文" text={draft.post} /><FieldFindings items={findings.get("post")} /></div>
         <label>Instagram 說明<textarea rows={5} maxLength={5000} value={draft.igCaption} onChange={event => edit("igCaption", event.target.value)} /></label>
+        <div className="wb-field-tools"><CopyButton label=" IG 說明" text={draft.igCaption} /><FieldFindings items={findings.get("igCaption")} /></div>
         <label>製作備註<textarea rows={3} maxLength={15000} value={draft.notes} onChange={event => edit("notes", event.target.value)} /></label>
         <h3>每頁圖卡文字</h3>
         {draft.pages.map((page, pageIndex) => <div key={page.id} className="wb-page-editor"><h4>第 {pageIndex + 1} 頁 · {page.layout === "cover" ? "封面" : page.layout === "outro" ? "結尾" : "內容"}</h4>
+          <FieldFindings items={findings.get(`page:${pageIndex}`)} />
           <label>第 {pageIndex + 1} 頁標題<input value={page.title} maxLength={300} onChange={event => editPage(pageIndex, "title", event.target.value)} /></label>
           <label>第 {pageIndex + 1} 頁副標<textarea rows={2} value={page.subtitle ?? ""} maxLength={1000} onChange={event => editPage(pageIndex, "subtitle", event.target.value)} /></label>
           {page.cards?.map((card, cardIndex) => <div className="wb-card-editor" key={cardIndex}><label>第 {pageIndex + 1} 頁重點 {cardIndex + 1} 標題<input value={card.title} maxLength={300} onChange={event => editCard(pageIndex, cardIndex, "title", event.target.value)} /></label><label>第 {pageIndex + 1} 頁重點 {cardIndex + 1} 內文<textarea rows={3} value={card.body} maxLength={2000} onChange={event => editCard(pageIndex, cardIndex, "body", event.target.value)} /></label></div>)}
@@ -146,11 +163,17 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
     </section> : <section className="wb-panel"><h2>草稿尚未產生</h2><p className="wb-small">Mac 會先取得可用全文，再建立附有證據片段的草稿。無法取得時會顯示原因。</p></section>}
 
     {draft && <DraftHistory job={job} disabled={!editable || Boolean(busy) || dirty || conflict} onUpdate={onUpdate} />}
+    </div>
+
+    <div role="tabpanel" id="panel-review" aria-labelledby="tab-review" hidden={!draft || tab !== "review"} className="wb-tabpanel">
 
     {job.draft && <ClaimsPanel job={job} editable={editable} onUpdate={onUpdate} />}
 
     {draft && <section className="wb-panel"><button className="wb-button" disabled={!editable || Boolean(busy) || dirty || conflict} onClick={() => void operate("review")}>重新審核目前版本</button><p className="wb-small">以已儲存草稿與原始全文重新執行模型審核；不會改寫草稿或重新生圖。</p></section>}
     <ReviewPanel job={job} edited={dirty || job.metadata.reviewsStale === true} editable={editable && !dirty} onUpdate={onUpdate} />
+    </div>
+
+    <div role="tabpanel" id="panel-output" aria-labelledby="tab-output" hidden={!draft || tab !== "output"} className="wb-tabpanel">
 
     {draft && <section className="wb-panel"><p className="wb-eyebrow">ART DIRECTION</p><h2>圖文製作</h2><p className="wb-small">套用目前已儲存文字。改色或更換版型後可重新輸出。</p>
       <fieldset className="wb-design" disabled={!editable || Boolean(busy)}>
@@ -162,11 +185,14 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
       {STYLES.find(([value]) => value === design.style)?.[2] && <p className="wb-small">{STYLES.find(([value]) => value === design.style)?.[2]}</p>}
       {gate && <QualityGate result={gate} accepted={gateAccepted} onAccept={setGateAccepted} />}
       <button className="wb-button is-primary" onClick={() => void operate("render")} disabled={!editable || Boolean(busy) || dirty || conflict || gateBlocked}>{busy === "render" ? "正在排入製作…" : job.status === "completed" ? "重新製作圖文 →" : "確認已核對，製作圖文 →"}</button>
-      {dirty && <p className="wb-small">還有文字尚未儲存，請先完成上方儲存。</p>}
+      {dirty && <p className="wb-small">還有文字尚未儲存，請先到「草稿」分頁儲存。</p>}
     </section>}
 
-    {(error || notice) && <div className={error ? "wb-alert" : "wb-notice"} role={error ? "alert" : "status"}>{error || notice}</div>}
     <Artifacts job={job} edited={dirty || designDirty} />
+    </div>
+
+    {draft && tab !== "review" && <LivePreview draft={draft} design={design} paper={record(job.metadata.paper ?? job.metadata.source)} />}
+    {(error || notice) && <div className={error ? "wb-alert" : "wb-notice"} role={error ? "alert" : "status"}>{error || notice}</div>}
   </div>;
 }
 

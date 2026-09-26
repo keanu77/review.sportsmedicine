@@ -5,6 +5,9 @@ import { errorText, latestJob, mergeJobList, privateApi } from "./privateApi";
 import WorkbenchJob, { STATUS_LABELS, type EditorSnapshot } from "./WorkbenchJob";
 import { clearExpiredRecoveries, isPrivateSessionActive, logoutPrivateSession, removeRecovery, watchPrivateSession } from "./draftRecovery";
 import ReviewerStats from "./ReviewerStats";
+import JobThumb, { thumbArtifact } from "./JobThumb";
+import { useCompletionNotices } from "./useCompletionNotices";
+import { DONE_LABELS } from "./completion";
 import { REVIEW_SEATS } from "../shared/quality.mjs";
 import "./workbench.css";
 
@@ -33,6 +36,7 @@ export default function Workbench() {
   // A poll started before a delete must not bring the deleted job back.
   const deleted = useRef(new Set<string>());
   selectedRef.current = selected;
+  const notices = useCompletionNotices(jobs, !locked);
 
   useEffect(() => {
     setStorageNotice(clearExpiredRecoveries() || "");
@@ -170,6 +174,8 @@ export default function Workbench() {
       <button className="wb-button is-quiet" onClick={logout}>登出並清除本機草稿</button>
     </div>
     {storageNotice && <p role="alert" className="wb-alert">{storageNotice}</p>}
+    {notices.finished.length > 0 && <div className="wb-notice wb-finished" role="status"><strong>剛完成：</strong>{notices.finished.map(item => <button key={item.id} type="button" className="wb-button is-quiet" onClick={() => { setSelected(item.id); notices.dismiss(item.id); }}>{item.title || item.input} · {DONE_LABELS[item.status]}</button>)}<button type="button" className="wb-button is-quiet" onClick={() => notices.dismiss()}>知道了</button></div>}
+    {session && notices.permission === "default" && <p className="wb-small">想在切到其他分頁時收到完成通知？<button type="button" className="wb-button is-quiet" onClick={() => void notices.request()}>開啟桌面通知</button></p>}
     {error && <div className="wb-alert" role="alert"><p>{error}</p><a href={`/workbench/${window.location.search}`}>重新登入／開啟工作台</a></div>}
 
     <div className="wb-layout">
@@ -189,7 +195,7 @@ export default function Workbench() {
         </section>
 
         <section className="wb-panel" aria-labelledby="jobs-heading"><div className="wb-section-heading"><h2 id="jobs-heading">製作紀錄</h2><span className="wb-small">{jobs.length} 件</span></div>
-          {jobs.length ? <ul className="wb-job-list">{jobs.map(item => <li key={item.id}><button onClick={() => setSelected(item.id)} aria-pressed={selected === item.id} className={selected === item.id ? "is-selected" : ""}><span className="wb-job-name">{item.title || item.input}</span><span className="wb-small">{STATUS_LABELS[item.status]} · {new Date(item.updatedAt).toLocaleDateString("zh-TW")}</span></button></li>)}</ul> : <p className="wb-small">{session ? "還沒有任務。加入一篇論文，開始製作。" : "登入私人工作台後顯示製作紀錄。"}</p>}
+          {jobs.length ? <ul className="wb-job-list">{jobs.map(item => <li key={item.id}><button onClick={() => { setSelected(item.id); notices.dismiss(item.id); }} aria-pressed={selected === item.id} className={`${selected === item.id ? "is-selected" : ""}${thumbArtifact(item) ? " has-thumb" : ""}`}>{thumbArtifact(item) && <JobThumb job={item} />}<span className="wb-job-text"><span className="wb-job-name">{item.title || item.input}</span><span className="wb-small">{STATUS_LABELS[item.status]} · {new Date(item.updatedAt).toLocaleDateString("zh-TW")}</span></span></button></li>)}</ul> : <p className="wb-small">{session ? "還沒有任務。加入一篇論文，開始製作。" : "登入私人工作台後顯示製作紀錄。"}</p>}
         </section>
         <ReviewerStats enabled={Boolean(session)} />
       </aside>

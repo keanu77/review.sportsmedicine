@@ -127,3 +127,26 @@
 .wb-table-wrap { overflow-x: auto; }
 .wb-seat-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .wb-seat-table th, .wb-seat-table td { padding: 6px 4px; border-bottom: 1px solid #dce7f4; text-align: left; white-space: nowrap; }
+.wb-tabs { display: flex; gap: 4px; border-bottom: 2px solid #dce7f4; margin: 4px 0 0; overflow-x: auto; }
+.wb-tabs button { position: relative; padding: 10px 16px; border: 0; border-bottom: 3px solid transparent; margin-bottom: -2px; background: none; font: inherit; font-weight: 700; color: #4a6078; cursor: pointer; white-space: nowrap; }
+.wb-tabs button.is-active { color: #1d4ed8; border-bottom-color: #1d4ed8; }
+.wb-tabs button:focus-visible { outline: 3px solid #538bd0; outline-offset: -3px; }
+.wb-tab-dot { display: inline-block; width: 8px; height: 8px; margin-left: 6px; border-radius: 50%; background: #d9485f; vertical-align: middle; }
+.wb-tabpanel { display: grid; gap: 20px; }
+.wb-tabpanel[hidden] { display: none; }
+.wb-field-tools { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; margin: -4px 0 6px; }
+.wb-copy { display: inline-flex; align-items: center; gap: 8px; }
+.wb-field-findings { font-size: 13px; background: #fff7ed; border: 1px solid #fed7aa; border-radius: 8px; padding: 6px 10px; }
+.wb-field-findings summary { cursor: pointer; font-weight: 700; color: #9a3412; }
+.wb-field-findings ul { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+.wb-preview-strip { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; }
+.wb-preview-slide { flex: none; margin: 0; }
+.wb-preview-frame { position: relative; overflow: hidden; border-radius: 8px; border: 1px solid #dce7f4; background: #fff; }
+.wb-preview-frame iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; pointer-events: none; }
+.wb-preview-slide figcaption { font-size: 12px; color: #4a6078; margin-top: 6px; }
+.wb-preview-slide.has-issue .wb-preview-frame { border: 2px solid #d9485f; }
+.wb-preview-slide.has-issue strong { color: #b42318; }
+.wb-job-thumb { width: 64px; height: 34px; flex: none; object-fit: cover; border-radius: 4px; border: 1px solid #dce7f4; background: #f4f7fb; }
+.wb-job-list button.has-thumb { display: flex; align-items: center; gap: 10px; text-align: left; }
+.wb-job-list .wb-job-text { display: grid; min-width: 0; }
+.wb-finished { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }

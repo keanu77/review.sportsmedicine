@@ -3,25 +3,16 @@ import path from 'node:path';
 import { zipSync, strToU8 } from 'fflate';
 import { render } from './renderer/render-hybrid.mjs';
 import { generateHero } from './images.mjs';
-import { withDisclaimer, rejectionsMarkdown, SHORT_DISCLAIMER } from '../shared/quality.mjs';
-import { makeReel, defaultDuration } from './reel.mjs';
+import { withDisclaimer, rejectionsMarkdown } from '../shared/quality.mjs';
+import { buildManifest } from '../shared/manifest.mjs';
+import { makeReel } from './reel.mjs';
 
 // Exported captions always end with the disclaimer, whatever the draft says.
 export function exportTexts(draft) {
   return { 'fb-post.md': withDisclaimer(draft.post), 'ig-caption.md': withDisclaimer(draft.igCaption) };
 }
 
-export const OUTRO_CTA = '收藏起來，需要時再回來看';
-
-// The QR code points at the paper itself: a DOI link is always live, unlike an unpublished article page.
-export function sourceLink(paper) {
-  if (paper.doi) return `https://doi.org/${encodeURI(paper.doi)}`;
-  return /^https:\/\//.test(paper.sourceUrl ?? '') ? paper.sourceUrl : null;
-}
-export function outroBlock(paper) {
-  const url = sourceLink(paper);
-  return { cta: OUTRO_CTA, disclaimer: SHORT_DISCLAIMER, ...(url ? { qr: { url, label: '掃描看原始論文' } } : {}) };
-}
+export { OUTRO_CTA, sourceLink, outroBlock } from '../shared/manifest.mjs';
 
 export async function renderPackage({ draft, paper, design, rejections = [] }, directory, options = {}) {
   await mkdir(directory, { recursive: true, mode: 0o700 });
@@ -34,10 +25,7 @@ export async function renderPackage({ draft, paper, design, rejections = [] }, d
     await copyFile(path.join(imageDirectory, 'generation-prompts.json'), path.join(directory, 'generation-prompts.json'));
   }
   const story = design.format === 'story';
-  const pages = draft.pages.map((page, index) => ({ ...page, ...(story ? { duration: defaultDuration(index, draft.pages.length) } : {}), ...(hero && page.layout === 'cover' ? { image: hero, imageAlt: `${paper.title} 的 AI 生成情境示意，非真實病例`, caption: 'AI 生成情境示意' } : {}) }));
-  const manifest = { version: 1, title: '運動醫學研究筆記', design: { ...design, imageStyle: design.imageStyle === 'none' ? 'photo' : design.imageStyle, brand: '吳易澄醫師｜運動醫學', footer: paper.doi ? `來源 doi:${paper.doi}` : `來源 ${paper.pmcid ?? paper.pmid}` }, pages,
-    outro: outroBlock(paper),
-    cover: { title: pages[0].title, subtitle: pages[0].subtitle ?? '', ...(hero ? { image: hero, imageAlt: pages[0].imageAlt, caption: 'AI 生成情境示意' } : {}) } };
+  const manifest = buildManifest({ draft, paper, design, hero }), { pages } = manifest;
   const manifestFile = path.join(directory, 'manifest.json');
   await writeFile(manifestFile, JSON.stringify(manifest, null, 2));
   const output = path.join(directory, 'rendered');
