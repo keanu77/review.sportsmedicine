@@ -1,0 +1,4 @@
+# Reviewed 2026-09-28: Cloudflare Access audience identifier, not a credential.
+ba2879a65f7eca9cf13398b0f35655876e5e1079:wrangler.jsonc:generic-api-key:23
+# Reviewed 2026-09-28: deterministic fake worker credential in isolated test fixture.
+0ebf93d02b2765c52074532e4c31068dfb0f5383:tests/server/helpers.mjs:generic-api-key:44
