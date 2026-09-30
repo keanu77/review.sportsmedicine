@@ -16,7 +16,8 @@ export function doiOf(item: Pick<Item, "url" | "doi">): string | null {
 
 export function identifiersOf(item: Pick<Item, "url" | "freeUrl" | "doi" | "pmid" | "pmcid">): { doi: string | null; pmid: string | null; pmcid: string | null } {
   const urls = [item.url, item.freeUrl].flatMap(raw => {
-    try { const url = new URL(raw || ""); return /^https?:$/.test(url.protocol) ? [url] : []; } catch { return []; }
+    if (!raw) return [];
+    try { const url = new URL(raw); return /^https?:$/.test(url.protocol) ? [url] : []; } catch { return []; }
   });
   const pmidUrl = urls.find(url => url.hostname === "pubmed.ncbi.nlm.nih.gov");
   const pmcidUrl = urls.find(url => url.hostname === "pmc.ncbi.nlm.nih.gov" || (url.hostname === "ncbi.nlm.nih.gov" && url.pathname.startsWith("/pmc/")));

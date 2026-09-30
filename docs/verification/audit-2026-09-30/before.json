@@ -1,0 +1,144 @@
+{
+  "at": "2026-09-30T06:48:42.273Z",
+  "viewport": "390x844",
+  "cpuThrottle": 6,
+  "browser": "153.0.8010.12",
+  "method": "Local preview, five runs per query; input event to double RAF and results settled double RAF, not field INP. Fonts blocked.",
+  "results": [
+    {
+      "run": 0,
+      "query": "ACL",
+      "inputToPaintMs": 241,
+      "resultsSettledMs": 387,
+      "rows": 76,
+      "domNodes": 2521,
+      "overflow": false
+    },
+    {
+      "run": 0,
+      "query": "knee",
+      "inputToPaintMs": 219,
+      "resultsSettledMs": 321,
+      "rows": 77,
+      "domNodes": 2560,
+      "overflow": false
+    },
+    {
+      "run": 0,
+      "query": "review",
+      "inputToPaintMs": 2262,
+      "resultsSettledMs": 2950,
+      "rows": 701,
+      "domNodes": 21414,
+      "overflow": false
+    },
+    {
+      "run": 1,
+      "query": "ACL",
+      "inputToPaintMs": 337,
+      "resultsSettledMs": 433,
+      "rows": 76,
+      "domNodes": 2521,
+      "overflow": false
+    },
+    {
+      "run": 1,
+      "query": "knee",
+      "inputToPaintMs": 326,
+      "resultsSettledMs": 406,
+      "rows": 77,
+      "domNodes": 2560,
+      "overflow": false
+    },
+    {
+      "run": 1,
+      "query": "review",
+      "inputToPaintMs": 2255,
+      "resultsSettledMs": 2844,
+      "rows": 701,
+      "domNodes": 21414,
+      "overflow": false
+    },
+    {
+      "run": 2,
+      "query": "ACL",
+      "inputToPaintMs": 332,
+      "resultsSettledMs": 424,
+      "rows": 76,
+      "domNodes": 2521,
+      "overflow": false
+    },
+    {
+      "run": 2,
+      "query": "knee",
+      "inputToPaintMs": 313,
+      "resultsSettledMs": 392,
+      "rows": 77,
+      "domNodes": 2560,
+      "overflow": false
+    },
+    {
+      "run": 2,
+      "query": "review",
+      "inputToPaintMs": 2220,
+      "resultsSettledMs": 2913,
+      "rows": 701,
+      "domNodes": 21414,
+      "overflow": false
+    },
+    {
+      "run": 3,
+      "query": "ACL",
+      "inputToPaintMs": 317,
+      "resultsSettledMs": 400,
+      "rows": 76,
+      "domNodes": 2521,
+      "overflow": false
+    },
+    {
+      "run": 3,
+      "query": "knee",
+      "inputToPaintMs": 299,
+      "resultsSettledMs": 395,
+      "rows": 77,
+      "domNodes": 2560,
+      "overflow": false
+    },
+    {
+      "run": 3,
+      "query": "review",
+      "inputToPaintMs": 2206,
+      "resultsSettledMs": 2871,
+      "rows": 701,
+      "domNodes": 21414,
+      "overflow": false
+    },
+    {
+      "run": 4,
+      "query": "ACL",
+      "inputToPaintMs": 315,
+      "resultsSettledMs": 403,
+      "rows": 76,
+      "domNodes": 2521,
+      "overflow": false
+    },
+    {
+      "run": 4,
+      "query": "knee",
+      "inputToPaintMs": 299,
+      "resultsSettledMs": 388,
+      "rows": 77,
+      "domNodes": 2560,
+      "overflow": false
+    },
+    {
+      "run": 4,
+      "query": "review",
+      "inputToPaintMs": 2209,
+      "resultsSettledMs": 2795,
+      "rows": 701,
+      "domNodes": 21414,
+      "overflow": false
+    }
+  ]
+}

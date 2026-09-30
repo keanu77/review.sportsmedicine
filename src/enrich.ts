@@ -35,7 +35,27 @@ export function selectBibliography(item: Item, records: BibliographyLookup): Bib
   return matches.length === 1 ? matches[0] : undefined;
 }
 
-export function enrichItem(item: Item, summaries: Record<string, string>, tags: TagsData["tags"], bibliography: BibliographyLookup = []): Item {
+/** Conflicting identifiers cannot share a legacy title-keyed overlay, even for co-publications. */
+export function overlayConflicts(items: readonly Item[], bibliography: BibliographyLookup = []): Map<string, Item[]> {
+  const groups = new Map<string, Item[]>();
+  for (const raw of items) {
+    const item = enrichItem(raw, {}, {}, bibliography);
+    const key = paperKey(raw);
+    const group = groups.get(key);
+    if (group) group.push(item); else groups.set(key, [item]);
+  }
+  return new Map([...groups].filter(([, group]) => group.some((item, index) =>
+    group.slice(index + 1).some(other => !compatibleIdentifiers(identifiersOf(item), identifiersOf(other))))));
+}
+
+/** Use the whole catalog as context even when rendering a small subset such as new items. */
+export function enrichItems(items: readonly Item[], summaries: Record<string, string>, tags: TagsData["tags"], bibliography: BibliographyLookup = [], catalog: readonly Item[] = items): Item[] {
+  const blocked = new Set(overlayConflicts(catalog === items ? items : [...catalog, ...items], bibliography).keys());
+  return items.map(item => enrichItem(item, summaries, tags, bibliography, blocked));
+}
+
+/** Single-record primitive. Lists must use enrichItems to check cross-record identity conflicts. */
+export function enrichItem(item: Item, summaries: Record<string, string>, tags: TagsData["tags"], bibliography: BibliographyLookup = [], blocked: ReadonlySet<string> = new Set()): Item {
   const key = paperKey(item);
   const record = selectBibliography(item, bibliography);
   let next: Item = record ? { ...item, doi: record.doi || item.doi, pmid: record.pmid || item.pmid,
@@ -44,11 +64,11 @@ export function enrichItem(item: Item, summaries: Record<string, string>, tags: 
     issue: record.issue || item.issue, pages: record.pages || item.pages, year: record.year ?? item.year,
     firstPublicationDate: record.firstPublicationDate ?? item.firstPublicationDate,
     bibliography: record, identityAliases: paperAliases(item) } : item;
-  next = summaries[key] ? { ...next, tldr: summaries[key], tldrSource: "local-llm" } : next;
+  next = !blocked.has(key) && summaries[key] ? { ...next, tldr: summaries[key], tldrSource: "local-llm" } : next;
   for (const tag of Object.values(tags)) {
     const current = next[tag.axis] ?? [];
     const renamed = current.map(value => tag.absorbs?.includes(value) ? tag.label : value);
-    const add = tag.keys.includes(key) && !renamed.includes(tag.label);
+    const add = !blocked.has(key) && tag.keys.includes(key) && !renamed.includes(tag.label);
     if (add || renamed.some((value, index) => value !== current[index])) {
       next = { ...next, [tag.axis]: [...new Set(add ? [...renamed, tag.label] : renamed)] };
     }

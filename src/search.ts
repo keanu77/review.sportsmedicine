@@ -73,15 +73,16 @@ function canonicalUrl(raw: string): string | null {
 }
 
 function exactToken(item: Item, token: string): boolean | null {
-  const ids = identifiersOf(item);
-  const doi = doiOf({ doi: /^https?:/i.test(token) ? undefined : token, url: token });
-  if (doi) return ids.doi === doi;
-  const queryIds = identifiersOf({ url: token });
-  const pmid = token.match(/^pmid:(\d+)$/i)?.[1] || token.match(/^(\d{5,9})$/)?.[1] || queryIds.pmid;
-  if (pmid) return ids.pmid === pmid;
-  const pmcid = token.match(/^(?:pmcid:)?(PMC\d+)$/i)?.[1]?.toUpperCase() || queryIds.pmcid;
-  if (pmcid) return ids.pmcid === pmcid;
-  const url = canonicalUrl(token);
+  const isUrl = /^https?:/i.test(token);
+  const doi = doiOf({ doi: isUrl ? undefined : token, url: token });
+  if (doi) return identifiersOf(item).doi === doi;
+  // Ordinary words are not URLs. Avoid repeatedly throwing URL parse errors for them.
+  const queryIds = isUrl ? identifiersOf({ url: token }) : null;
+  const pmid = token.match(/^pmid:(\d+)$/i)?.[1] || token.match(/^(\d{5,9})$/)?.[1] || queryIds?.pmid;
+  if (pmid) return identifiersOf(item).pmid === pmid;
+  const pmcid = token.match(/^(?:pmcid:)?(PMC\d+)$/i)?.[1]?.toUpperCase() || queryIds?.pmcid;
+  if (pmcid) return identifiersOf(item).pmcid === pmcid;
+  const url = isUrl ? canonicalUrl(token) : null;
   if (url) return [item.url, item.freeUrl].some(value => value && canonicalUrl(value) === url);
   return null;
 }
@@ -104,7 +105,10 @@ export function rankResults(items: Item[], tokens: string[], sort: SearchSort): 
     + (tokenMatches(item.title.toLowerCase(), token) ? 10 : 0)
     + (tokenMatches((item.authors ?? []).join(" ").toLowerCase(), token) ? 5 : 0)
     + (tokenMatches([item.disease, ...(item.themes ?? [])].join(" ").toLowerCase(), token) ? 3 : 0), 0);
-  return [...items].sort((a, b) => (sort === "relevance" ? score(b) - score(a) : 0)
+  // Scoring parses identifiers and matches aliases. Do it once per paper per query,
+  // not twice for every sort comparison (thousands of repeated parses on broad queries).
+  const scores = sort === 'relevance' ? new Map(items.map(item => [item, score(item)])) : null;
+  return [...items].sort((a, b) => (scores ? scores.get(b)! - scores.get(a)! : 0)
     || (b.year ?? 0) - (a.year ?? 0) || a.title.localeCompare(b.title));
 }
 

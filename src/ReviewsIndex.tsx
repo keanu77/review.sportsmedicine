@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "react";
-import { createBibliographyIndex, enrichItem } from "./enrich";
+import { createBibliographyIndex, enrichItems } from "./enrich";
 import { canonicalPaperId, paperAliases, uniquePapers } from "./identity";
 import PaperDetails from "./PaperDetails";
 import { studyTypeOf } from "./studyType";
@@ -181,7 +181,7 @@ export default function ReviewsIndex() {
   // 不用分類器結果取代上游——對檢索工具而言漏掉一篇相關文獻，比多收一篇無關的嚴重。
   const merged: Item[] = useMemo(() => {
     if (!data) return [];
-    return data.items.map(item => enrichItem(item, summaries, tags, bibliographyIndex));
+    return enrichItems(data.items, summaries, tags, bibliographyIndex);
   }, [data, summaries, tags, bibliographyIndex]);
 
   const starSet = useMemo(() => {
@@ -381,7 +381,7 @@ export default function ReviewsIndex() {
         </div>
       </header>
 
-      <NewThisMonth jcrYear={jcrYear} summaries={summaries} tags={tags} bibliography={bibliographyIndex} starSet={starSet} onToggleStar={togglePaper} onOpen={markRead} />
+      <NewThisMonth catalog={data.items} jcrYear={jcrYear} summaries={summaries} tags={tags} bibliography={bibliographyIndex} starSet={starSet} onToggleStar={togglePaper} onOpen={markRead} />
 
       {/* Toolbar：行動裝置不 sticky，避免動態高度的工具列遮住錨點目標 */}
       <div className="z-10 space-y-3 rounded-lg border border-line bg-surface/95 p-3 backdrop-blur dark:border-line-dark dark:bg-surface-dark/95 sm:sticky sm:top-0 print:hidden">
@@ -421,7 +421,7 @@ export default function ReviewsIndex() {
                 <input
                   type="checkbox"
                   checked={showStarred}
-                  onChange={(e) => setShowStarred(e.target.checked)}
+                  onChange={(e) => { setShowStarred(e.target.checked); setView({ page: 1 }); }}
                   className="h-5 w-5 rounded accent-brand-strong"
                 />
                 只看收藏（{stars.length}）
@@ -494,6 +494,8 @@ export default function ReviewsIndex() {
       {hasQuery ? (
         <SearchResults
           results={flatResults}
+          page={view.page}
+          onPageChange={page => setView({ page })}
           sort={view.sort}
           query={deferredQ}
           total={totalUnique}
@@ -603,6 +605,8 @@ export default function ReviewsIndex() {
 
 function SearchResults({
   results,
+  page,
+  onPageChange,
   sort,
   query,
   total,
@@ -616,6 +620,8 @@ function SearchResults({
   onClearFree,
 }: {
   results: Item[];
+  page: number;
+  onPageChange: (page: number) => void;
   sort: SearchSort;
   query: string;
   total: number;
@@ -628,6 +634,20 @@ function SearchResults({
   onClear: () => void;
   onClearFree: () => void;
 }) {
+  const sectionRef = useRef<HTMLElement>(null);
+  const focusAfterPage = useRef(false);
+  const pageSize = 25;
+  const pageCount = Math.max(1, Math.ceil(results.length / pageSize));
+  const currentPage = Math.min(pageCount, Math.max(1, page));
+  const start = (currentPage - 1) * pageSize;
+  const changePage = (next: number) => { focusAfterPage.current = true; onPageChange(next); };
+  useEffect(() => {
+    if (focusAfterPage.current) {
+      focusAfterPage.current = false;
+      sectionRef.current?.focus();
+      sectionRef.current?.scrollIntoView({ block: 'start' });
+    }
+  }, [currentPage]);
   if (results.length === 0) {
     return (
       <div className="rounded-lg border border-line p-6 dark:border-line-dark">
@@ -662,15 +682,17 @@ function SearchResults({
   }
 
   return (
-    <section aria-label="搜尋結果">
+    <section aria-label="搜尋結果" ref={sectionRef} tabIndex={-1} className="focus:outline-none">
       <p className="mb-2 text-sm text-body dark:text-body-dark">
         <span className="font-semibold tabular-nums text-ink dark:text-ink-dark">
           {results.length}
         </span>{" "}
         / {total} 篇符合「{query}」{freeOnly && "（限免費全文）"} · {searchSortLabel(sort)}
       </p>
+      <p role="status" className="mb-2 text-xs text-muted dark:text-muted-dark">第 {currentPage} / {pageCount} 頁 · 顯示第 {start + 1}–{Math.min(start + pageSize, results.length)} 篇</p>
+      {pageCount > 1 && <SearchPagination page={currentPage} count={pageCount} position="上方" onChange={changePage} />}
       <ul className="divide-y divide-line rounded-lg border border-line bg-surface dark:divide-line-dark dark:border-line-dark dark:bg-surface-dark">
-        {results.map((r) => (
+        {results.slice(start, start + pageSize).map((r) => (
           <ReviewRow
             key={canonicalPaperId(r)}
             item={r}
@@ -682,8 +704,18 @@ function SearchResults({
           />
         ))}
       </ul>
+      {pageCount > 1 && <SearchPagination page={currentPage} count={pageCount} position="下方" onChange={changePage} />}
     </section>
   );
+}
+
+function SearchPagination({ page, count, position, onChange }: { page: number; count: number; position: string; onChange: (page: number) => void }) {
+  const style = 'min-h-11 rounded border border-linestrong px-4 text-sm text-body disabled:cursor-default disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-linestrong-dark dark:text-body-dark';
+  return <nav aria-label={`搜尋結果分頁（${position}）`} className="my-3 flex flex-wrap items-center justify-between gap-2 print:hidden">
+    <button type="button" className={style} disabled={page === 1} onClick={() => onChange(page - 1)}>上一頁</button>
+    <span className="text-sm tabular-nums text-body dark:text-body-dark">{page} / {count}</span>
+    <button type="button" className={style} disabled={page === count} onClick={() => onChange(page + 1)}>下一頁</button>
+  </nav>;
 }
 
 function AxisSection({

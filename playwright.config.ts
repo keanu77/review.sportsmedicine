@@ -15,7 +15,10 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "chromium", use: { ...devices["Desktop Chrome"], colorScheme: "light" } },
+    { name: "chromium-dark", testMatch: /(?:a11y|public-workflow|pagination)\.spec\.ts/, use: { ...devices["Desktop Chrome"], colorScheme: "dark" } },
+  ],
   webServer: {
     command: "npm run build && npx vite preview --port 4180 --strictPort",
     url: "http://localhost:4180",

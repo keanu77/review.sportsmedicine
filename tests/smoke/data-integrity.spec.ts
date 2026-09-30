@@ -38,7 +38,7 @@ test("中文摘要疊加層有載入並標示來源", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("searchbox").fill("ACL");
   const results = page.getByRole("region", { name: "搜尋結果" }).getByRole("listitem");
-  await expect.poll(() => results.count(), { timeout: 10_000 }).toBeGreaterThan(50);
+  await expect(results).toHaveCount(25);
 
   const aiTags = page.getByText("AI 摘要", { exact: true });
   await expect.poll(() => aiTags.count()).toBeGreaterThan(10);

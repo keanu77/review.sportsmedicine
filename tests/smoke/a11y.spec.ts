@@ -78,7 +78,7 @@ test("瀏覽模式所有文字達 WCAG AA 對比", async ({ page }) => {
 test("搜尋結果所有文字達 WCAG AA 對比", async ({ page }) => {
   await page.goto("/?q=ACL");
   const results = page.getByRole("region", { name: "搜尋結果" }).getByRole("listitem");
-  await expect.poll(() => results.count(), { timeout: 10_000 }).toBeGreaterThan(50);
+  await expect(results).toHaveCount(25);
   expect(await contrastFailures(page)).toEqual([]);
 });
 

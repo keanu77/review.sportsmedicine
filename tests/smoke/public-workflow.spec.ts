@@ -53,11 +53,27 @@ test("same-title papers with different DOIs keep separate sources and favorites"
   await page.goto("/?q=PRIOR");
   const rows = page.getByRole("region", { name: "搜尋結果" }).getByRole("listitem");
   await expect(rows).toHaveCount(2);
+  await expect(rows.getByText('共用中文疊加摘要', { exact: false })).toHaveCount(0);
+  await expect(rows.getByText('新增復健主題', { exact: true })).toHaveCount(0);
   await expect(rows.nth(0).getByRole("link", { name: "文獻詳情" })).toHaveAttribute("href", /doi%3A10\.1234%2Fsecond/);
   await expect(rows.nth(1).getByRole("link", { name: "文獻詳情" })).toHaveAttribute("href", /doi%3A10\.1234%2Ffirst/);
   await rows.nth(0).getByRole("button", { name: "收藏", exact: true }).click();
   await expect(rows.nth(0).getByRole("button", { name: "已收藏", exact: true })).toBeVisible();
   await expect(rows.nth(1).getByRole("button", { name: "收藏", exact: true })).toBeVisible();
+});
+
+test('new-items subset cannot receive a title overlay belonging to conflicting catalog identities', async ({ page }) => {
+  await sourceFixture(page);
+  const base = { title: 'An Umbrella Review Following PRIOR Guideline', year: 2026, source: 'Test Journal', free: true, tldr: '各自原始摘要', region: '膝', disease: '膝痛', themes: [], populations: [] };
+  const first = { ...base, url: 'https://doi.org/10.1234/first' }, second = { ...base, url: 'https://doi.org/10.1234/second' };
+  await page.route('**/data/reviews-index.json', route => route.fulfill({ json: { meta: { updated: '2026-09-21', total: 2, freeCount: 2 }, axes: { region: [{ key: '膝', count: 2 }], theme: [], population: [] }, items: [first, second] } }));
+  await page.route('**/data/new-items.json', route => route.fulfill({ json: { batch: '2026-09-21', count: 1, items: [first] } }));
+  // Confirm the overlay actually arrived, so an early empty UI cannot pass this regression.
+  const overlay = page.waitForResponse('**/data/summaries.json');
+  await page.goto('/'); await overlay;
+  await page.getByRole('button', { name: /(?:本月|最新)新增文獻/ }).click();
+  await expect(page.getByText('各自原始摘要', { exact: false })).toBeVisible();
+  await expect(page.getByText('共用中文疊加摘要', { exact: false })).toHaveCount(0);
 });
 
 test("public pages never link to the private workbench, which stays reachable by typing its path", async ({ page }) => {

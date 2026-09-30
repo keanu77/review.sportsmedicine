@@ -15,6 +15,7 @@ async function searchCount(page: Page, term: string): Promise<number> {
   await page.getByRole("searchbox").fill(term);
   const summary = page.getByText(/\d+ \/ \d+ 篇符合/);
   await expect(summary).toBeVisible({ timeout: 10_000 });
+  await expect(summary).toContainText(`「${term}」`);
   const text = await summary.innerText();
   return Number(text.match(/^(\d+)/)![1]);
 }

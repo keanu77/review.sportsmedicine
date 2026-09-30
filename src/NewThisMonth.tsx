@@ -1,7 +1,7 @@
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import ReviewRow from "./ReviewRow";
-import type { NewItemsData, TagsData } from "./types";
-import { enrichItem, type BibliographyLookup } from "./enrich";
+import type { Item, NewItemsData, TagsData } from "./types";
+import { enrichItems, type BibliographyLookup } from "./enrich";
 import { canonicalPaperId } from "./identity";
 
 // 「本月新增文獻」——每月同步時由 scripts/build-new-items.mjs 比對前後快照算出。
@@ -17,7 +17,8 @@ function monthLabel(batch: string | null): string {
   return batch.slice(0, 7) === currentMonth ? "本月新增文獻" : "最新新增文獻";
 }
 
-export default function NewThisMonth({ jcrYear, summaries, tags, bibliography, starSet, onToggleStar, onOpen }: {
+export default function NewThisMonth({ catalog, jcrYear, summaries, tags, bibliography, starSet, onToggleStar, onOpen }: {
+  catalog: readonly Item[];
   jcrYear: string; summaries: Record<string, string>; tags: TagsData["tags"]; starSet: Set<string>;
   bibliography: BibliographyLookup;
   onToggleStar: (key: string) => void; onOpen: (key: string) => void;
@@ -42,6 +43,7 @@ export default function NewThisMonth({ jcrYear, summaries, tags, bibliography, s
     };
   }, []);
 
+  const items = useMemo(() => data ? enrichItems(data.items, summaries, tags, bibliography, catalog) : [], [data, summaries, tags, bibliography, catalog]);
   if (!data) return null;
 
   return (
@@ -95,7 +97,7 @@ export default function NewThisMonth({ jcrYear, summaries, tags, bibliography, s
             </p>
           ) : (
             <ul className="divide-y divide-line border-t border-line bg-surface dark:divide-line-dark dark:border-line-dark dark:bg-surface-dark">
-              {data.items.map((raw) => enrichItem(raw, summaries, tags, bibliography)).map((item) => (
+              {items.map((item) => (
                 <ReviewRow
                   key={item.url || item.title}
                   item={item}

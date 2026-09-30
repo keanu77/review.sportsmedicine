@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.maintenance.json",
     "summarize": "node scripts/summarize-new-items.mjs public/data/new-items.json",
     "summaries": "node scripts/build-summaries.mjs",
     "feed": "node scripts/build-feed.mjs",
@@ -37,6 +37,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@types/node": "^24.19.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^6.1.1",
