@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-10-01T01:30:13.119Z",
+  "generatedAt": "2026-10-01T01:53:50.817Z",
   "records": [
     {
       "title": "Return-to-Play Criteria Following Lower Limb Muscle Injuries in Soccer: A Systematic Review with Evidence Synthesis.",
@@ -20643,6 +20643,30 @@
       "sourceUrl": "https://europepmc.org/article/MED/42725644",
       "verifiedAt": "2026-10-01T01:30:05.232Z",
       "matchMethod": "identifier"
+    },
+    {
+      "title": "Anterior opening-wedge high tibial osteotomy for restoring posterior tibial slope in PCL insufficiency and genu recurvatum: A narrative review.",
+      "year": 2026,
+      "firstPublicationDate": "2026-07-22",
+      "doi": "10.1002/ksa.70538",
+      "pmid": "42485054",
+      "pmcid": null,
+      "authors": [
+        "Cohen D",
+        "Ambrosini L",
+        "Dickschas J",
+        "van Heerwaarden R",
+        "Ollivier M",
+        "Musahl V"
+      ],
+      "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
+      "volume": "34",
+      "issue": "10",
+      "pages": "3719-3731",
+      "source": "Europe PMC",
+      "sourceUrl": "https://europepmc.org/article/MED/42485054",
+      "verifiedAt": "2026-10-01T01:53:42.775Z",
+      "matchMethod": "identifier"
     }
   ],
   "unresolved": [
@@ -20650,25 +20674,25 @@
       "key": "doi:10.1016/j.apmr.2026.04.026",
       "title": "Comparison of the efficacy of hyaluronic acid vs corticosteroids, platelet-rich plasma, and physical therapy in chronic shoulder pain:: a systematic review and a frequentist network metanalysis.",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:11.108Z"
+      "checkedAt": "2026-10-01T01:53:48.242Z"
     },
     {
       "key": "doi:10.2196/90289",
       "title": "Efficacy of Various Virtual Reality Exposure Therapies for Chronic Low Back Pain: A Systematic Review and Network Meta-Analysis.",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:11.823Z"
+      "checkedAt": "2026-10-01T01:53:48.816Z"
     },
     {
       "key": "doi:10.1136/bjsports-2025-110683",
       "title": "Effects of percutaneous platelet-rich plasma injection on return-to-play after acute hamstring muscle injury: systematic review and meta-analysis.",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:12.413Z"
+      "checkedAt": "2026-10-01T01:53:49.526Z"
     },
     {
       "key": "doi:10.1053/j.jfas.2026.04.014",
       "title": "Screw Characteristics and Intramedullary Fixation for the Jones Fractures and associated Outcomes: A Systematic Review and Meta-Analysis.",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:13.116Z"
+      "checkedAt": "2026-10-01T01:53:50.121Z"
     },
     {
       "key": "title:cammorphologyandtheriskofdevelopingradiographichiposteoarthritiswithin8yearsanindividualparticipantdatametaanalysisof23886hipsfromtheworldcoachconsortium",
@@ -20710,7 +20734,7 @@
       "key": "title:青少年運動員低背痛的發生率incidence流行率prevalence及風險因素riskfactors系統性回顧與統合分析metaanalysis",
       "title": "青少年運動員低背痛的發生率(incidence)、流行率(prevalence)及風險因素(risk factors)：系統性回顧與統合分析(meta-analysis)。",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:05.865Z"
+      "checkedAt": "2026-10-01T01:53:43.127Z"
     },
     {
       "key": "title:promotionofmusclestrengtheningexerciseforpublichealthasystematicreviewofreallifeinterventionsinhealthyadults",
@@ -20770,7 +20794,7 @@
       "key": "title:透過運動改變你的生活針對無家可歸成人的健康與福祉改善的身體活動介入一項混合方法系統性回顧mixedmethodssystematicreview",
       "title": "「透過運動改變你的生活」－ 針對無家可歸成人的健康與福祉改善的身體活動介入：一項混合方法系統性回顧 (mixed-methods systematic review)",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:06.594Z"
+      "checkedAt": "2026-10-01T01:53:43.606Z"
     },
     {
       "key": "title:clinicalimportanceofsimplemuscularfitnessteststopredictlongtermhealthconditionsasystematicreviewandmetaanalysisof94cohortstudies",
@@ -20812,7 +20836,7 @@
       "key": "title:themeasurementandapplicationofcriticalspeedandinrunningascopingreview",
       "title": "The Measurement and Application of Critical Speed and ′ in Running: A Scoping Review",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:07.149Z"
+      "checkedAt": "2026-10-01T01:53:44.329Z"
     },
     {
       "key": "title:howbloodflowrestrictionresistancetraininghasbeenstudiedonnonrestrictedmusclesinhealthyinjuredandclinicalpopulationsascopingreviewandevidencegapmap",
@@ -20842,25 +20866,25 @@
       "key": "title:身體活動與老化關於哥本哈根共識聲明copenhagenconsensusstatement的資訊圖表2019",
       "title": "身體活動與老化：關於哥本哈根共識聲明(Copenhagen Consensus statement)的資訊圖表(2019)",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:07.888Z"
+      "checkedAt": "2026-10-01T01:53:44.919Z"
     },
     {
       "key": "title:請使用這些ppt幻燈片總結2012年蘇黎世共識聲明zurichconsensusstatement關於腦震盪concussion的內容",
       "title": "請使用這些PPT幻燈片，總結2012年蘇黎世共識聲明（Zurich Consensus statement）關於腦震盪（Concussion）的內容。",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:08.498Z"
+      "checkedAt": "2026-10-01T01:53:45.539Z"
     },
     {
       "key": "title:澳洲足球聯盟考慮腦震盪共識聲明concussionconsensusstatement",
       "title": "澳洲足球聯盟考慮腦震盪共識聲明(Concussion Consensus Statement)",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:09.100Z"
+      "checkedAt": "2026-10-01T01:53:46.190Z"
     },
     {
       "key": "title:太極熱潮全球報導李明洙myeongsoolee和艾茲哈德恩斯特edzardernst的系統性回顧systematicreview",
       "title": "太極熱潮！全球報導李明洙(Myeong Soo Lee)和艾茲哈德·恩斯特(Edzard Ernst)的系統性回顧(Systematic Review)",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:09.792Z"
+      "checkedAt": "2026-10-01T01:53:46.837Z"
     },
     {
       "key": "title:effectivenessofphysicalactivitypromotioninterventionsinlowincomeandmiddleincomecountriesasystematicreviewandmetaanalysis",
@@ -20908,7 +20932,7 @@
       "key": "title:橄欖球聯盟rugbyunion與健康與福祉healthandwellbeing我們可以從範疇回顧scopingreview中得到什麼啟示",
       "title": "橄欖球聯盟(Rugby Union)與健康與福祉(Health and Wellbeing)。我們可以從範疇回顧(scoping review)中得到什麼啟示？",
       "reason": "no-exact-source-match",
-      "checkedAt": "2026-10-01T01:30:10.389Z"
+      "checkedAt": "2026-10-01T01:53:47.498Z"
     },
     {
       "key": "title:effectofexercisesnacksonfitnessandcardiometabolichealthinphysicallyinactiveindividualssystematicreviewandmetaanalysis",
@@ -20921,6 +20945,12 @@
       "title": "Effectiveness of cryotherapy on pain intensity, range of motion, swelling and function in the postoperative care of musculoskeletal disorders: a systematic review and meta-analysis of randomised controlled trials",
       "reason": "title-match-requires-year",
       "checkedAt": "2026-09-21T12:46:40.202Z"
+    },
+    {
+      "key": "pmid:42814278",
+      "title": "A Return to Performance Continuum for Football (Soccer) Players After ACL Reconstruction: Bridging Rehabilitation, Return to Play and Sustained Performance",
+      "reason": "no-exact-source-match",
+      "checkedAt": "2026-10-01T01:53:50.813Z"
     }
   ]
 }

@@ -1,8 +1,8 @@
 {
   "meta": {
-    "updated": "2026-09-28",
+    "updated": "2026-10-01",
     "total": 912,
-    "freeCount": 184,
+    "freeCount": 186,
     "ifJcrYear": "2023",
     "note": "運動醫學/復健 review；可依部位、臨床主題、族群三種方式分類。AI 摘要與免費全文為系統自動產生。"
   },
@@ -15239,6 +15239,23 @@
       "impactFactor": 2.3
     },
     {
+      "title": "A Return to Performance Continuum for Football (Soccer) Players After ACL Reconstruction: Bridging Rehabilitation, Return to Play and Sustained Performance",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42814278/",
+      "source": "Sports Med",
+      "tldr": null,
+      "free": false,
+      "freeUrl": null,
+      "journal": "Sports medicine (Auckland, N.Z.)",
+      "pmid": "42814278",
+      "origin": "pubmed",
+      "region": "膝",
+      "disease": "前十字韌帶損傷",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 9.3
+    },
+    {
       "title": "The Forgotten Joint Score Shows High Correlation With Established Anterior Cruciate Ligament Reconstruction Patient-Reported Outcome Measures While Capturing Joint Awareness and Functional Recovery: A Systematic Review",
       "year": 2026,
       "url": "https://pubmed.ncbi.nlm.nih.gov/42757655/",
@@ -15305,23 +15322,6 @@
       "themes": [],
       "populations": [],
       "impactFactor": 2.4
-    },
-    {
-      "title": "Revision anterior cruciate ligament reconstruction following failure of combined anterior cruciate ligament reconstruction with lateral extra-articular procedures: A scoping review",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42704685/",
-      "source": "Knee Surg Sports Traumatol Arthrosc",
-      "tldr": null,
-      "free": false,
-      "freeUrl": null,
-      "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
-      "pmid": "42704685",
-      "origin": "pubmed",
-      "region": "膝",
-      "disease": "前十字韌帶損傷",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 3.3
     },
     {
       "title": "The Forgotten Joint Score Shows High Correlation With Established Anterior Cruciate Ligament Reconstruction Patient-Reported Outcome Measures While Capturing Joint Awareness and Functional Recovery: A Systematic Review",
@@ -15885,6 +15885,23 @@
       "impactFactor": 2.4
     },
     {
+      "title": "Anterior opening-wedge high tibial osteotomy for restoring posterior tibial slope in PCL insufficiency and genu recurvatum: A narrative review",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42485054/",
+      "source": "Knee Surg Sports Traumatol Arthrosc",
+      "tldr": null,
+      "free": false,
+      "freeUrl": null,
+      "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
+      "pmid": "42485054",
+      "origin": "pubmed",
+      "region": "膝",
+      "disease": "後十字韌帶損傷",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 3.3
+    },
+    {
       "title": "The Superficial Medial Collateral Ligament Is the Primary Restraint to External Tibial Rotation Among Medial Knee Structures: A Robotic Biomechanical Study",
       "year": 2026,
       "url": "https://pubmed.ncbi.nlm.nih.gov/41943806/",
@@ -15934,23 +15951,6 @@
       "themes": [],
       "populations": [],
       "impactFactor": 2.4
-    },
-    {
-      "title": "Posterior cruciate ligament involvement leads to inferior outcomes in multiligament knee injuries involving the medial collateral ligament: A systematic review and meta-analysis",
-      "year": 2025,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/41474176/",
-      "source": "Knee Surg Sports Traumatol Arthrosc",
-      "tldr": null,
-      "free": false,
-      "freeUrl": null,
-      "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
-      "pmid": "41474176",
-      "origin": "pubmed",
-      "region": "膝",
-      "disease": "後十字韌帶損傷",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 3.3
     },
     {
       "title": "Concomitant Anterior Cruciate Ligament and Medial Collateral Ligament Reconstruction: A Systematic Review",
@@ -16060,8 +16060,8 @@
       "url": "https://pubmed.ncbi.nlm.nih.gov/42233488/",
       "source": "Am J Sports Med",
       "tldr": null,
-      "free": false,
-      "freeUrl": null,
+      "free": true,
+      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13620251/",
       "journal": "The American journal of sports medicine",
       "pmid": "42233488",
       "origin": "pubmed",
@@ -16332,8 +16332,8 @@
       "url": "https://pubmed.ncbi.nlm.nih.gov/42290543/",
       "source": "Knee Surg Sports Traumatol Arthrosc",
       "tldr": null,
-      "free": false,
-      "freeUrl": null,
+      "free": true,
+      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13622913/",
       "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
       "pmid": "42290543",
       "origin": "pubmed",
