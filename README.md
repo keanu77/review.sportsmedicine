@@ -55,6 +55,9 @@ Crossref 期刊名解析 + IF 表），發布於公開 URL
 自動拉取最新資料、commit 回本 repo；該 commit 的 push 會觸發 Cloudflare Pages
 自動重建（不需任何跨 repo token）。也可在 Actions 頁手動觸發（workflow_dispatch）即時同步。
 
+網站維護（`.github/workflows/monthly-maintenance.yml`）於每月 2 日台灣時間凌晨 03:00
+（日本時間 04:00）執行，相容依賴更新通過驗證後才發布。
+
 ### 本月新增文獻
 
 上游是**固定容量的滾動視窗**（每月有新增也有汰除），且項目本身沒有收錄日期欄位，

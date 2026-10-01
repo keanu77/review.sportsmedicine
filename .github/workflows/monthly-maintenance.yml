@@ -1,9 +1,10 @@
 name: Monthly website maintenance
 
-# Day 3, 03:37 UTC = 11:37 Taipei / 12:37 Tokyo.
+# Day 2 at 03:00 Asia/Taipei (04:00 Asia/Tokyo).
 on:
   schedule:
-    - cron: '37 3 3 * *'
+    - cron: '0 3 2 * *'
+      timezone: 'Asia/Taipei'
   workflow_dispatch:
     inputs:
       apply_updates:
