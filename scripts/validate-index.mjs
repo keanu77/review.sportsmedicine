@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-export function validateIndex(next, previous) {
+export function validateIndex(next, previous, expectedDate) {
   if (!next?.meta || !/^\d{4}-\d{2}-\d{2}$/.test(next.meta.updated || '') || !Number.isFinite(Date.parse(next.meta.updated))) throw new Error('索引日期無效');
+  if (expectedDate && next.meta.updated !== expectedDate) throw new Error('上游尚未發布本日批次，保留現有索引');
   if (!Array.isArray(next.items) || next.items.length < 1) throw new Error('索引文獻不可為空');
   if (previous?.meta?.updated && next.meta.updated < previous.meta.updated) throw new Error('上游資料日期倒退，保留現有索引');
   if (previous?.items?.length && (next.items.length < previous.items.length * .7 || next.items.length > previous.items.length * 1.5)) throw new Error('文獻筆數變動超過安全範圍，請人工檢查');
@@ -18,5 +19,5 @@ export function validateIndex(next, previous) {
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const [next = 'public/data/reviews-index.json', previous] = process.argv.slice(2);
-  console.log(JSON.stringify(validateIndex(JSON.parse(readFileSync(next, 'utf8')), previous ? JSON.parse(readFileSync(previous, 'utf8')) : undefined)));
+  console.log(JSON.stringify(validateIndex(JSON.parse(readFileSync(next, 'utf8')), previous ? JSON.parse(readFileSync(previous, 'utf8')) : undefined, process.env.EXPECTED_INDEX_DATE)));
 }

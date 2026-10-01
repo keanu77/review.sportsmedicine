@@ -151,7 +151,7 @@ export function main([command, mode, artifact], env = process.env) {
   let newItems;
   if (mode === 'sync') { assertSafePath(dataFiles[1]); newItems = JSON.parse(readFileSync(dataFiles[1], 'utf8')); }
   if (command === 'pack') {
-    const month = new Date().toISOString().slice(0, 7);
+    const month = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()).slice(0, 7);
     const paths = [...(mode === 'maintenance' ? ['package-lock.json'] : dataFiles), `docs/maintenance/${month}.md`];
     const files = {};
     for (const name of paths) {

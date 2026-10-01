@@ -9,3 +9,8 @@ test('monthly refresh rejects invalid records, older snapshots and implausible l
     assert.throws(() => validateIndex(next, data));
   }
 });
+
+test('scheduled refresh requires the actual current batch and never relabels stale data', () => {
+  assert.doesNotThrow(() => validateIndex(data, data, data.meta.updated));
+  assert.throws(() => validateIndex(data, data, '2099-01-01'), /本日批次/);
+});

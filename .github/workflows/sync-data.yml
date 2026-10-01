@@ -1,7 +1,7 @@
 name: Monthly data sync
 
 # Day 1 at 03:00 Asia/Taipei (04:00 Asia/Tokyo).
-# Upstream rebuilds on day 28. Preserve the existing snapshot on any failure.
+# Upstream rebuilds on day 1 at 02:00 Asia/Taipei. Reject stale scheduled batches.
 on:
   workflow_dispatch:
     inputs:
@@ -39,6 +39,10 @@ jobs:
           sudo apt-get install -y ffmpeg
       - name: Fetch and validate before replacing data
         run: |
+          # Scheduled runs must receive today's actual upstream batch, never relabel old data.
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            export EXPECTED_INDEX_DATE="$(TZ=Asia/Taipei date +%F)"
+          fi
           cp public/data/reviews-index.json "$RUNNER_TEMP/previous-index.json"
           curl --fail --silent --show-error --location --retry 3 --max-time 90 https://app.sportsmedicine.tw/data/reviews-index.json -o "$RUNNER_TEMP/next-index.json"
           node scripts/validate-index.mjs "$RUNNER_TEMP/next-index.json" "$RUNNER_TEMP/previous-index.json"

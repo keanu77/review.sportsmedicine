@@ -51,6 +51,9 @@ RSS/知識庫 monorepo 產生（`scripts/reviews-index-*`：KB 抽取 + PubMed �
 Crossref 期刊名解析 + IF 表），發布於公開 URL
 `https://app.sportsmedicine.tw/data/reviews-index.json`。
 
+上游於每月 1 日台灣時間凌晨 02:00 重新抓取並產生當日批次，預留一小時供資料產出與部署。
+資料批次、同步紀錄與月報月份皆使用台灣日期；排程同步若未取得當日批次會停止並保留舊版。
+
 本站的同步 workflow（`.github/workflows/sync-data.yml`）每月 1 日台灣時間凌晨 03:00（日本時間 04:00）自該公開 URL
 自動拉取最新資料、commit 回本 repo；該 commit 的 push 會觸發 Cloudflare Pages
 自動重建（不需任何跨 repo token）。也可在 Actions 頁手動觸發（workflow_dispatch）即時同步。

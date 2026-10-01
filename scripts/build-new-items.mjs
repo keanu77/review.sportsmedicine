@@ -67,7 +67,7 @@ const sorted = [...added].sort(
 const output = {
   batch: next.meta?.updated ?? null, // 上游批次日期（YYYY-MM-DD）
   previousBatch: prev.meta?.updated ?? null,
-  syncedAt: new Date().toISOString().slice(0, 10),
+  syncedAt: new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()),
   count: sorted.length,
   items: sorted,
 };
