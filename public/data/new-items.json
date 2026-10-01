@@ -1,105 +1,120 @@
 {
-  "batch": "2026-08-28",
-  "previousBatch": "2026-07-28",
-  "syncedAt": "2026-08-28",
-  "count": 28,
+  "batch": "2026-09-28",
+  "previousBatch": "2026-08-28",
+  "syncedAt": "2026-10-01",
+  "count": 26,
   "items": [
     {
-      "title": "Hydrodilatation for adhesive capsulitis: a systematic review exploring efficacy and optimal technique",
+      "title": "Optimal exercise dose in adults with chronic low back pain disorders: systematic review with dose-response network meta-analysis",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42527106/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42785965/",
       "source": "Br J Sports Med",
-      "tldr": "水擴張治療黏連性肩關節囊炎之系統性回顧顯示，相較於類固醇注射或物理治療，其臨床改善證據有限，且最佳注射體積與次數仍未定論。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "British journal of sports medicine",
-      "pmid": "42527106",
+      "pmid": "42785965",
       "origin": "pubmed",
-      "region": "肩",
-      "disease": "肩痛",
+      "region": "腰椎",
+      "disease": "下背痛",
       "themes": [],
       "populations": [],
       "impactFactor": 12,
       "diseases": [
-        "肩痛"
-      ],
-      "tldrSource": "local-llm"
+        "下背痛"
+      ]
     },
     {
-      "title": "Understanding Anterior Cruciate Ligament Adaptation: Structural, Mechanical, and Healing Considerations",
+      "title": "Assistive technologies (lumbar supports and other devices) for treating chronic low back pain",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42566134/",
-      "source": "Sports Med",
-      "tldr": "敘述性回顧指出ACL為機械感應組織，其適應受負載、性別及成熟度影響，整合阻力訓練可增強韌帶韌性並降低受傷風險。",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42680183/",
+      "source": "Cochrane Database Syst Rev",
+      "tldr": null,
+      "free": true,
+      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13533592/",
+      "journal": "The Cochrane database of systematic reviews",
+      "pmid": "42680183",
+      "origin": "pubmed",
+      "region": "腰椎",
+      "disease": "下背痛",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 8.8,
+      "diseases": [
+        "下背痛"
+      ]
+    },
+    {
+      "title": "Tailoring Resistance Exercise for Knee Osteoarthritis: An Intervention Systematic Review With Dose-Response Meta-analysis of the Effects of Intensity and Volume",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42676087/",
+      "source": "J Orthop Sports Phys Ther",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
-      "journal": "Sports medicine (Auckland, N.Z.)",
-      "pmid": "42566134",
+      "journal": "The Journal of orthopaedic and sports physical therapy",
+      "pmid": "42676087",
+      "origin": "pubmed",
+      "region": "膝",
+      "disease": "膝骨關節炎",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 6,
+      "diseases": [
+        "膝骨關節炎"
+      ]
+    },
+    {
+      "title": "The Efficacy of Exercise Therapy for Nonspecific Chronic Low Back Pain According to the FITT Principle: A Systematic Review With Meta-analyses",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42676082/",
+      "source": "J Orthop Sports Phys Ther",
+      "tldr": null,
+      "free": false,
+      "freeUrl": null,
+      "journal": "The Journal of orthopaedic and sports physical therapy",
+      "pmid": "42676082",
+      "origin": "pubmed",
+      "region": "腰椎",
+      "disease": "下背痛",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 6,
+      "diseases": [
+        "下背痛"
+      ]
+    },
+    {
+      "title": "The Forgotten Joint Score Shows High Correlation With Established Anterior Cruciate Ligament Reconstruction Patient-Reported Outcome Measures While Capturing Joint Awareness and Functional Recovery: A Systematic Review",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42757655/",
+      "source": "Arthroscopy",
+      "tldr": null,
+      "free": false,
+      "freeUrl": null,
+      "journal": "Arthroscopy : the journal of arthroscopic & related surgery : official publication of the Arthroscopy Association of North America and the International Arthroscopy Association",
+      "pmid": "42757655",
       "origin": "pubmed",
       "region": "膝",
       "disease": "前十字韌帶損傷",
       "themes": [],
       "populations": [],
-      "impactFactor": 9.3,
+      "impactFactor": 4.4,
       "diseases": [
-        "前十字韌帶損傷"
-      ],
-      "tldrSource": "local-llm"
+        "前十字韌帶損傷",
+        "膝骨關節炎"
+      ]
     },
     {
-      "title": "Glucagon-like peptide-1 receptor agonists are associated with improved 90-day outcomes after total hip and knee arthroplasty : a systematic review and meta-analysis",
+      "title": "Platelet-Rich Plasma Provides Small but Superior Short-term Pain Relief and Functional Improvement Compared With Hyaluronic Acid for the Treatment of Knee Osteoarthritis: A Systematic Review and Meta-analysis",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42538001/",
-      "source": "Bone Joint J",
-      "tldr": "系統性回顧顯示GLP-1受體激動劑或可降低全髖膝置換術90天併發症及再住院率，但證據品質極低。",
-      "free": false,
-      "freeUrl": null,
-      "journal": "The bone & joint journal",
-      "pmid": "42538001",
-      "origin": "pubmed",
-      "region": "膝",
-      "disease": "全膝關節置換術",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 4.9,
-      "diseases": [
-        "全膝關節置換術"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Arthroscopic Labral Repair Versus Debridement for Femoroacetabular Impingement: A Systematic Review and Meta-analysis of 2730 Hips",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42578456/",
-      "source": "Am J Sports Med",
-      "tldr": "系統性回顧顯示，股髖撞擊症關節鏡下盂唇修復較清創能顯著降低全髖置換風險及長期疼痛，但功能分數結果因研究設計不同而不一致。",
-      "free": false,
-      "freeUrl": null,
-      "journal": "The American journal of sports medicine",
-      "pmid": "42578456",
-      "origin": "pubmed",
-      "region": "髖與鼠蹊",
-      "disease": "股骨髖臼夾擠症候群",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 4.8,
-      "diseases": [
-        "股骨髖臼夾擠症候群",
-        "髖關節鏡手術",
-        "全髖關節置換術"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Intra-articular Orthobiologics Show Statistically but Not Clinically Meaningful Improvements Compared With Viscosupplementation in Knee Osteoarthritis: A Network Meta-analysis of Randomized Controlled Trials",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42524752/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42744748/",
       "source": "Arthroscopy",
-      "tldr": "網際網路統合分析顯示，膝骨關節炎使用正交生物學注射雖統計顯著優於透明質酸，但未達臨床重要差異，且影像學結果不一致。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "Arthroscopy : the journal of arthroscopic & related surgery : official publication of the Arthroscopy Association of North America and the International Arthroscopy Association",
-      "pmid": "42524752",
+      "pmid": "42744748",
       "origin": "pubmed",
       "region": "膝",
       "disease": "膝骨關節炎",
@@ -108,40 +123,59 @@
       "impactFactor": 4.4,
       "diseases": [
         "膝骨關節炎"
-      ],
-      "tldrSource": "local-llm"
+      ]
     },
     {
-      "title": "Medial Quadriceps Tendon-Femoral Ligament Reconstruction Offers Favorable Clinical Outcomes and Low Complication Rates for Recurrent Patellar Instability: A Systematic Review",
+      "title": "Meniscal Allograft Transplantation in Athletes Offers Improved Function, Pain, and Satisfaction With High Levels of Return to Sport and Graft Survivorship Despite High Complication and Revision Rates: A Systematic Review",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42592956/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42791500/",
       "source": "Arthroscopy",
-      "tldr": "系統性回顧顯示，MQTFLR結合MPFLR治療復發性髌骨不穩，功能分數佳、再脫位率低，且併發症少於單獨手術。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "Arthroscopy : the journal of arthroscopic & related surgery : official publication of the Arthroscopy Association of North America and the International Arthroscopy Association",
-      "pmid": "42592956",
+      "pmid": "42791500",
       "origin": "pubmed",
       "region": "膝",
-      "disease": "髕骨不穩定",
+      "disease": "半月板移植",
       "themes": [],
       "populations": [],
       "impactFactor": 4.4,
       "diseases": [
-        "髕骨不穩定"
-      ],
-      "tldrSource": "local-llm"
+        "半月板移植"
+      ]
     },
     {
-      "title": "Positive Response to Preoperative Intra-articular Anesthetic Injection Suggests Favorable Outcomes After Hip Arthroscopy in Patients With Femoroacetabular Impingement Syndrome: A Systematic Review",
+      "title": "An International Expert Consensus Statement Defining the Best Practices and Areas of Uncertainty Concerning the Use of Orthobiologics",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42638273/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42520131/",
+      "source": "J Bone Joint Surg Am",
+      "tldr": null,
+      "free": false,
+      "freeUrl": null,
+      "journal": "The Journal of bone and joint surgery. American volume",
+      "pmid": "42520131",
+      "origin": "pubmed",
+      "region": "肩",
+      "disease": "肩關節骨關節炎",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 4.4,
+      "diseases": [
+        "肩關節骨關節炎",
+        "阿基里斯肌腱病變"
+      ]
+    },
+    {
+      "title": "Staged and Simultaneous Bilateral Hip Arthroscopy for Femoroacetabular Impingement Syndrome Achieves Clinical Outcomes Comparable With Unilateral Surgery at a Minimum 2-Year Follow-Up: A Systematic Review",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42799974/",
       "source": "Arthroscopy",
-      "tldr": "系統性回顧顯示，股髖撞擊症術前關節內麻醉注射反應正向者術後結果較佳，但負向反應無法預測不良結果，證據有限。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "Arthroscopy : the journal of arthroscopic & related surgery : official publication of the Arthroscopy Association of North America and the International Arthroscopy Association",
-      "pmid": "42638273",
+      "pmid": "42799974",
       "origin": "pubmed",
       "region": "髖與鼠蹊",
       "disease": "股骨髖臼夾擠症候群",
@@ -150,42 +184,63 @@
       "impactFactor": 4.4,
       "diseases": [
         "股骨髖臼夾擠症候群",
-        "髖關節鏡手術"
-      ],
-      "tldrSource": "local-llm"
+        "髖關節鏡手術",
+        "全髖關節置換術"
+      ]
     },
     {
-      "title": "Isolated Hip Arthroscopy Provides Comparable Mid- to Long-Term Outcomes in Borderline Hip Dysplasia and Normal Hips: A Systematic Review and Meta-analysis",
+      "title": "Supine Versus Standing Pelvic Radiographs Yield Significantly Different Radiographic Parameters in Femoroacetabular Impingement and Hip Dysplasia: A Systematic Review and Meta-analysis",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42636291/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42763888/",
       "source": "Arthroscopy",
-      "tldr": "系統性回顧顯示，邊緣性髖關節發育不良患者接受單純髖關節鏡術後，其中長期臨床結果、翻修率及髖關節存活率與正常組無顯著差異。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "Arthroscopy : the journal of arthroscopic & related surgery : official publication of the Arthroscopy Association of North America and the International Arthroscopy Association",
-      "pmid": "42636291",
+      "pmid": "42763888",
       "origin": "pubmed",
       "region": "髖與鼠蹊",
-      "disease": "髖關節鏡手術",
+      "disease": "股骨髖臼夾擠症候群",
       "themes": [],
       "populations": [],
       "impactFactor": 4.4,
       "diseases": [
-        "髖關節鏡手術",
+        "股骨髖臼夾擠症候群",
         "髖關節發育不良"
-      ],
-      "tldrSource": "local-llm"
+      ]
     },
     {
-      "title": "Hip Arthroscopy in Adults Aged 40 or Older Produces Clinically Meaningful Symptom Improvement but Carries a Substantial Risk of Conversion to Total Hip Arthroplasty: A Systematic Review",
+      "title": "Hip Arthroscopy for Femoroacetabular Impingement Syndrome in Patients Aged ≥40 Years Produces Durable Functional Improvement With Moderate Survivorship Compared With Younger Cohorts: A Systematic Review",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42587266/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42734296/",
       "source": "Arthroscopy",
-      "tldr": "四十歲以上髖關節鏡術後症狀顯著改善，但轉全髖置換率達5%至21%，且大於四十五歲者功能較差，併發症率低。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "Arthroscopy : the journal of arthroscopic & related surgery : official publication of the Arthroscopy Association of North America and the International Arthroscopy Association",
-      "pmid": "42587266",
+      "pmid": "42734296",
+      "origin": "pubmed",
+      "region": "髖與鼠蹊",
+      "disease": "股骨髖臼夾擠症候群",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 4.4,
+      "diseases": [
+        "股骨髖臼夾擠症候群",
+        "髖關節鏡手術",
+        "全髖關節置換術"
+      ]
+    },
+    {
+      "title": "Labral Repair and Reconstruction Yield Comparable Patient-Reported Outcomes at Short- to Mid-Term Follow-Up During Primary Hip Arthroscopy: A Systematic Review",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42763809/",
+      "source": "Arthroscopy",
+      "tldr": null,
+      "free": false,
+      "freeUrl": null,
+      "journal": "Arthroscopy : the journal of arthroscopic & related surgery : official publication of the Arthroscopy Association of North America and the International Arthroscopy Association",
+      "pmid": "42763809",
       "origin": "pubmed",
       "region": "髖與鼠蹊",
       "disease": "髖關節鏡手術",
@@ -195,19 +250,39 @@
       "diseases": [
         "髖關節鏡手術",
         "全髖關節置換術"
-      ],
-      "tldrSource": "local-llm"
+      ]
     },
     {
-      "title": "Complications after anterior closing-wedge high tibial osteotomy in anterior cruciate ligament reconstruction: A state-of-the-art technical review",
+      "title": "Segmental and Circumferential Hip Labral Reconstructions Both Show Favorable Outcomes in Primary Hip Arthroscopy: A Systematic Review",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42605955/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42701891/",
+      "source": "Arthroscopy",
+      "tldr": null,
+      "free": false,
+      "freeUrl": null,
+      "journal": "Arthroscopy : the journal of arthroscopic & related surgery : official publication of the Arthroscopy Association of North America and the International Arthroscopy Association",
+      "pmid": "42701891",
+      "origin": "pubmed",
+      "region": "髖與鼠蹊",
+      "disease": "髖關節鏡手術",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 4.4,
+      "diseases": [
+        "髖關節鏡手術",
+        "全髖關節置換術"
+      ]
+    },
+    {
+      "title": "Current concepts in isolated and combined injuries of the medial collateral ligament complex-Part I: Anatomy, biomechanics, clinical and radiological examination of the medial collateral ligament of the knee",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42748362/",
       "source": "Knee Surg Sports Traumatol Arthrosc",
-      "tldr": "前傾斜角增高ACL重建併行前側閉合楔形高脛骨截骨術併發症報告不一致，證據有限，需個體化規劃以減低風險。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
-      "pmid": "42605955",
+      "pmid": "42748362",
       "origin": "pubmed",
       "region": "膝",
       "disease": "前十字韌帶損傷",
@@ -216,19 +291,18 @@
       "impactFactor": 3.3,
       "diseases": [
         "前十字韌帶損傷"
-      ],
-      "tldrSource": "local-llm"
+      ]
     },
     {
-      "title": "Rectus femoris tendon autograft yields comparable early outcomes to hamstring tendon autograft, but evidence remains limited: A systematic review",
+      "title": "The role of generalised joint Laxity in anterior cruciate ligament reconstruction: A systematic review and meta-analysis",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42573112/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42726919/",
       "source": "Knee Surg Sports Traumatol Arthrosc",
-      "tldr": "系統性回顧顯示股直肌肌腱與半腱肌肌腱重建前十字韌帶早期結果相當，但僅四項異質性研究，證據有限，尚不建議常規用於初次重建。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
-      "pmid": "42573112",
+      "pmid": "42726919",
       "origin": "pubmed",
       "region": "膝",
       "disease": "前十字韌帶損傷",
@@ -237,145 +311,38 @@
       "impactFactor": 3.3,
       "diseases": [
         "前十字韌帶損傷"
-      ],
-      "tldrSource": "local-llm"
+      ]
     },
     {
-      "title": "Younger age and platelet-rich plasma characteristics influence short-term outcomes in knee osteoarthritis, but independent effects remain uncertain: A systematic review with meta-analysis and meta-regression of placebo-controlled randomised trials",
+      "title": "Revision anterior cruciate ligament reconstruction following failure of combined anterior cruciate ligament reconstruction with lateral extra-articular procedures: A scoping review",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42605960/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42704685/",
       "source": "Knee Surg Sports Traumatol Arthrosc",
-      "tldr": "膝骨關節炎PRP注射優於安慰劑，年輕、高血小板及富白細胞型短期效果佳，但證據確信度極低，各因素獨立效應仍不確定。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
-      "pmid": "42605960",
+      "pmid": "42704685",
       "origin": "pubmed",
       "region": "膝",
-      "disease": "膝骨關節炎",
+      "disease": "前十字韌帶損傷",
       "themes": [],
       "populations": [],
       "impactFactor": 3.3,
       "diseases": [
-        "膝骨關節炎"
-      ],
-      "tldrSource": "local-llm"
+        "前十字韌帶損傷"
+      ]
     },
     {
-      "title": "Autologous adipose-derived mesenchymal stromal cell injection for knee osteoarthritis improves pain and function without a clear increase in adverse events: A systematic review and meta-analysis of randomized controlled trials",
+      "title": "Defining A Successful Total Shoulder Arthroplasty: A Systematic Review of Clinically Relevant Outcome Metrics",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42573097/",
-      "source": "Knee Surg Sports Traumatol Arthrosc",
-      "tldr": "六項隨機對照試驗顯示自體脂肪幹細胞注射改善膝骨關節炎疼痛與功能，不良事件未顯著增加，但證據異質性高且缺乏結構性改善。",
-      "free": false,
-      "freeUrl": null,
-      "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
-      "pmid": "42573097",
-      "origin": "pubmed",
-      "region": "膝",
-      "disease": "膝骨關節炎",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 3.3,
-      "diseases": [
-        "膝骨關節炎"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Promises and limitations of deep learning for predicting knee osteoarthritis progression from medical imaging: A systematic review",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42545888/",
-      "source": "Knee Surg Sports Traumatol Arthrosc",
-      "tldr": "系統回顧顯示深度學習預測膝骨關節炎進展具概念驗證，但外部驗證效能下降且方法學風險高，臨床應用前仍需標準化定義與多中心驗證。",
-      "free": false,
-      "freeUrl": null,
-      "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
-      "pmid": "42545888",
-      "origin": "pubmed",
-      "region": "膝",
-      "disease": "膝骨關節炎",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 3.3,
-      "diseases": [
-        "膝骨關節炎"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Medial meniscus posterior root repair with concomitant centralization does not demonstrate superior reduction of meniscal extrusion or improved clinical outcomes compared with isolated repair: A systematic review and meta-analysis",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42646642/",
-      "source": "Knee Surg Sports Traumatol Arthrosc",
-      "tldr": "系統性回顧顯示，內側半月板後根修復加中央化未顯著改善外翻或臨床結果，證據異質性高，需更多隨機對照試驗。",
-      "free": false,
-      "freeUrl": null,
-      "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
-      "pmid": "42646642",
-      "origin": "pubmed",
-      "region": "膝",
-      "disease": "全膝關節置換術",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 3.3,
-      "diseases": [
-        "全膝關節置換術"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Age- and time-specific management of traumatic anterior shoulder instability: The 2024 ESSKA-ESA Formal Consensus. Part 2: Treatment and return to sports",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42340356/",
-      "source": "Knee Surg Sports Traumatol Arthrosc",
-      "tldr": "2024 ESSKA-ESA共識提供創傷性前肩關節不穩治療與重返運動建議，強調依年齡、復發狀態及骨損傷個別化決策，證據等級多為中低。",
-      "free": true,
-      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13418412/",
-      "journal": "Knee surgery, sports traumatology, arthroscopy : official journal of the ESSKA",
-      "pmid": "42340356",
-      "origin": "pubmed",
-      "region": "肩",
-      "disease": "肩關節前向不穩定",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 3.3,
-      "diseases": [
-        "肩關節前向不穩定"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Spin in Systematic Reviews on Patch-Augmented Rotator Cuff Repair: Prevalence, Predictors, and Methodological Implications",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42595080/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42722285/",
       "source": "J Shoulder Elbow Surg",
-      "tldr": "評估十六篇肩袖修補補強系統性回顧，發現八成摘要存在結論偏倚，且方法學缺陷與偏倚程度相關，提醒臨床審慎解讀。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "Journal of shoulder and elbow surgery",
-      "pmid": "42595080",
-      "origin": "pubmed",
-      "region": "肩",
-      "disease": "肩痛",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 2.7,
-      "diseases": [
-        "肩痛"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Risk Factors for instability and dislocation after reverse total shoulder arthroplasty: a systematic review",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42567473/",
-      "source": "J Shoulder Elbow Surg",
-      "tldr": "系統性回顧指出反轉肩關節置換後不穩定風險因素包括年輕、阿片類藥物濫用及未修復肩胛下肌，主要機制為壓力喪失，但證據僅供假說生成。",
-      "free": false,
-      "freeUrl": null,
-      "journal": "Journal of shoulder and elbow surgery",
-      "pmid": "42567473",
+      "pmid": "42722285",
       "origin": "pubmed",
       "region": "肩",
       "disease": "反式全肩關節置換術",
@@ -384,19 +351,18 @@
       "impactFactor": 2.7,
       "diseases": [
         "反式全肩關節置換術"
-      ],
-      "tldrSource": "local-llm"
+      ]
     },
     {
-      "title": "Short Term Results of Structural Bone Grafting of Glenoid Defects in Reverse Total Shoulder Arthroplasty: A Systematic Review/Meta-analysis of Implant Design and Graft Characteristics",
+      "title": "Single-Shot Versus Continuous Interscalene Blockade in Primary Shoulder Arthroplasty: A Systematic Review and Meta-Analysis of Randomized Controlled Trials and Observational Studies",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42532463/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42692245/",
       "source": "J Shoulder Elbow Surg",
-      "tldr": "系統性回顧顯示自體與異體骨移植融合率均高，但翻修手術基座鬆脫及再手術率顯著高於初術，長期效果待證。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "Journal of shoulder and elbow surgery",
-      "pmid": "42532463",
+      "pmid": "42692245",
       "origin": "pubmed",
       "region": "肩",
       "disease": "反式全肩關節置換術",
@@ -405,40 +371,38 @@
       "impactFactor": 2.7,
       "diseases": [
         "反式全肩關節置換術"
-      ],
-      "tldrSource": "local-llm"
+      ]
     },
     {
-      "title": "Preserving the Native ACL: A Scoping Review of Bridge-Enhanced Repair in Preclinical and Clinical Models",
+      "title": "Magnetic Resonance Imaging Findings in Simple Elbow Dislocations: A Systematic Review and Meta-Analysis",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42634479/",
-      "source": "Sports Health",
-      "tldr": "BEAR修復前交叉韌帶的範圍性回顧顯示，其功能結果與重建相當且能保留原生解剖，但長期耐久性與軟骨保護證據有限，仍需更多研究。",
-      "free": true,
-      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13506971/",
-      "journal": "Sports health",
-      "pmid": "42634479",
-      "origin": "pubmed",
-      "region": "膝",
-      "disease": "前十字韌帶損傷",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 2.6,
-      "diseases": [
-        "前十字韌帶損傷"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Global Prevalence of Adolescent Idiopathic Scoliosis Between 1975 and 2025: A Systematic Review and Meta-analysis",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42561101/",
-      "source": "Spine (Phila Pa 1976)",
-      "tldr": "青少年特發性脊柱側彎全球患病率約1.26%，Cobb角≥20°者0.28%，受溫度及篩檢方式影響，結果不一致。",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42665225/",
+      "source": "J Shoulder Elbow Surg",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
-      "journal": "Spine",
-      "pmid": "42561101",
+      "journal": "Journal of shoulder and elbow surgery",
+      "pmid": "42665225",
+      "origin": "pubmed",
+      "region": "肘",
+      "disease": "肘關節脫位",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 2.7,
+      "diseases": [
+        "肘關節脫位"
+      ]
+    },
+    {
+      "title": "Clinical outcomes and complications of the posterior dynamic distraction device in adolescent idiopathic scoliosis: a systematic review and meta-analysis",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42742692/",
+      "source": "Eur Spine J",
+      "tldr": null,
+      "free": false,
+      "freeUrl": null,
+      "journal": "European spine journal : official publication of the European Spine Society, the European Spinal Deformity Society, and the European Section of the Cervical Spine Research Society",
+      "pmid": "42742692",
       "origin": "pubmed",
       "region": "胸椎",
       "disease": "青少年特發性脊柱側彎",
@@ -447,19 +411,18 @@
       "impactFactor": 2.6,
       "diseases": [
         "青少年特發性脊柱側彎"
-      ],
-      "tldrSource": "local-llm"
+      ]
     },
     {
-      "title": "Thoracolumbar fascia ultrasound and elastography biomarkers in low back pain: a systematic review of associations and responsiveness to intervention",
+      "title": "Anatomy of the basivertebral nerve and its implications in the vertebrogenic pain. Systematic review and mapping of evidence",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42645548/",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42771027/",
       "source": "Eur Spine J",
-      "tldr": "系統性回顧顯示非特異性下背痛者胸腰筋膜超聲指標與對照組有差異但結果不一致，介入反應證據初步，臨床實用性未定。",
+      "tldr": null,
       "free": false,
       "freeUrl": null,
       "journal": "European spine journal : official publication of the European Spine Society, the European Spinal Deformity Society, and the European Section of the Cervical Spine Research Society",
-      "pmid": "42645548",
+      "pmid": "42771027",
       "origin": "pubmed",
       "region": "腰椎",
       "disease": "下背痛",
@@ -468,19 +431,98 @@
       "impactFactor": 2.6,
       "diseases": [
         "下背痛"
-      ],
-      "tldrSource": "local-llm"
+      ]
     },
     {
-      "title": "Anterior Cruciate Ligament Reconstruction With or Without Lateral Extra-articular Tenodesis: A Systematic Review and Meta-analysis of Comparative Outcomes From Randomized Controlled Trials",
+      "title": "Is therapeutic exercise as a standalone intervention effective in reducing kinesiophobia in adults with nonspecific chronic low back pain? A systematic review and meta-analysis with meta-regression",
       "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42633011/",
-      "source": "Orthop J Sports Med",
-      "tldr": "十項隨機對照試驗顯示，前十字韌帶重建加側副腱固定術顯著降低移植物失敗率並改善旋轉穩定性，但對前向鬆弛及運動回歸率無顯著差異。",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42730933/",
+      "source": "Eur Spine J",
+      "tldr": null,
+      "free": false,
+      "freeUrl": null,
+      "journal": "European spine journal : official publication of the European Spine Society, the European Spinal Deformity Society, and the European Section of the Cervical Spine Research Society",
+      "pmid": "42730933",
+      "origin": "pubmed",
+      "region": "腰椎",
+      "disease": "下背痛",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 2.6,
+      "diseases": [
+        "下背痛"
+      ]
+    },
+    {
+      "title": "Swespine in the literature: a bibliometric analysis of trends and characteristics of publications",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42771026/",
+      "source": "Eur Spine J",
+      "tldr": null,
+      "free": false,
+      "freeUrl": null,
+      "journal": "European spine journal : official publication of the European Spine Society, the European Spinal Deformity Society, and the European Section of the Cervical Spine Research Society",
+      "pmid": "42771026",
+      "origin": "pubmed",
+      "region": "腰椎",
+      "disease": "腰椎椎間盤突出",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 2.6,
+      "diseases": [
+        "腰椎椎間盤突出"
+      ]
+    },
+    {
+      "title": "Route or reach? Caudal epidural versus nerve-root-targeted injection for lumbar radiculopathy: a systematic review of randomized controlled trials",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42730932/",
+      "source": "Eur Spine J",
+      "tldr": null,
+      "free": false,
+      "freeUrl": null,
+      "journal": "European spine journal : official publication of the European Spine Society, the European Spinal Deformity Society, and the European Section of the Cervical Spine Research Society",
+      "pmid": "42730932",
+      "origin": "pubmed",
+      "region": "腰椎",
+      "disease": "腰椎神經根病變",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 2.6,
+      "diseases": [
+        "腰椎神經根病變"
+      ]
+    },
+    {
+      "title": "Returning-to-Learn After Concussion in Higher Education: A Clinical Review",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42725644/",
+      "source": "Sports Health",
+      "tldr": null,
       "free": true,
-      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13498808/",
+      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13570936/",
+      "journal": "Sports health",
+      "pmid": "42725644",
+      "origin": "pubmed",
+      "region": "頭頸／腦震盪",
+      "disease": "腦震盪",
+      "themes": [],
+      "populations": [],
+      "impactFactor": 2.6,
+      "diseases": [
+        "腦震盪"
+      ]
+    },
+    {
+      "title": "Are Comparable Short-term Outcomes Between Hamstring and Quadriceps Tendon Autografts for ACL Reconstruction Statistically Robust? A Reverse Continuous Fragility Index Analysis of Randomized Controlled Trials",
+      "year": 2026,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/42724261/",
+      "source": "Orthop J Sports Med",
+      "tldr": null,
+      "free": true,
+      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13558947/",
       "journal": "Orthopaedic journal of sports medicine",
-      "pmid": "42633011",
+      "pmid": "42724261",
       "origin": "pubmed",
       "region": "膝",
       "disease": "前十字韌帶損傷",
@@ -489,116 +531,7 @@
       "impactFactor": 2.4,
       "diseases": [
         "前十字韌帶損傷"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Reconstruction After an Anterior Cruciate Ligament Injury Does Not Reduce the Osteoarthritis Risk But Lowers the Total Knee Arthroplasty Rate: A Systematic Review and Meta-analysis",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42539917/",
-      "source": "Orthop J Sports Med",
-      "tldr": "系統性回顧顯示前十字韌帶重建未降低放射學骨關節炎風險，但顯著減少全膝關節置換率。",
-      "free": true,
-      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13424783/",
-      "journal": "Orthopaedic journal of sports medicine",
-      "pmid": "42539917",
-      "origin": "pubmed",
-      "region": "膝",
-      "disease": "膝骨關節炎",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 2.4,
-      "diseases": [
-        "膝骨關節炎",
-        "全膝關節置換術"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Complications Related to Arthroscopic Isolated Posterior Cruciate Ligament Reconstruction: A Systematic Review and Meta-analysis of 4162 Patients",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42568750/",
-      "source": "Orthop J Sports Med",
-      "tldr": "系統性回顧顯示孤立後十字韌帶重建併發症率約14.8%，以持續疼痛、殘留鬆弛及關節纖維化為主，單雙束及移植物類型無顯著差異，但結果具異質性。",
-      "free": true,
-      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13448001/",
-      "journal": "Orthopaedic journal of sports medicine",
-      "pmid": "42568750",
-      "origin": "pubmed",
-      "region": "膝",
-      "disease": "後十字韌帶損傷",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 2.4,
-      "diseases": [
-        "後十字韌帶損傷"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Rotator Cuff Reconstruction Using Biceps Tendon Autograft Versus Acellular Dermal Allograft: A Systematic Review and Meta-analysis of Clinical Outcomes",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42643770/",
-      "source": "Orthop J Sports Med",
-      "tldr": "系統性回顧顯示，巨大型旋轉肌袖修復中，二頭肌腱自體與無細胞真皮異體移植物功能改善相當，但證據存在異質性。",
-      "free": true,
-      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13504094/",
-      "journal": "Orthopaedic journal of sports medicine",
-      "pmid": "42643770",
-      "origin": "pubmed",
-      "region": "肩",
-      "disease": "旋轉肌袖撕裂",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 2.4,
-      "diseases": [
-        "旋轉肌袖撕裂"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "How to Manage the Spinoglenoid Notch Cyst: A Systematic Review and Meta-analysis",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42558894/",
-      "source": "Orthop J Sports Med",
-      "tldr": "系統性回顧顯示鏡下減壓合併唇脣修復囊腫復發率最低，但證據等級低且偏倚風險中等，大型囊腫仍建議開放手術。",
-      "free": true,
-      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13438244/",
-      "journal": "Orthopaedic journal of sports medicine",
-      "pmid": "42558894",
-      "origin": "pubmed",
-      "region": "肩",
-      "disease": "肩痛",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 2.4,
-      "diseases": [
-        "肩痛"
-      ],
-      "tldrSource": "local-llm"
-    },
-    {
-      "title": "Prevalence and Incidence of Isthmic Spondylolisthesis in Children and Adolescents: A Systematic Review",
-      "year": 2026,
-      "url": "https://pubmed.ncbi.nlm.nih.gov/42568699/",
-      "source": "Orthop J Sports Med",
-      "tldr": "系統性回顧顯示青少年椎弓崩解盛行率約3.4%，運動參與者較高，但診斷方法影響結果，發病率數據不足。",
-      "free": true,
-      "freeUrl": "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13447990/",
-      "journal": "Orthopaedic journal of sports medicine",
-      "pmid": "42568699",
-      "origin": "pubmed",
-      "region": "腰椎",
-      "disease": "下背痛",
-      "themes": [],
-      "populations": [],
-      "impactFactor": 2.4,
-      "diseases": [
-        "下背痛"
-      ],
-      "tldrSource": "local-llm"
+      ]
     }
-  ],
-  "summarizedAt": "2026-08-28",
-  "summaryModel": "qwen3.8:27b-mlx"
+  ]
 }
