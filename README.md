@@ -1,4 +1,22 @@
-# 運動醫學 Review 索引
+# Sports Medicine Review Index
+
+A curated evidence index for sports medicine and rehabilitation.
+
+Search systematic reviews, meta-analyses, and clinical guidelines by body region, clinical topic, and population.
+
+🌐 Live site: https://review.sportsmedicine.tw/
+
+## What this project provides
+
+- Systematic reviews and meta-analyses
+- Clinical practice guidelines
+- Search by body region, topic, and population
+- Journal and publication metadata
+- Open-access indicators
+- Traditional Chinese summaries
+- Monthly literature updates
+
+- # 運動醫學 Review 索引
 
 運動醫學／復健文獻的系統性回顧、統合分析與臨床指引索引，供公開閱覽。
 可依 **部位 / 臨床主題 / 族群** 三種方式瀏覽，標示期刊影響係數（IF 近似值）與免費全文。
