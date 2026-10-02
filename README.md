@@ -27,8 +27,8 @@ Search systematic reviews, meta-analyses, and clinical guidelines by body region
 
 [/workbench](https://review.sportsmedicine.tw/workbench) 可建立 DOI／PMID／PMCID 任務，交由已登入訂閱 CLI 的 Mac 或 Studio 下載及核對公開全文、整理草稿，再由本人確認文字與樣式後製圖。2026-09-21 正式站已接上 Cloudflare Access、D1、私人 R2 與本機背景 worker；目前只允許擁有者登入。其他機器的安裝方式與實際驗收範圍見 [安裝與啟用](docs/worker-setup.md) 及 [實測紀錄](docs/verification-2026-09-21.md)。
 
-- Codex：工作流程整合、結構化初稿與情境圖。Claude：繁中文案與限定語。Gemini：全文、表格與數值對照。Grok：過度推論及可能誤解。這是可配置的任務分工；每次顯示實際執行狀態，未執行不算通過。
-- fb-renew 混合渲染器：把選定文案排為 1080×1080 或 1080×1350 輪播與 1200×630 封面，支持七種配色、兩種版型、寫實／插畫／純文字。照片與中文字排版分離。
+- 寫稿：Claude（`REVIEW_MODEL_PROVIDER`，可改為 Codex）產生結構化初稿並依審核意見修訂。審稿：Codex 為主審（意見預設成立，駁回須附理由、製圖前必須處理完）；Claude、Grok 為副審；Gemini 為選配補充。情境圖：Codex CLI 內建圖片生成。座次定義在 `shared/quality.mjs` 的 `REVIEW_SEATS`；每次顯示實際執行狀態，未執行不算通過。
+- fb-renew 混合渲染器：把選定文案排為 1080×1080 或 1080×1350 輪播與 1200×630 封面，支援 12 種配色、8 種版型，情境圖可選寫實、插畫、扁平、水彩、底片或純文字。照片與中文字排版分離。
 - 私人下載：已取得並核對的原文 PDF／XML、結構化全文、筆記及審查紀錄；社群 ZIP 含兩平台文案、圖片、來源、替代文字與重製設定，不包含原始全文。XML-only 文獻可分析與製圖，介面會明確顯示 PDF 未取得。
 - API 逐次核對 owner JWT、worker lease、文案版本與上傳雜湊。取消、睡眠過期或不明模型結果需明確重試；不自動發佈社群。
 

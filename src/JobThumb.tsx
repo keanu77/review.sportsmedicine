@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import type { Job } from "../shared/contracts";
+import type { JobSummary } from "../shared/contracts";
 import { fetchArtifact } from "./privateApi";
 import { isPrivateSessionActive } from "./draftRecovery";
 
-export const thumbArtifact = (job: Job) => job.artifacts.find(file => file.name === "cover-1200x630.png") ?? job.artifacts.find(file => file.name === "series-page-01.png") ?? null;
+export const thumbArtifact = (job: Pick<JobSummary, "artifacts">) => job.artifacts.find(file => file.name === "cover-1200x630.png") ?? job.artifacts.find(file => file.name === "series-page-01.png") ?? null;
 
 /** Cover thumbnail for the job list, fetched with the private session and revoked on unmount. */
-export default function JobThumb({ job }: { job: Job }) {
+export default function JobThumb({ job }: { job: JobSummary }) {
   const artifact = thumbArtifact(job);
   const [url, setUrl] = useState<string | null>(null);
   useEffect(() => {

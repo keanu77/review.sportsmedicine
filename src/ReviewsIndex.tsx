@@ -5,7 +5,7 @@ import PaperDetails from "./PaperDetails";
 import { studyTypeOf } from "./studyType";
 import NewThisMonth from "./NewThisMonth";
 import ReviewRow from "./ReviewRow";
-import { toneByIndex, toneOf } from "./regionGroups";
+import { toneByIndex, toneOf, toneVars } from "./regionGroups";
 import { matchesQuery, rankResults, searchSortLabel, suggestTerms, tokenize, type SearchSort } from "./search";
 import type { Axis, BibliographyData, BibliographyEntry, Item, ReviewsData, SummariesData, TagsData } from "./types";
 import { useLibrary } from "./useLibrary";
@@ -553,19 +553,12 @@ export default function ReviewsIndex() {
                 <a
                   key={g.key}
                   href={`#grp-${encodeURIComponent(g.key)}`}
-                  className="flex min-h-[2.25rem] items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  style={
-                    {
-                      background: tone.light.bg,
-                      borderColor: tone.light.border,
-                      color: tone.light.text,
-                      "--dot": tone.light.dot,
-                    } as React.CSSProperties
-                  }
+                  className="tone-surface flex min-h-[2.25rem] items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  style={toneVars(tone) as React.CSSProperties}
                 >
                   <span
                     aria-hidden="true"
-                    className="h-2.5 w-2.5 rounded-full bg-[var(--dot)]"
+                    className="tone-dot h-2.5 w-2.5 rounded-full"
                   />
                   {g.key}
                   <span className="tabular-nums opacity-70">{g.total}</span>
@@ -741,23 +734,13 @@ function AxisSection({
 }) {
   const tone = axis === "region" ? toneOf(group.key) : toneByIndex(index);
   return (
-    <section id={`grp-${encodeURIComponent(group.key)}`} className="scroll-mt-4 sm:scroll-mt-40">
-      <div
-        className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2"
-        style={{
-          background: tone.light.bg,
-          borderColor: tone.light.border,
-        }}
-      >
-        <span
-          aria-hidden="true"
-          className="h-3 w-3 rounded-full"
-          style={{ background: tone.light.dot }}
-        />
-        <h2 className="text-base font-bold" style={{ color: tone.light.text }}>
+    <section id={`grp-${encodeURIComponent(group.key)}`} className="scroll-mt-4 sm:scroll-mt-40" style={toneVars(tone) as React.CSSProperties}>
+      <div className="tone-surface mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg border px-3 py-2">
+        <span aria-hidden="true" className="tone-dot h-3 w-3 rounded-full" />
+        <h2 className="tone-text text-base font-bold">
           {group.key}
         </h2>
-        <span className="text-xs opacity-80" style={{ color: tone.light.text }}>
+        <span className="tone-text text-xs opacity-80">
           {group.diseases.length} 個主題 · {group.total} 篇
         </span>
       </div>
@@ -777,8 +760,7 @@ function AxisSection({
                   onClick={() => onToggle(key)}
                   aria-expanded={isOpen}
                   aria-controls={panelId}
-                  className="flex min-h-11 w-full cursor-pointer items-center justify-between px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
-                  style={{ borderLeft: `3px solid ${tone.light.dot}` }}
+                  className="tone-edge flex min-h-11 w-full cursor-pointer items-center justify-between px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
                 >
                   <span className="font-medium text-ink dark:text-ink-dark">
                     {d.disease}

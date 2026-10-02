@@ -56,7 +56,7 @@ export default function JobManagement({ job, dirty, onUpdate, onDelete }: { job:
     {manualSource && <p className="wb-small wb-wrap">使用你上傳的 PDF：{String(manualSource.name ?? "")}
       {canDelete(job) && <button type="button" className="wb-link-button" disabled={Boolean(busy)} onClick={removeSource}>{busy === "removeSource" ? "移除中…" : "移除上傳的 PDF"}</button>}</p>}
     {editing ? <form className="wb-form" onSubmit={saveIdentity}>
-      <label>DOI、PMID 或 PMCID<input required maxLength={2048} value={input} onChange={event => setInput(event.target.value)} disabled={Boolean(busy)} /></label>
+      <label>DOI、PMID 或 PMCID<input required maxLength={512} value={input} onChange={event => setInput(event.target.value)} disabled={Boolean(busy)} /></label>
       <label>文獻標題（選填）<textarea rows={2} maxLength={1000} value={title} onChange={event => setTitle(event.target.value)} disabled={Boolean(busy)} /></label>
       {manualSource && input.trim() !== job.input && <p className="wb-small">改了識別碼，之前上傳的 PDF 會一併移除。</p>}
       <div className="wb-actions">

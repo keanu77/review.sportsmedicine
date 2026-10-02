@@ -18,6 +18,19 @@ body {
   }
 }
 
+/* 分類色：變數由 toneVars() 提供，深色模式改用深色色盤。 */
+.tone-surface { background: var(--tone-bg); border-color: var(--tone-border); color: var(--tone-text); }
+.tone-text { color: var(--tone-text); }
+.tone-dot { background: var(--tone-dot); }
+.tone-edge { border-left: 3px solid var(--tone-dot); }
+
+@media (prefers-color-scheme: dark) {
+  .tone-surface { background: var(--tone-bg-dark); border-color: var(--tone-border-dark); color: var(--tone-text-dark); }
+  .tone-text { color: var(--tone-text-dark); }
+  .tone-dot { background: var(--tone-dot-dark); }
+  .tone-edge { border-left-color: var(--tone-dot-dark); }
+}
+
 /* 使用者要求減少動態時，平滑捲動與過場一律關閉（WCAG 2.3.3）。 */
 @media (prefers-reduced-motion: reduce) {
   html {

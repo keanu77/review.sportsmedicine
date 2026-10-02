@@ -80,10 +80,17 @@ const JOB_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 export async function pruneWorkspace(api, workspace, { signal } = {}) {
   const local = (await readdir(workspace, { withFileTypes: true })).filter(entry => entry.isDirectory() && JOB_ID.test(entry.name)).map(entry => entry.name);
   if (!local.length) return [];
-  const { unknown } = await api.call('/workspace/unknown', { data: { ids: local.slice(0, 500) }, signal });
-  const removable = (Array.isArray(unknown) ? unknown : []).filter(id => local.includes(id));
-  for (const id of removable) await rm(path.join(workspace, id), { recursive: true, force: true });
-  return removable;
+  // The server checks at most 500 ids per request; a large workspace is checked in batches.
+  const removed = [];
+  for (let offset = 0; offset < local.length; offset += 500) {
+    const batch = local.slice(offset, offset + 500);
+    const { unknown } = await api.call('/workspace/unknown', { data: { ids: batch }, signal });
+    for (const id of (Array.isArray(unknown) ? unknown : []).filter(id => batch.includes(id))) {
+      await rm(path.join(workspace, id), { recursive: true, force: true });
+      removed.push(id);
+    }
+  }
+  return removed;
 }
 
 // An owner restart discards cached source and model output once per request.

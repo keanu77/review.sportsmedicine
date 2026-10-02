@@ -208,3 +208,14 @@ export function toneOf(key: string): RegionStyle {
 export function toneByIndex(index: number): RegionStyle {
   return ORDERED[index % ORDERED.length];
 }
+
+/**
+ * 兩種配色都以 CSS 變數交給 index.css 的 tone-* 類別，由 prefers-color-scheme 決定用哪一組。
+ * inline style 不能寫 media query，直接塞 light 色會讓深色模式出現整塊亮底。
+ */
+export function toneVars({ light, dark }: RegionStyle): Record<string, string> {
+  return {
+    "--tone-bg": light.bg, "--tone-text": light.text, "--tone-border": light.border, "--tone-dot": light.dot,
+    "--tone-bg-dark": dark.bg, "--tone-text-dark": dark.text, "--tone-border-dark": dark.border, "--tone-dot-dark": dark.dot,
+  };
+}

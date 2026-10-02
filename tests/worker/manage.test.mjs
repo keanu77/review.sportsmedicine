@@ -27,6 +27,16 @@ test('workspace pruning deletes nothing when the server is unreachable or answer
   assert.deepEqual(await readdir(workspace), [gone]);
 });
 
+test('workspace pruning checks every job folder, not only the first 500', async t => {
+  const workspace = await temporary(t);
+  const ids = Array.from({ length: 501 }, (_, i) => `${String(i).padStart(8, '0')}-1111-4111-8111-111111111111`);
+  for (const id of ids) await mkdir(path.join(workspace, id));
+  const batches = [];
+  const removed = await pruneWorkspace({ call: async (_route, { data }) => { batches.push(data.ids.length); return { unknown: data.ids.filter(id => id === ids[500]) }; } }, workspace);
+  assert.deepEqual(batches, [500, 1]);
+  assert.deepEqual(removed, [ids[500]]);
+});
+
 test('a restart request clears cached research once; later attempts of the same request keep progress', async t => {
   const directory = path.join(await temporary(t), 'research');
   await mkdir(directory, { recursive: true });

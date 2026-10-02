@@ -125,3 +125,14 @@ test("互動元素觸控目標不小於 24px", async ({ page }) => {
   );
   expect(tooSmall).toEqual([]);
 });
+
+test("深色模式分類色改用深色色盤且達 WCAG AA 對比", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/");
+  await waitForContent(page);
+  // 「肩」的深色底 #00282a；回歸前固定用淺色 #dcfbfc，深色頁面上一塊亮色。
+  const chip = page.getByRole("navigation", { name: "分類快速導覽" }).getByRole("link", { name: /^肩/ });
+  await expect(chip).toHaveCSS("background-color", "rgb(0, 40, 42)");
+  await expect(page.locator(`[id="grp-${encodeURIComponent("肩")}"] > div`).first()).toHaveCSS("background-color", "rgb(0, 40, 42)");
+  expect(await contrastFailures(page)).toEqual([]);
+});

@@ -6,6 +6,11 @@ export const LEASE_MS = 120000;
 export const MAX_ATTEMPT_FILES = 32;
 export const MAX_ATTEMPT_BYTES = 128 * 1024 * 1024;
 const parse = (value, fallback = null) => value ? JSON.parse(value) : fallback;
+// A job whose delete has started keeps this stage until its files and rows are gone.
+const DELETING = 'deleting';
+const NOT_DELETING = `stage<>'${DELETING}'`;
+export const LIST_LIMIT = 50;
+const THUMB_NAMES = ['cover-1200x630.png', 'series-page-01.png'];
 const iso = (value) => new Date(value).toISOString();
 export function publicArtifact(row) {
   return { id: row.id, name: row.name, contentType: row.content_type, size: row.size, sha256: row.sha256 };
@@ -32,6 +37,8 @@ export function createStore(db, clock = Date.now) {
   const run = (sql, ...args) => prepare(sql, ...args).run();
   async function expire() {
     const now = clock();
+    // Every owner request checks leases; a read keeps the common no-op case off the write path.
+    if (!await first("SELECT 1 AS due FROM jobs WHERE status='running' AND lease_expires_at<=? LIMIT 1", now)) return;
     await run("UPDATE jobs SET status='failed', stage='lease_expired', error=?, lease_hash=NULL, lease_expires_at=NULL, revision=revision+1, updated_at=? WHERE status='running' AND lease_expires_at<=?",
       JSON.stringify({ code: 'LEASE_EXPIRED', message: 'Worker heartbeat expired. Work may have consumed model usage; explicitly retry only after checking the Mac worker.', recoverable: true }), now, now);
   }
@@ -154,7 +161,25 @@ export function createStore(db, clock = Date.now) {
         metadata=json_set(metadata,'$.reviewRequest',json(?))
         WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, clock(), JSON.stringify({ runId: crypto.randomUUID(), draftRevision: snapshot.revision }), id, revision));
     },
-    async list() { return Promise.all((await all('SELECT * FROM jobs ORDER BY created_at DESC LIMIT 100')).map(serialize)); },
+    // The list polls often, so it returns only what the sidebar shows, a page at a time,
+    // with every job's thumbnail fetched in one query.
+    async list({ before = null, limit = LIST_LIMIT } = {}) {
+      const columns = 'id,input,title,status,phase,review_requested,stage,revision,created_at,updated_at';
+      const rows = before
+        ? await all(`SELECT ${columns} FROM jobs WHERE created_at<? OR (created_at=? AND id<?) ORDER BY created_at DESC,id DESC LIMIT ?`, before.createdAt, before.createdAt, before.id, limit + 1)
+        : await all(`SELECT ${columns} FROM jobs ORDER BY created_at DESC,id DESC LIMIT ?`, limit + 1);
+      const page = rows.slice(0, limit);
+      const thumbs = page.length ? await all(`SELECT * FROM artifacts WHERE committed=1 AND name IN (${THUMB_NAMES.map(() => '?').join(',')})
+        AND job_id IN (${page.map(() => '?').join(',')}) ORDER BY created_at,id`, ...THUMB_NAMES, ...page.map(value => value.id)) : [];
+      const thumbOf = id => THUMB_NAMES.map(name => thumbs.find(file => file.job_id === id && file.name === name)).find(Boolean);
+      const last = page.at(-1);
+      return {
+        jobs: page.map(value => ({ id: value.id, input: value.input, title: value.title, status: value.status, phase: value.review_requested ? 'review' : value.phase,
+          stage: value.stage, revision: value.revision, artifacts: thumbOf(value.id) ? [publicArtifact(thumbOf(value.id))] : [],
+          createdAt: iso(value.created_at), updatedAt: iso(value.updated_at) })),
+        nextCursor: rows.length > limit ? `${last.created_at}_${last.id}` : null,
+      };
+    },
     async activeJobs() { return (await first("SELECT count(*) AS count FROM jobs WHERE status='running' AND lease_expires_at>?", clock())).count; },
     async presence() {
       const value = await first('SELECT * FROM worker_presence WHERE id=1');
@@ -261,42 +286,59 @@ export function createStore(db, clock = Date.now) {
         phase=CASE WHEN ${back} THEN 'research' ELSE phase END,revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
         metadata=json_remove(CASE WHEN review_requested=1 AND EXISTS(SELECT 1 FROM review_runs WHERE job_id=jobs.id AND id=json_extract(jobs.metadata,'$.reviewRequest.runId'))
           THEN json_set(metadata,'$.reviewRequest',json_object('runId',?,'draftRevision',(SELECT max(revision) FROM draft_versions WHERE job_id=jobs.id))) ELSE metadata END,'$.cancelledFrom')
-        WHERE id=? AND status IN ('failed','cancelled') RETURNING *`, clock(), crypto.randomUUID(), id));
+        WHERE id=? AND status IN ('failed','cancelled') AND ${NOT_DELETING} RETURNING *`, clock(), crypto.randomUUID(), id));
     },
-    // Deletes every database record of a job that is not running; returns false on a stale revision.
-    async remove(id, revision) {
-      const idle = "EXISTS (SELECT 1 FROM jobs WHERE id=? AND revision=? AND status<>'running')";
+    // Delete step 1: a guarded tombstone. It stops every other action and the worker
+    // from touching the job, and lets a failed storage cleanup be retried with any revision.
+    async markDeleting(id, revision) {
+      const value = await first(`UPDATE jobs SET status='cancelled',stage='${DELETING}',revision=revision+1,lease_hash=NULL,lease_expires_at=NULL,updated_at=?
+        WHERE id=? AND ((revision=? AND status<>'running') OR stage='${DELETING}') RETURNING id`, clock(), id, revision);
+      if (!value) { await row(id); throw conflict(); }
+    },
+    // Delete step 3, after storage is clean: every database record of the tombstoned job.
+    async remove(id) {
+      const deleting = `EXISTS (SELECT 1 FROM jobs WHERE id=? AND stage='${DELETING}')`;
       const results = await db.batch([
-        prepare(`DELETE FROM review_dispositions WHERE run_id IN (SELECT id FROM review_runs WHERE job_id=?) AND ${idle}`, id, id, revision),
-        prepare(`DELETE FROM review_runs WHERE job_id=? AND ${idle}`, id, id, revision),
-        prepare(`DELETE FROM draft_versions WHERE job_id=? AND ${idle}`, id, id, revision),
-        prepare(`DELETE FROM artifacts WHERE job_id=? AND ${idle}`, id, id, revision),
-        prepare("DELETE FROM jobs WHERE id=? AND revision=? AND status<>'running' RETURNING id", id, revision),
+        prepare(`DELETE FROM review_dispositions WHERE run_id IN (SELECT id FROM review_runs WHERE job_id=?) AND ${deleting}`, id, id),
+        prepare(`DELETE FROM review_runs WHERE job_id=? AND ${deleting}`, id, id),
+        prepare(`DELETE FROM draft_versions WHERE job_id=? AND ${deleting}`, id, id),
+        prepare(`DELETE FROM artifacts WHERE job_id=? AND ${deleting}`, id, id),
+        prepare(`DELETE FROM jobs WHERE id=? AND stage='${DELETING}' RETURNING id`, id),
       ]);
       if (!results.at(-1).results?.[0]) { await row(id); throw conflict(); }
+    },
+    // Files that no attempt will show again: replaced research/render output and uploads a
+    // finished attempt never committed. The running attempt's in-flight uploads are excluded.
+    async staleArtifacts(id) {
+      return all(`SELECT id,object_key FROM artifacts WHERE job_id=? AND committed=0
+        AND attempt_id<>coalesce((SELECT attempt_id FROM jobs WHERE id=? AND status='running'),'')`, id, id);
+    },
+    async forgetArtifacts(id, fileIds) {
+      if (!fileIds.length) return;
+      await run(`DELETE FROM artifacts WHERE job_id=? AND committed=0 AND id IN (${fileIds.map(() => '?').join(',')})`, id, ...fileIds);
     },
     // Fresh research for a drafted job: the worker discards its cached source and model output.
     restart(id, revision) {
       return changed(prepare(`UPDATE jobs SET status='queued',phase='research',review_requested=0,stage='queued',revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
         metadata=json_set(json_remove(metadata,'$.reviewRequest','$.reviseRequest'),'$.restartRequest',json(?))
-        WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed','failed','cancelled') RETURNING *`, clock(), JSON.stringify({ id: crypto.randomUUID(), requestedAt: new Date(clock()).toISOString() }), id, revision));
+        WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed','failed','cancelled') AND ${NOT_DELETING} RETURNING *`, clock(), JSON.stringify({ id: crypto.randomUUID(), requestedAt: new Date(clock()).toISOString() }), id, revision));
     },
     // Identity is editable only before a draft exists; a PDF uploaded for another identifier is dropped.
     async updateIdentity(id, revision, input, title) {
       const current = await row(id);
-      if (current.revision !== revision || current.draft !== null || !['queued','failed','cancelled'].includes(current.status)) throw conflict();
+      if (current.revision !== revision || current.draft !== null || !['queued','failed','cancelled'].includes(current.status) || current.stage === DELETING) throw conflict();
       const changedInput = current.input !== input;
       const job = await changed(prepare(`UPDATE jobs SET input=?,title=?,revision=revision+1,updated_at=?,
         metadata=CASE WHEN ?=1 THEN json_remove(metadata,'$.manualSource') ELSE metadata END
-        WHERE id=? AND revision=? AND draft IS NULL AND status IN ('queued','failed','cancelled') RETURNING *`, input, title, clock(), changedInput ? 1 : 0, id, revision));
+        WHERE id=? AND revision=? AND draft IS NULL AND status IN ('queued','failed','cancelled') AND ${NOT_DELETING} RETURNING *`, input, title, clock(), changedInput ? 1 : 0, id, revision));
       return { job, droppedKey: changedInput ? parse(current.metadata, {}).manualSource?.key ?? null : null };
     },
     async detachManualSource(id, revision) {
       const current = await row(id);
       const key = parse(current.metadata, {}).manualSource?.key;
-      if (!key || current.revision !== revision || current.status === 'running') throw conflict();
+      if (!key || current.revision !== revision || current.status === 'running' || current.stage === DELETING) throw conflict();
       const job = await changed(prepare(`UPDATE jobs SET revision=revision+1,updated_at=?,metadata=json_remove(metadata,'$.manualSource')
-        WHERE id=? AND revision=? AND status<>'running' AND json_type(metadata,'$.manualSource') IS NOT NULL RETURNING *`, clock(), id, revision));
+        WHERE id=? AND revision=? AND status<>'running' AND ${NOT_DELETING} AND json_type(metadata,'$.manualSource') IS NOT NULL RETURNING *`, clock(), id, revision));
       return { job, key };
     },
     async unknownJobs(ids) {
@@ -308,13 +350,13 @@ export function createStore(db, clock = Date.now) {
     // produced a draft; later phases keep their verified source.
     async manualSourceTarget(id, revision) {
       const current = await row(id);
-      if (current.revision !== revision || !['failed','cancelled'].includes(current.status) || current.phase !== 'research' || current.review_requested || current.draft !== null) throw conflict();
+      if (current.revision !== revision || !['failed','cancelled'].includes(current.status) || current.stage === DELETING || current.phase !== 'research' || current.review_requested || current.draft !== null) throw conflict();
       return parse(current.metadata, {}).manualSource?.key ?? null;
     },
     attachManualSource(id, revision, source) {
       return changed(prepare(`UPDATE jobs SET status='queued',stage='queued',revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
         metadata=json_set(metadata,'$.manualSource',json(?))
-        WHERE id=? AND revision=? AND status IN ('failed','cancelled') AND phase='research' AND review_requested=0 AND draft IS NULL RETURNING *`, clock(), JSON.stringify(source), id, revision));
+        WHERE id=? AND revision=? AND status IN ('failed','cancelled') AND ${NOT_DELETING} AND phase='research' AND review_requested=0 AND draft IS NULL RETURNING *`, clock(), JSON.stringify(source), id, revision));
     },
     async claim(workerId, capabilities) {
       await expire();

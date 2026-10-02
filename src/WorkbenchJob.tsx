@@ -29,9 +29,14 @@ const STYLES: [Design["style"], string, string][] = [
 ];
 const IMAGE_STYLES: [Design["imageStyle"], string][] = [["photo", "寫實照片"], ["illustration", "插畫"], ["flat", "扁平向量"], ["watercolor", "水彩手繪"], ["film", "底片復古"], ["none", "純文字設計"]];
 const FORMATS: [Design["format"], string][] = [["portrait", "直式 · 4:5"], ["square", "正方形 · 1:1"], ["story", "限動／Reel · 9:16（另附 MP4）"]];
-const STAGES: Record<string, string> = { queued: "等待 Mac 接手", researching: "查核全文", research: "查核全文與建立草稿", resolving: "尋找開放全文", revising: "依審核意見修訂草稿", drafting: "撰寫草稿", reviewing: "模型審核", review: "重新審核目前草稿", downloading: "取得原始全文", generating_image: "製作情境圖片", uploading: "儲存製作結果", needs_review: "等待你確認草稿", rendering: "製作圖文", render: "製作圖文", completed: "素材已可下載", failed: "需要處理錯誤", cancelled: "已取消", lease_expired: "Mac 連線中斷，需要手動重試" };
+const STAGES: Record<string, string> = { queued: "等待 Mac 接手", researching: "查核全文", research: "查核全文與建立草稿", resolving: "尋找開放全文", revising: "依審核意見修訂草稿", drafting: "撰寫草稿", reviewing: "模型審核", review: "重新審核目前草稿", downloading: "取得原始全文", generating_image: "製作情境圖片", uploading: "儲存製作結果", needs_review: "等待你確認草稿", rendering: "製作圖文", render: "製作圖文", completed: "素材已可下載", failed: "需要處理錯誤", cancelled: "已取消", lease_expired: "Mac 連線中斷，需要手動重試", deleting: "刪除未完成：檔案清理失敗，請在「任務管理」再按一次刪除" };
 type Tab = "draft" | "review" | "output";
 const TABS: [Tab, string][] = [["draft", "草稿"], ["review", "主張與審核"], ["output", "製作與下載"]];
+// WAI-ARIA tabs: arrows wrap, Home/End jump, and selection follows focus.
+const TAB_KEYS: Record<string, (index: number) => number> = {
+  ArrowRight: index => (index + 1) % TABS.length, ArrowLeft: index => (index - 1 + TABS.length) % TABS.length,
+  Home: () => 0, End: () => TABS.length - 1,
+};
 function record(value: unknown): Record<string, unknown> { return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}; }
 function string(value: unknown): string { return typeof value === "string" ? value : typeof value === "number" ? String(value) : ""; }
 function safeUrl(value: unknown): string | null { const raw = string(value); try { const url = new URL(raw); return ["https:", "http:"].includes(url.protocol) ? url.href : null; } catch { return null; } }
@@ -54,6 +59,14 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
   const [savedAt, setSavedAt] = useState(job.draftSavedAt || "");
   const [gateAccepted, setGateAccepted] = useState(false);
   const [tab, setTab] = useState<Tab>(job.status === "completed" ? "output" : "draft");
+  const moveTab = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const move = TAB_KEYS[event.key];
+    if (!move) return;
+    event.preventDefault();
+    const next = TABS[move(TABS.findIndex(([value]) => value === tab))][0];
+    setTab(next);
+    document.getElementById(`tab-${next}`)?.focus();
+  };
   const request = useRef<AbortController | null>(null);
   const pendingDraft = useRef<string | null>(null);
   const dirty = uncertainSave || JSON.stringify(draft) !== baseline || (busy === "draft" && JSON.stringify(draft) !== pendingDraft.current);
@@ -128,7 +141,7 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
       {jobError && <div role="alert" className="wb-alert"><strong>{jobError.title}</strong><br />{jobError.message}{jobError.hint && <><br />{jobError.hint}</>}<span className="wb-small"> {job.error?.code}</span></div>}
       <div className="wb-actions">
         {["queued", "running", "needs_review"].includes(job.status) && <button className="wb-button is-quiet" disabled={Boolean(busy)} onClick={() => void operate("cancel")}>{busy === "cancel" ? "取消中…" : "取消任務"}</button>}
-        {["failed", "cancelled"].includes(job.status) && <button className="wb-button" disabled={Boolean(busy)} onClick={() => void operate("retry")}>{busy === "retry" ? "重新排隊中…" : "重試任務"}</button>}
+        {["failed", "cancelled"].includes(job.status) && job.stage !== "deleting" && <button className="wb-button" disabled={Boolean(busy)} onClick={() => void operate("retry")}>{busy === "retry" ? "重新排隊中…" : "重試任務"}</button>}
       </div>
       <JobManagement job={job} dirty={dirty || designDirty} onUpdate={onUpdate} onDelete={onDelete} />
       {canUploadSource(job) && <ManualSourceUpload key={job.revision} job={job} onUpdate={onUpdate} />}
@@ -136,7 +149,7 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
 
     <SourceMetadata metadata={job.metadata} />
 
-    {draft && <div className="wb-tabs" role="tablist" aria-label="任務分頁">{TABS.map(([value, label]) => <button key={value} type="button" role="tab" id={`tab-${value}`} aria-controls={`panel-${value}`} aria-selected={tab === value} className={tab === value ? "is-active" : ""} onClick={() => setTab(value)}>
+    {draft && <div className="wb-tabs" role="tablist" aria-label="任務分頁">{TABS.map(([value, label]) => <button key={value} type="button" role="tab" id={`tab-${value}`} aria-controls={`panel-${value}`} aria-selected={tab === value} tabIndex={tab === value ? 0 : -1} className={tab === value ? "is-active" : ""} onClick={() => setTab(value)} onKeyDown={moveTab}>
       {label}{value === "draft" && dirty && <span className="wb-tab-dot" aria-label="有未儲存文字" />}{value === "review" && openPrimary && <span className="wb-tab-dot" aria-label={`主審 ${PRIMARY_REVIEWER} 意見待處理`} />}</button>)}</div>}
 
     <div role="tabpanel" id="panel-draft" aria-labelledby="tab-draft" hidden={Boolean(draft) && tab !== "draft"} className="wb-tabpanel">
