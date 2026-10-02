@@ -30,6 +30,16 @@ function ownerMetadata(metadata) {
   const { key, ...manualSource } = metadata.manualSource;
   return { ...metadata, manualSource };
 }
+// Owner saves (autosave every ~1.5 s) keep at most one snapshot per two-minute window.
+const SNAPSHOT_WINDOW_MS = 120000;
+// A snapshot that anything points at is history and is never merged away. Binds the job id four times.
+const unreferenced = `NOT EXISTS (SELECT 1 FROM review_runs WHERE job_id=? AND draft_revision=draft_versions.revision)
+  AND NOT EXISTS (SELECT 1 FROM review_dispositions d JOIN review_runs r ON r.id=d.run_id WHERE r.job_id=? AND d.draft_revision=draft_versions.revision)
+  AND NOT EXISTS (SELECT 1 FROM draft_versions v WHERE v.job_id=? AND v.restored_from=draft_versions.revision)
+  AND NOT EXISTS (SELECT 1 FROM jobs j WHERE j.id=? AND draft_versions.revision IN (
+    coalesce(json_extract(j.metadata,'$.gatedDraftRevision'),-1), coalesce(json_extract(j.metadata,'$.reviewsDraftRevision'),-1),
+    coalesce(json_extract(j.metadata,'$.render.draftRevision'),-1), coalesce(json_extract(j.metadata,'$.reviewRequest.draftRevision'),-1),
+    coalesce(json_extract(j.metadata,'$.reviseRequest.draftRevision'),-1), coalesce(j.restored_from,-1)))`;
 export function createStore(db, clock = Date.now) {
   const prepare = (sql, ...args) => db.prepare(sql).bind(...args);
   const first = (sql, ...args) => prepare(sql, ...args).first();
@@ -79,11 +89,25 @@ export function createStore(db, clock = Date.now) {
       // A reconciliation checkpoint revokes an older uncertain write without changing text/history/reviews.
       return changed(prepare("UPDATE jobs SET revision=revision+1,updated_at=? WHERE id=? AND revision=? AND status IN ('needs_review','completed') RETURNING *", clock(), id, revision));
     }
-    // A changed draft is no longer the gated one, so it leaves the render phase.
-    return changed(prepare(`UPDATE jobs SET draft=?,restored_from=?,status='needs_review',stage='needs_review',phase='research',revision=revision+1,updated_at=?,
-      metadata=CASE WHEN json_type(metadata,'$.reviews') IS NOT NULL AND json_type(metadata,'$.reviews')<>'null'
-        THEN json_set(metadata,'$.reviewsStale',json('true')) ELSE metadata END
-      WHERE id=? AND revision=? AND status IN ('needs_review','completed') RETURNING *`, JSON.stringify(draft), restoredFrom, clock(), id, revision));
+    // One transaction: merge away the previous owner save of this window, save (the trigger
+    // snapshots the new draft), then mark an owner save as mergeable. Every step is guarded by
+    // the same job state, so a stale save changes nothing.
+    const now = clock(), guard = "EXISTS (SELECT 1 FROM jobs WHERE id=? AND revision=? AND status IN ('needs_review','completed'))";
+    const results = await db.batch([
+      prepare(`DELETE FROM draft_versions WHERE job_id=? AND mergeable=1 AND restored_from IS NULL AND CAST(created_at AS INTEGER)/${SNAPSHOT_WINDOW_MS}=CAST(? AS INTEGER)/${SNAPSHOT_WINDOW_MS}
+        AND revision=(SELECT max(revision) FROM draft_versions WHERE job_id=?) AND ${unreferenced} AND ?=0 AND ${guard}`,
+      id, now, id, id, id, id, id, restoredFrom === null ? 0 : 1, id, revision),
+      // A changed draft is no longer the gated one, so it leaves the render phase.
+      prepare(`UPDATE jobs SET draft=?,restored_from=?,status='needs_review',stage='needs_review',phase='research',revision=revision+1,updated_at=?,
+        metadata=CASE WHEN json_type(metadata,'$.reviews') IS NOT NULL AND json_type(metadata,'$.reviews')<>'null'
+          THEN json_set(metadata,'$.reviewsStale',json('true')) ELSE metadata END
+        WHERE id=? AND revision=? AND status IN ('needs_review','completed') RETURNING *`, JSON.stringify(draft), restoredFrom, now, id, revision),
+      prepare(`UPDATE draft_versions SET mergeable=1 WHERE job_id=? AND ?=0 AND revision=(SELECT revision FROM jobs WHERE id=? AND updated_at=?)`,
+        id, restoredFrom === null ? 0 : 1, id, now),
+    ]);
+    const value = results[1].results?.[0];
+    if (!value) throw conflict();
+    return serialize(value);
   }
   async function version(id, revision) {
     const value = await first('SELECT * FROM draft_versions WHERE job_id=? AND revision=?', id, revision);
