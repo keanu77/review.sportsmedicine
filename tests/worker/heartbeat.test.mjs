@@ -62,3 +62,21 @@ test('an outage longer than the grace stops the job and the failure report is re
   assert.equal(calls.filter(c => c === 'fail').length, 3, 'the report is sent until it arrives');
   assert.equal(reported.code, 'WORKER_INTERRUPTED');
 });
+
+test('a temporary server error (5xx/429) inside the grace does not abandon the job', async t => {
+  for (const status of [503, 429]) {
+    const { workspace, job } = await reviewJob(t);
+    const { api, calls } = fakeApi({ uploadMs: 200, heartbeat: async n => { if (n >= 2 && n <= 4) throw Object.assign(new Error(`HTTP ${status}`), { status }); return {}; } });
+    const notes = [];
+    await processJob(api, { job, leaseToken: 'fixture' }, { workspace }, { onStage: note => notes.push(note), heartbeat: timing });
+    assert.ok(calls.includes('complete'), `the job completes after ${status}`);
+    assert.ok(notes.some(note => /心跳暫時失敗/.test(note)));
+  }
+});
+
+test('server errors that outlast the grace still stop the job', async t => {
+  const { workspace, job } = await reviewJob(t);
+  const { api, calls } = fakeApi({ uploadMs: 1000, heartbeat: async n => { if (n >= 2) throw Object.assign(new Error('HTTP 502'), { status: 502 }); return {}; } });
+  await assert.rejects(processJob(api, { job, leaseToken: 'fixture' }, { workspace }, { onStage: () => {}, heartbeat: timing }), /502/);
+  assert.ok(!calls.includes('complete'));
+});

@@ -7,16 +7,21 @@ const sha = 'a'.repeat(40);
 const pkg = { name: 'test', version: '1.0.0', dependencies: { react: '^18.3.1' } };
 const lock = { name: 'test', version: '1.0.0', lockfileVersion: 3, packages: { '': pkg,
   'node_modules/react': { version: '18.3.1', resolved: 'https://registry.npmjs.org/react/-/react-18.3.1.tgz', integrity: 'sha512-' + Buffer.alloc(64).toString('base64') } } };
-const bundle = () => ({ base: sha, mode: 'maintenance', files: { 'package-lock.json': JSON.stringify(lock), 'docs/maintenance/2026-09.md': '# Report\n' } });
+const bundle = () => ({ base: sha, mode: 'maintenance', files: { 'package-lock.json': JSON.stringify(lock), 'docs/maintenance/2026-09-maintenance.md': '# Report\n' } });
 test('monthly publisher rejects code, traversal, wrong mode/base, malformed and oversized content', () => {
   assert.equal(validateBundle(bundle(), { base: sha, mode: 'maintenance', pkg }).length, 2);
   for (const name of ['package.json', '.github/workflows/sync-data.yml', '../secret', 'docs/maintenance/../../scripts/a.mjs', 'docs/maintenance/a.md']) {
     assert.throws(() => validateBundle({ ...bundle(), files: { [name]: 'bad' } }, { base: sha, mode: 'maintenance', pkg }));
   }
   for (const patch of [{ base: 'b'.repeat(40) }, { mode: 'sync' }, { files: { 'package-lock.json': '{}' } },
-    { files: { 'docs/maintenance/2026-09.md': 'x'.repeat(100001) } }]) {
+    { files: { 'docs/maintenance/2026-09-maintenance.md': 'x'.repeat(100001) } }]) {
     assert.throws(() => validateBundle({ ...bundle(), ...patch }, { base: sha, mode: 'maintenance', pkg }));
   }
+});
+test('day-2 maintenance and day-1 sync reports live in separate files', () => {
+  assert.throws(() => validateBundle({ ...bundle(), files: { 'docs/maintenance/2026-09.md': '# overwrite sync report\n' } }, { base: sha, mode: 'maintenance', pkg }));
+  assert.throws(() => validateBundle({ base: sha, mode: 'sync', files: { 'docs/maintenance/2026-09-maintenance.md': '# x\n' } }, { base: sha, mode: 'sync', pkg }));
+  assert.equal(validateBundle({ base: sha, mode: 'sync', files: { 'docs/maintenance/2026-09.md': '# sync\n' } }, { base: sha, mode: 'sync', pkg }).length, 1);
 });
 test('dependency artifact cannot change root scripts or install from attacker URLs/local paths', () => {
   for (const edit of [l => { l.packages[''].scripts = { postinstall: 'malicious' }; },

@@ -99,10 +99,12 @@ export async function prepareResearchDirectory(directory, restartRequest) {
   await writeFile(marker, id, { mode: 0o600 });
 }
 
-// The server lease lasts 120 s. A network blip must not abandon model work that
-// is still covered by it, so only an answer from the server (stale lease, auth)
-// or 100 s without any successful heartbeat stops the job.
+// The server lease lasts 120 s. A network blip or a temporary server error
+// (408/429/5xx) must not abandon model work that is still covered by it, so only
+// a definitive answer (stale lease, auth) or 100 s without any successful
+// heartbeat stops the job.
 export const HEARTBEAT = { intervalMs: 30000, timeoutMs: 15000, graceMs: 100000, failRetryMs: 5000 };
+const definitiveStatus = status => Boolean(status) && status !== 408 && status !== 429 && status < 500;
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export async function processJob(api, claimed, config, { signal, onStage = console.log, heartbeat: timing = HEARTBEAT, clock = Date.now } = {}) {
@@ -119,7 +121,7 @@ export async function processJob(api, claimed, config, { signal, onStage = conso
     try { await api.call(`/jobs/${job.id}/heartbeat`, { data: { leaseToken, stage }, signal: combined, timeoutMs: timing.timeoutMs }); lastBeat = clock(); }
     catch (error) {
       if (combined.aborted) return;
-      if (error.status || clock() - lastBeat >= timing.graceMs) controller.abort(error);
+      if (definitiveStatus(error.status) || clock() - lastBeat >= timing.graceMs) controller.abort(error);
       else onStage(`${job.id}: 心跳暫時失敗（${error.message}），租約內繼續工作`);
     }
     finally { heartbeatBusy = false; }

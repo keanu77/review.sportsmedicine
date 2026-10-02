@@ -41,14 +41,16 @@ jobs:
       - name: Validate data and run regression checks
         run: |
           node scripts/validate-index.mjs
+          npm run typecheck
           npm test
+          npm run test:renderer
           npm run build
           npm run test:smoke -- --workers=2
           npm run test:local-api
           npm run test:integration
           npm audit --audit-level=moderate
       - name: Generate maintenance report
-        run: node --import tsx scripts/monthly-report.ts >> "$GITHUB_STEP_SUMMARY"
+        run: node --import tsx scripts/monthly-report.ts maintenance >> "$GITHUB_STEP_SUMMARY"
       - name: Prepare data-only proposal
         run: node scripts/monthly-bundle.mjs pack maintenance "$RUNNER_TEMP/proposal/bundle.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

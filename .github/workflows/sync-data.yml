@@ -1,7 +1,9 @@
 name: Monthly data sync
 
-# Day 1 at 03:00 Asia/Taipei (04:00 Asia/Tokyo).
-# Upstream rebuilds on day 1 at 02:00 Asia/Taipei. Reject stale scheduled batches.
+# Day 1 at 03:00 Asia/Taipei (04:00 Asia/Tokyo), with catch-up runs on day 1 at 12:00
+# and day 2 at 01:00 in case the upstream rebuild (day 1, 02:00) is late.
+# scripts/sync-gate.mjs: scheduled runs accept only this month's batch, skip once synced,
+# and fail on the last catch-up if upstream still has not published.
 on:
   workflow_dispatch:
     inputs:
@@ -12,6 +14,10 @@ on:
         default: false
   schedule:
     - cron: '0 3 1 * *'
+      timezone: 'Asia/Taipei'
+    - cron: '0 12 1 * *'
+      timezone: 'Asia/Taipei'
+    - cron: '0 1 2 * *'
       timezone: 'Asia/Taipei'
 permissions:
   contents: read
@@ -24,6 +30,8 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      run: ${{ steps.gate.outputs.run }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,19 +40,22 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci
+      - name: Fetch upstream and decide whether this run has work
+        id: gate
+        run: |
+          cp public/data/reviews-index.json "$RUNNER_TEMP/previous-index.json"
+          curl --fail --silent --show-error --location --retry 3 --max-time 90 https://app.sportsmedicine.tw/data/reviews-index.json -o "$RUNNER_TEMP/next-index.json"
+          node scripts/sync-gate.mjs "$RUNNER_TEMP/next-index.json" "$RUNNER_TEMP/previous-index.json" >> "$GITHUB_OUTPUT"
+      - if: steps.gate.outputs.run == 'true'
+        run: npm ci
       - name: Install browser and video test dependencies
+        if: steps.gate.outputs.run == 'true'
         run: |
           npx playwright install --with-deps chromium
           sudo apt-get install -y ffmpeg
-      - name: Fetch and validate before replacing data
+      - name: Validate before replacing data
+        if: steps.gate.outputs.run == 'true'
         run: |
-          # Scheduled runs must receive today's actual upstream batch, never relabel old data.
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            export EXPECTED_INDEX_DATE="$(TZ=Asia/Taipei date +%F)"
-          fi
-          cp public/data/reviews-index.json "$RUNNER_TEMP/previous-index.json"
-          curl --fail --silent --show-error --location --retry 3 --max-time 90 https://app.sportsmedicine.tw/data/reviews-index.json -o "$RUNNER_TEMP/next-index.json"
           node scripts/validate-index.mjs "$RUNNER_TEMP/next-index.json" "$RUNNER_TEMP/previous-index.json"
           if ! cmp -s "$RUNNER_TEMP/previous-index.json" "$RUNNER_TEMP/next-index.json"; then
             cp "$RUNNER_TEMP/next-index.json" public/data/reviews-index.json
@@ -52,18 +63,24 @@ jobs:
             npm run feed
           fi
       - name: Enrich verified bibliographic metadata
+        if: steps.gate.outputs.run == 'true'
         run: node --import tsx scripts/build-bibliography.ts
       - name: Verify application and data
+        if: steps.gate.outputs.run == 'true'
         run: |
+          npm run typecheck
           npm test
           npm run build
           npm run test:smoke -- --workers=2
           npm audit --audit-level=moderate
       - name: Record monthly public data health
+        if: steps.gate.outputs.run == 'true'
         run: node --import tsx scripts/monthly-report.ts >> "$GITHUB_STEP_SUMMARY"
       - name: Prepare data-only proposal
+        if: steps.gate.outputs.run == 'true'
         run: node scripts/monthly-bundle.mjs pack sync "$RUNNER_TEMP/proposal/bundle.json"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - if: steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: monthly-data-proposal
           path: ${{ runner.temp }}/proposal/bundle.json
@@ -80,7 +97,7 @@ jobs:
           retention-days: 90
   publish:
     needs: verify
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.apply_updates)
+    if: needs.verify.outputs.run == 'true' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.apply_updates)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

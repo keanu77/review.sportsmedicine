@@ -2,7 +2,7 @@
  * node --import tsx scripts/build-bibliography.ts [--limit N] [--refresh]
  * Cache contains public API responses only; an explicit --refresh bypasses the 30-day positive cache.
  */
-import { readFile, writeFile, mkdir, rename } from "node:fs/promises";
+import { appendFile, readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -63,8 +63,8 @@ async function querySource(query: string): Promise<{ result: EuropePmcResult[]; 
         await pause(Math.min(10_000, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1000 * 2 ** attempt));
         throw new Error(`HTTP ${response.status}`);
       }
-      const body = await response.json();
-      if (!Number.isFinite(body.hitCount) || !Array.isArray(body.resultList?.result)) throw new Error(`Invalid Europe PMC response${body.errMsg ? `: ${String(body.errMsg).slice(0, 100)}` : ""}`);
+      const body = await response.json() as { hitCount?: number; errMsg?: unknown; resultList?: { result?: unknown[] } };
+      if (typeof body.hitCount !== "number" || !Number.isFinite(body.hitCount) || !Array.isArray(body.resultList?.result)) throw new Error(`Invalid Europe PMC response${body.errMsg ? `: ${String(body.errMsg).slice(0, 100)}` : ""}`);
       if (body.hitCount > body.resultList.result.length) throw new Error("Ambiguous query exceeded page size; no candidates accepted");
       const result = { verifiedAt: new Date().toISOString(), result: body.resultList.result as EuropePmcResult[] };
       await writeFile(`${path}.tmp`, JSON.stringify(result));
@@ -146,4 +146,11 @@ console.log(JSON.stringify({ totalRaw: input.items.length, totalUnique: allItems
   matchedByTitleYear: resolvedItems.filter(item => selectBibliography(item, finalIndex)?.matchMethod === "exact-title-year").length,
   durableRecords: records.length, requests, cached, sourceFailures,
   previouslySavedAliases: resolvedItems.reduce((count, item) => count + paperAliases(item).length, 0), output: output.pathname }, null, 2));
-if (sourceFailures) process.exitCode = 1;
+// Europe PMC outages publish the verified overlay anyway: records are never removed, and every
+// paper marked source-unavailable has no record, so the next run queries it again.
+if (sourceFailures) {
+  const unavailable = [...unresolved.values()].filter(entry => entry.reason.startsWith("source-unavailable")).length;
+  const message = `Europe PMC 有 ${sourceFailures} 次查詢失敗；已發布已驗證書目，${unavailable} 篇標記 source-unavailable，下次執行重查。`;
+  console.log(`::warning::${message}`);
+  if (process.env.GITHUB_STEP_SUMMARY) await appendFile(process.env.GITHUB_STEP_SUMMARY, `\n> ⚠️ ${message}\n`);
+}
