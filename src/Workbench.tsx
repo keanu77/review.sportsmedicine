@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import type { Design, Job } from "../shared/contracts";
-import { errorText, latestJob, mergeJobList, privateApi } from "./privateApi";
+import type { Design, Job, JobPage, JobSummary } from "../shared/contracts";
+import { errorText, latestJob, mergeJobList, privateApi, PrivateApiError } from "./privateApi";
+import { reconcileFirstPage } from "./jobList";
 import WorkbenchJob, { STATUS_LABELS, type EditorSnapshot } from "./WorkbenchJob";
 import { clearExpiredRecoveries, isPrivateSessionActive, logoutPrivateSession, removeRecovery, watchPrivateSession } from "./draftRecovery";
 import ReviewerStats from "./ReviewerStats";
@@ -13,13 +14,20 @@ import "./workbench.css";
 
 interface Session { email: string; worker: { lastSeen: string; capabilities: unknown } | null; workerCredentialExpiresAt?: string }
 export const DEFAULT_DESIGN: Design = { palette: "blue", style: "clinical", imageStyle: "photo", format: "portrait" };
+// A background tab polls the list slowly (completion notices still arrive) and pauses the open job.
+const LIST_POLL_MS = 8000, HIDDEN_LIST_POLL_MS = 60000, DETAIL_POLL_MS = 5000;
+// Same-origin tabs hear about deletes at once instead of waiting for the next list poll.
+const JOB_CHANNEL = "review-workbench-jobs";
+const listLabel = (item: JobSummary) => item.stage === "deleting" ? "刪除未完成" : STATUS_LABELS[item.status];
 
 export default function Workbench() {
   const initial = new URLSearchParams(window.location.search);
   const [input, setInput] = useState(initial.get("input") ?? "");
   const [title, setTitle] = useState(initial.get("title") ?? "");
   const [session, setSession] = useState<Session | null>(null);
-  const [jobs, setJobs] = useState<Job[]>([]);
+  const [jobs, setJobs] = useState<JobSummary[]>([]);
+  const [moreCursor, setMoreCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState("");
@@ -35,7 +43,14 @@ export default function Workbench() {
   const selectedRef = useRef(selected);
   // A poll started before a delete must not bring the deleted job back.
   const deleted = useRef(new Set<string>());
+  // Jobs this tab created recently: a list fetched before creation must not drop them.
+  const created = useRef(new Map<string, number>());
+  const olderPagesLoaded = useRef(false);
+  const channel = useRef<BroadcastChannel | null>(null);
   selectedRef.current = selected;
+  // Effects registered once (polls, the tab channel) read the current list and owner through refs.
+  const jobsRef = useRef(jobs), ownerRef = useRef("");
+  jobsRef.current = jobs;
   const notices = useCompletionNotices(jobs, !locked);
 
   useEffect(() => {
@@ -51,29 +66,37 @@ export default function Workbench() {
   useEffect(() => {
     if (locked || !isPrivateSessionActive()) return;
     const controller = new AbortController();
-    let timer: number;
+    let timer: number, inFlight = false;
     const poll = async () => {
-      if (!isPrivateSessionActive()) return;
+      if (!isPrivateSessionActive() || inFlight) return;
+      inFlight = true; clearTimeout(timer);
+      const startedAt = Date.now();
       try {
         const [nextSession, list] = await Promise.all([
           privateApi<Session>("/session", { signal: controller.signal }),
-          privateApi<{ jobs: Job[] }>("/jobs", { signal: controller.signal }),
+          privateApi<JobPage>("/jobs", { signal: controller.signal }),
         ]);
         if (controller.signal.aborted || !isPrivateSessionActive()) return;
         if (!nextSession.email || !Array.isArray(list.jobs)) throw new Error("私人服務回應格式無法辨識。");
         setSession(nextSession);
+        for (const [id, at] of created.current) if (at < startedAt - 60000) created.current.delete(id);
         const visible = list.jobs.filter(item => !deleted.current.has(item.id));
-        setJobs(current => mergeJobList(current, visible).filter(item => !deleted.current.has(item.id)));
+        const keep = new Set(created.current.keys());
+        setJobs(current => reconcileFirstPage(current, visible, !list.nextCursor, keep).filter(item => !deleted.current.has(item.id)));
+        if (!olderPagesLoaded.current) setMoreCursor(list.nextCursor ?? null);
         setSelected(current => current ?? visible[0]?.id ?? null);
         setError("");
       } catch (cause) {
         if (!controller.signal.aborted && isPrivateSessionActive()) setError(errorText(cause));
       } finally {
-        if (!controller.signal.aborted && isPrivateSessionActive()) { setLoading(false); timer = window.setTimeout(poll, 8000); }
+        inFlight = false;
+        if (!controller.signal.aborted && isPrivateSessionActive()) { setLoading(false); timer = window.setTimeout(poll, document.hidden ? HIDDEN_LIST_POLL_MS : LIST_POLL_MS); }
       }
     };
+    const onVisibility = () => { if (!document.hidden) void poll(); };
+    document.addEventListener("visibilitychange", onVisibility);
     void poll();
-    return () => { controller.abort(); clearTimeout(timer); };
+    return () => { controller.abort(); clearTimeout(timer); document.removeEventListener("visibilitychange", onVisibility); };
   }, [refresh, locked]);
 
   useEffect(() => {
@@ -81,23 +104,37 @@ export default function Workbench() {
     setDetailError("");
     if (!selected || locked || !isPrivateSessionActive()) return;
     const controller = new AbortController();
-    let timer: number;
+    let timer: number, inFlight = false;
     const poll = async () => {
-      if (!isPrivateSessionActive()) return;
+      if (!isPrivateSessionActive() || inFlight) return;
+      inFlight = true; clearTimeout(timer);
       try {
         const result = await privateApi<{ job: Job }>(`/jobs/${encodeURIComponent(selected)}`, { signal: controller.signal });
         if (controller.signal.aborted || selectedRef.current !== selected || !isPrivateSessionActive()) return;
         setJob(current => latestJob(current, result.job));
         setDetailError("");
       } catch (cause) {
-        if (!controller.signal.aborted && isPrivateSessionActive()) setDetailError(errorText(cause));
+        if (controller.signal.aborted || !isPrivateSessionActive()) return;
+        if (cause instanceof PrivateApiError && cause.status === 404) forgetJob(selected, "這個任務已在其他分頁或裝置刪除。");
+        else setDetailError(errorText(cause));
       } finally {
-        if (!controller.signal.aborted && isPrivateSessionActive()) timer = window.setTimeout(poll, 5000);
+        inFlight = false;
+        if (!controller.signal.aborted && isPrivateSessionActive() && !document.hidden) timer = window.setTimeout(poll, DETAIL_POLL_MS);
       }
     };
+    const onVisibility = () => { if (!document.hidden) void poll(); };
+    document.addEventListener("visibilitychange", onVisibility);
     void poll();
-    return () => { controller.abort(); clearTimeout(timer); };
+    return () => { controller.abort(); clearTimeout(timer); document.removeEventListener("visibilitychange", onVisibility); };
   }, [selected, refresh, locked]);
+
+  useEffect(() => {
+    if (locked || typeof BroadcastChannel === "undefined") return;
+    const bus = new BroadcastChannel(JOB_CHANNEL);
+    channel.current = bus;
+    bus.onmessage = event => { if (event.data?.type === "deleted" && typeof event.data.id === "string") forgetJob(event.data.id, "這個任務已在其他分頁刪除。"); };
+    return () => { bus.close(); channel.current = null; };
+  }, [locked]);
 
   useEffect(() => () => createController.current?.abort(), []);
 
@@ -107,14 +144,35 @@ export default function Workbench() {
     if (selectedRef.current === next.id) setJob(current => latestJob(current, next));
     setJobs(current => mergeJobList(current, [next]));
   };
-  const deleteJob = (id: string) => {
-    if (!isPrivateSessionActive()) return;
+  // Removes a job from this tab, whether it was deleted here, in another tab or on another device.
+  function forgetJob(id: string, message: string) {
+    if (!isPrivateSessionActive() || deleted.current.has(id)) return;
     deleted.current.add(id);
-    editorCache.current.delete(`${session?.email || ""}/${id}`);
-    if (session?.email) removeRecovery(session.email, id);
-    const remaining = jobs.filter(item => item.id !== id);
-    setJobs(remaining); setJob(null); selectedRef.current = remaining[0]?.id ?? null; setSelected(remaining[0]?.id ?? null);
-    setNotice("任務已刪除。");
+    editorCache.current.delete(`${ownerRef.current}/${id}`);
+    if (ownerRef.current) removeRecovery(ownerRef.current, id);
+    setJobs(current => current.filter(item => item.id !== id));
+    if (selectedRef.current === id) {
+      const next = jobsRef.current.find(item => item.id !== id)?.id ?? null;
+      setJob(null); selectedRef.current = next; setSelected(next);
+    }
+    setNotice(message);
+  }
+  const deleteJob = (id: string) => {
+    forgetJob(id, "任務已刪除。");
+    channel.current?.postMessage({ type: "deleted", id });
+  };
+  const loadMore = async () => {
+    if (!moreCursor || loadingMore || !isPrivateSessionActive()) return;
+    setLoadingMore(true);
+    try {
+      const page = await privateApi<JobPage>(`/jobs?cursor=${encodeURIComponent(moreCursor)}`);
+      if (!isPrivateSessionActive()) return;
+      olderPagesLoaded.current = true;
+      setJobs(current => mergeJobList(current, page.jobs.filter(item => !deleted.current.has(item.id))));
+      setMoreCursor(page.nextCursor ?? null);
+    } catch (cause) {
+      setNotice(errorText(cause));
+    } finally { setLoadingMore(false); }
   };
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -125,6 +183,7 @@ export default function Workbench() {
     try {
       const result = await privateApi<{ job: Job }>("/jobs", { method: "POST", body: { input: input.trim(), ...(title.trim() ? { title: title.trim() } : {}), design: DEFAULT_DESIGN }, signal: controller.signal });
       if (controller.signal.aborted || !isPrivateSessionActive()) return;
+      created.current.set(result.job.id, Date.now());
       updateJob(result.job); setSelected(result.job.id);
       setNotice("任務已加入佇列。Mac 連線後會先查核全文，再產生待審草稿。");
     } catch (cause) {
@@ -138,6 +197,7 @@ export default function Workbench() {
     flushSync(() => { failure = logoutPrivateSession(); setStorageNotice(failure || ""); });
     if (!failure) window.location.assign("/cdn-cgi/access/logout");
   };
+  ownerRef.current = session?.email || "";
   const workerDate = session?.worker ? Date.parse(session.worker.lastSeen) : NaN;
   const workerOnline = Number.isFinite(workerDate) && Date.now() - workerDate < 120000;
   const credentialExpiry = Date.parse(session?.workerCredentialExpiresAt || "");
@@ -166,7 +226,7 @@ export default function Workbench() {
       <div>{loading ? "正在確認私人服務…" : session ? <><strong>{workerOnline ? "Mac 已連線" : "等待 Mac 連線"}</strong><span className="wb-small"> {session.email}</span></> : <strong>私人服務尚未連線</strong>}
         {session && <p className="wb-small">{session.worker ? `最後回報：${new Date(session.worker.lastSeen).toLocaleString("zh-TW")}` : "尚無 Mac 回報紀錄"}{!workerOnline && "。已排隊任務會等待 worker 啟動。"}</p>}
         {Number.isFinite(credentialExpiry) && <p className={credentialExpiresSoon ? "wb-small wb-alert" : "wb-small"}>憑證到期：{new Date(credentialExpiry).toLocaleString("zh-TW")}{credentialExpiresSoon && (credentialExpiry <= Date.now() ? "（已到期，請輪替）" : "（14 天內到期，請輪替）")}</p>}
-        {capabilities?.imageGeneration?.available === false && <p className="wb-small">Mac 圖片生成功能尚未就緒；寫實／插畫任務會等待可生圖的 Mac。</p>}
+        {capabilities?.imageGeneration?.available === false && <p className="wb-small">Mac 圖片生成功能尚未就緒；需要情境圖的任務（寫實、插畫、扁平、水彩、底片）會等待可生圖的 Mac，純文字版型不受影響。</p>}
         {reviewers.length > 0 && <p className="wb-small wb-reviewer-status">審核模型：{reviewers.map(([name, status]) => <span key={name} className={status.available ? "is-ok" : "is-off"}>{REVIEWER_NAMES[name] ?? name} {status.available ? "可用" : "不可用"}</span>)}</p>}
         {reviewers.filter(([, status]) => !status.available && status.fix).map(([name, status]) => <p key={name} className="wb-small wb-alert">{REVIEWER_NAMES[name] ?? name} 目前無法審核：{status.fix}</p>)}
       </div>
@@ -183,7 +243,7 @@ export default function Workbench() {
         <section className="wb-panel" aria-labelledby="new-job-heading">
           <p className="wb-eyebrow">NEW PROJECT</p><h2 id="new-job-heading">從一篇論文開始</h2>
           <form onSubmit={create} className="wb-form">
-            <label>DOI、PMID 或 PMCID<input required maxLength={2048} value={input} onChange={event => setInput(event.target.value)} placeholder="10.1234/example 或 PMC1234567" disabled={creating} aria-describedby="source-help" /></label>
+            <label>DOI、PMID 或 PMCID<input required maxLength={512} value={input} onChange={event => setInput(event.target.value)} placeholder="10.1234/example 或 PMC1234567" disabled={creating} aria-describedby="source-help" /></label>
             <p id="source-help" className="wb-small">也接受標準 DOI、PubMed、PMC 連結。全文與授權將由 Mac 查核。</p>
             <label>文獻標題（選填）<textarea rows={2} maxLength={1000} value={title} onChange={event => setTitle(event.target.value)} disabled={creating} placeholder="保留來源標題，方便辨識" /></label>
             {title && !input && <p className="wb-small">索引未提供可用識別碼，請先補上 DOI、PMID 或 PMCID。</p>}
@@ -194,8 +254,10 @@ export default function Workbench() {
           {notice && <p className="wb-notice" role="status">{notice}</p>}
         </section>
 
-        <section className="wb-panel" aria-labelledby="jobs-heading"><div className="wb-section-heading"><h2 id="jobs-heading">製作紀錄</h2><span className="wb-small">{jobs.length} 件</span></div>
-          {jobs.length ? <ul className="wb-job-list">{jobs.map(item => <li key={item.id}><button onClick={() => { setSelected(item.id); notices.dismiss(item.id); }} aria-pressed={selected === item.id} className={`${selected === item.id ? "is-selected" : ""}${thumbArtifact(item) ? " has-thumb" : ""}`}>{thumbArtifact(item) && <JobThumb job={item} />}<span className="wb-job-text"><span className="wb-job-name">{item.title || item.input}</span><span className="wb-small">{STATUS_LABELS[item.status]} · {new Date(item.updatedAt).toLocaleDateString("zh-TW")}</span></span></button></li>)}</ul> : <p className="wb-small">{session ? "還沒有任務。加入一篇論文，開始製作。" : "登入私人工作台後顯示製作紀錄。"}</p>}
+        <section className="wb-panel" aria-labelledby="jobs-heading"><div className="wb-section-heading"><h2 id="jobs-heading">製作紀錄</h2><span className="wb-small">{jobs.length}{moreCursor ? "+" : ""} 件</span></div>
+          {jobs.length ? <ul className="wb-job-list">{jobs.map(item => <li key={item.id}><button onClick={() => { setSelected(item.id); notices.dismiss(item.id); }} aria-pressed={selected === item.id} className={`${selected === item.id ? "is-selected" : ""}${thumbArtifact(item) ? " has-thumb" : ""}`}>{thumbArtifact(item) && <JobThumb job={item} />}<span className="wb-job-text"><span className="wb-job-name">{item.title || item.input}</span><span className="wb-small">{listLabel(item)} · {new Date(item.updatedAt).toLocaleDateString("zh-TW")}</span></span></button></li>)}</ul> : null}
+          {moreCursor && <button type="button" className="wb-button is-quiet" disabled={loadingMore} onClick={() => void loadMore()}>{loadingMore ? "載入中…" : "載入更早的任務"}</button>}
+          {!jobs.length && <p className="wb-small">{session ? "還沒有任務。加入一篇論文，開始製作。" : "登入私人工作台後顯示製作紀錄。"}</p>}
         </section>
         <ReviewerStats enabled={Boolean(session)} />
       </aside>

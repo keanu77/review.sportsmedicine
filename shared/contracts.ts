@@ -16,6 +16,9 @@ export type Job = {
   draft: Draft | null; design: Design; metadata: Record<string, unknown>; artifacts: Artifact[];
   error: { code: string; message: string; recoverable?: boolean } | null; createdAt: string; updatedAt: string;
 };
+/** What the job list returns: enough for the sidebar, without drafts or metadata. */
+export type JobSummary = Pick<Job, 'id' | 'input' | 'title' | 'status' | 'phase' | 'stage' | 'revision' | 'artifacts' | 'createdAt' | 'updatedAt'>;
+export type JobPage = { jobs: JobSummary[]; nextCursor?: string | null };
 export type DraftVersion = { revision: number; createdAt: string; restoredFrom: number | null; draft?: Draft };
 export type ReviewDisposition = { provider: string; findingIndex: number; status: 'pending' | 'resolved' | 'rejected'; reason: string; draftRevision: number; updatedAt: string };
 export type ReviewRun = { id: string; draftRevision: number | null; createdAt: string; reviews: Record<string, unknown>[]; dispositions: ReviewDisposition[] };

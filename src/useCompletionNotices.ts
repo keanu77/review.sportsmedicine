@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
-import type { Job, JobStatus } from "../shared/contracts";
+import type { JobStatus, JobSummary } from "../shared/contracts";
 import { DONE_LABELS, finishedJobs, titleWithCount } from "./completion";
 
 const supported = () => typeof window !== "undefined" && "Notification" in window;
 
 /** Tracks jobs that finish while the workbench is open: a banner, a tab-title count and, if allowed, a desktop notification. */
-export function useCompletionNotices(jobs: Job[], enabled: boolean) {
+export function useCompletionNotices(jobs: JobSummary[], enabled: boolean) {
   const statuses = useRef<Map<string, JobStatus> | null>(null);
-  const [finished, setFinished] = useState<Job[]>([]);
+  const [finished, setFinished] = useState<JobSummary[]>([]);
   const [permission, setPermission] = useState(() => supported() ? Notification.permission : "denied");
   useEffect(() => {
     if (!enabled) { statuses.current = null; setFinished([]); return; }

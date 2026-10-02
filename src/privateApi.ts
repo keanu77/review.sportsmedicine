@@ -1,4 +1,4 @@
-import type { Artifact, Job } from "../shared/contracts";
+import type { Artifact, Job, JobSummary } from "../shared/contracts";
 import { isPrivateSessionActive, onPrivateSessionLock } from "./draftRecovery";
 
 function assertPrivateSession() {
@@ -6,12 +6,12 @@ function assertPrivateSession() {
 }
 
 /** A delayed poll must not rewind a mutation, heartbeat or newly created list item. */
-export function latestJob(current: Job | null | undefined, incoming: Job): Job {
+export function latestJob<T extends JobSummary>(current: T | null | undefined, incoming: T): T {
   if (!current || current.id !== incoming.id) return incoming;
   if (current.revision > incoming.revision || (current.revision === incoming.revision && Date.parse(current.updatedAt) > Date.parse(incoming.updatedAt))) return current;
   return incoming;
 }
-export function mergeJobList(current: Job[], incoming: Job[]): Job[] {
+export function mergeJobList<T extends JobSummary>(current: T[], incoming: T[]): T[] {
   const known = new Map(current.map(job => [job.id, job]));
   for (const job of incoming) known.set(job.id, latestJob(known.get(job.id), job));
   return [...known.values()].sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt));
@@ -71,11 +71,13 @@ export async function uploadSourcePdf(job: Pick<Job, "id" | "revision">, file: F
   return result.job;
 }
 
+const VERSION_CONFLICTS = new Set(["STATE_CONFLICT", "CONFLICT", "REQUEST_FAILED"]);
 export function errorText(error: unknown): string {
   if (error instanceof PrivateApiError) {
     if (error.status === 401) return "登入尚未完成或已過期。請重新登入工作台。";
     if (error.status === 403) return "目前帳號無權存取私人工作台。";
-    if (error.status === 409) return "任務狀態或版本已改變。你的文字仍保留，請先比較最新版本再操作。";
+    // Only a version/state conflict gets the generic guidance; QUALITY_GATE and others carry their own reason.
+    if (error.status === 409 && VERSION_CONFLICTS.has(error.code)) return "任務狀態或版本已改變。你的文字仍保留，請先比較最新版本再操作。";
     return `${error.message}（${error.code}）`;
   }
   return error instanceof Error ? error.message : "連線失敗，請稍後再試。";

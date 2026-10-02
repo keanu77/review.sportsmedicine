@@ -1153,3 +1153,42 @@ test('one-click buttons lock the remaining claims and resolve the remaining prim
   await openTab(page, '製作與下載');
   await expect(page.getByText(/製作前檢查通過/)).toBeVisible();
 });
+
+test("job tabs follow the ARIA keyboard pattern", async ({ page }) => {
+  await apiFixture(page);
+  await page.goto("/workbench/"); await openTab(page, "草稿");
+  const tab = (name: string) => page.getByRole("tab", { name: new RegExp(`^${name}`) });
+  await expect(tab("草稿")).toHaveAttribute("tabindex", "0");
+  await expect(tab("主張與審核")).toHaveAttribute("tabindex", "-1");
+  await tab("草稿").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(tab("主張與審核")).toBeFocused(); await expect(tab("主張與審核")).toHaveAttribute("aria-selected", "true");
+  await page.keyboard.press("End");
+  await expect(tab("製作與下載")).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(tab("草稿")).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(tab("製作與下載")).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(tab("草稿")).toHaveAttribute("aria-selected", "true");
+});
+
+test("older jobs load on request and a job deleted in another tab disappears", async ({ page, context }) => {
+  const older = sampleJob({ id: "job-older", title: "Older study", createdAt: "2026-08-01T00:00:00Z" });
+  const state = await apiFixture(page, [sampleJob()]);
+  await page.route("**/api/private/jobs?cursor=*", route => route.fulfill({ json: { jobs: [older], nextCursor: null } }));
+  await page.route("**/api/private/jobs", async route => {
+    if (route.request().method() !== "GET") return route.fallback();
+    return route.fulfill({ json: { jobs: state.jobs, nextCursor: "1754006400000_job-older" } });
+  });
+  await page.goto("/workbench/");
+  await page.getByRole("button", { name: "載入更早的任務" }).click();
+  await expect(page.getByRole("button", { name: /Older study/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: "載入更早的任務" })).toHaveCount(0);
+
+  const other = await context.newPage();
+  await other.goto("/workbench/");
+  await other.evaluate(() => new BroadcastChannel("review-workbench-jobs").postMessage({ type: "deleted", id: "job-older" }));
+  await expect(page.getByRole("button", { name: /Older study/ })).toHaveCount(0);
+  await expect(page.getByText("這個任務已在其他分頁刪除。")).toBeVisible();
+});

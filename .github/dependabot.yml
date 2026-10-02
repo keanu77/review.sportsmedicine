@@ -1,0 +1,13 @@
+# GitHub Actions are pinned to commit SHAs; Dependabot proposes monthly SHA bumps as PRs.
+# npm updates stay with monthly-maintenance.yml (compatible ranges, full verification).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      timezone: Asia/Taipei
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ['*']

@@ -1,12 +1,12 @@
 import { authenticateOwner, authenticateWorker, requireOrigin, workerCredentials } from './auth.mjs';
 import { ApiError } from './errors.mjs';
-import { createStore, MAX_ATTEMPT_FILES } from './store.mjs';
+import { createStore, LIST_LIMIT, MAX_ATTEMPT_FILES } from './store.mjs';
 import { downloadHeaders, readLimited, validateUpload } from './files.mjs';
 import { normalizeInput, record, safeId, text, validateDesign, validateDraft, validateMetadata, validateRevision, ValidationError } from '../shared/validation.mjs';
 
 const privateHeaders = {
   'Cache-Control': 'no-store, private, max-age=0', Pragma: 'no-cache',
-  'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
+  'Strict-Transport-Security': 'max-age=31536000', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer',
   Vary: 'Cf-Access-Jwt-Assertion, Authorization, Cookie',
 };
 function json(value, status = 200) { return new Response(JSON.stringify(value), { status, headers: { ...privateHeaders, 'Content-Type': 'application/json; charset=utf-8' } }); }
@@ -30,14 +30,35 @@ async function deletePrefix(bucket, prefix) {
     cursor = page.truncated ? page.cursor : undefined;
   } while (cursor);
 }
+// Logs name the route shape only: job, file and run identifiers stay out of server logs.
+const ID_PARENTS = new Set(['jobs', 'files', 'reviews', 'findings', 'versions']);
+export function routeShape(method, pathname) {
+  const parts = pathname.split('/');
+  return `${method} ${parts.map((part, index) => index && ID_PARENTS.has(parts[index - 1]) && part ? (/^\d+$/.test(part) && parts[index - 1] !== 'jobs' ? ':n' : ':id') : part).join('/')}`.slice(0, 200);
+}
+function listPage(params) {
+  const limit = params.has('limit') ? Number(params.get('limit')) : LIST_LIMIT;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new ValidationError('limit must be 1–100');
+  if (!params.has('cursor')) return { limit };
+  const cursor = params.get('cursor').match(/^(\d{1,16})_([A-Za-z0-9-]{1,64})$/);
+  if (!cursor) throw new ValidationError('Invalid list cursor');
+  return { limit, before: { createdAt: Number(cursor[1]), id: cursor[2] } };
+}
+// Storage cleanup after a finished attempt is best effort: rows stay until their objects are gone, so the next completion retries.
+async function reclaimStaleFiles(store, bucket, id) {
+  const stale = await store.staleArtifacts(id);
+  if (!stale.length) return;
+  await bucket.delete(stale.map(file => file.object_key));
+  await store.forgetArtifacts(id, stale.map(file => file.id));
+}
 function fileIds(value) {
   if (!Array.isArray(value) || value.length < 1 || value.length > MAX_ATTEMPT_FILES || new Set(value).size !== value.length) throw new ValidationError(`artifacts must contain 1–${MAX_ATTEMPT_FILES} unique file IDs`);
   return value.map((id) => safeId(id, 'file id'));
 }
 /** Test hooks are only supplied by import callers; Pages entrypoints never supply them. */
 export async function handleApi(request, env, { keyResolver, clock = Date.now } = {}) {
+  const url = new URL(request.url);
   try {
-    const url = new URL(request.url);
     const match = url.pathname.match(/^\/api\/(private|worker)(\/.*)?$/);
     if (!match) throw new ApiError(404, 'NOT_FOUND', 'Unknown API route');
     const role = match[1]; const path = match[2] || '/'; const method = request.method;
@@ -66,7 +87,7 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         return json({ email: owner.email, worker: await store.presence(), workerCredentialExpiresAt });
       }
       if (path === '/jobs') {
-        if (method === 'GET') return json({ jobs: await store.list() });
+        if (method === 'GET') return json(await store.list(listPage(url.searchParams)));
         if (method === 'POST') {
           const data = await body(request);
           return json({ job: await store.create({ input: normalizeInput(data.input), title: data.title === undefined ? '' : text(data.title, 'title', 1000, { empty: true }), design: validateDesign(data.design) }) }, 201);
@@ -105,9 +126,12 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         const id = safeId(jobPath[1]); const action = jobPath[2];
         if (!action && method === 'GET') return json({ job: await store.get(id) });
         if (!action && method === 'DELETE') {
-          await store.remove(id, validateRevision(Number(url.searchParams.get('revision'))));
-          // Database rows go first so a storage failure never leaves a job pointing at missing files.
-          await deletePrefix(storage(env), `jobs/${id}/`);
+          // Tombstone, then storage, then rows: a storage failure leaves a job that is
+          // visibly being deleted and can be deleted again, never rows pointing at missing files.
+          const bucket = storage(env);
+          await store.markDeleting(id, validateRevision(Number(url.searchParams.get('revision'))));
+          await deletePrefix(bucket, `jobs/${id}/`);
+          await store.remove(id);
           return json({ deleted: id });
         }
         if (!action && method === 'PATCH') {
@@ -245,7 +269,9 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
         if ((active.phase === 'render' || active.review_requested) && data.draft !== undefined) throw new ValidationError('Rendering and review may not replace their saved draft');
         if (active.review_requested && !Array.isArray(data.metadata?.reviews)) throw new ValidationError('A review must return reviewer results');
         const draft = active.phase === 'research' && !active.review_requested ? validateDraft(data.draft) : undefined;
-        return json({ job: await store.complete(id, data.leaseToken, { artifacts: fileIds(data.artifacts), draft, metadata: validateMetadata(data.metadata) }) });
+        const job = await store.complete(id, data.leaseToken, { artifacts: fileIds(data.artifacts), draft, metadata: validateMetadata(data.metadata) });
+        await reclaimStaleFiles(store, storage(env), id).catch(error => console.error('Stale file cleanup failed:', error?.name || 'Error', request.headers.get('Cf-Ray') || '-'));
+        return json({ job });
       }
     }
     throw new ApiError(404, 'NOT_FOUND', 'Unknown API route or method');
@@ -253,7 +279,7 @@ export async function handleApi(request, env, { keyResolver, clock = Date.now } 
     if (error instanceof ValidationError) return json({ error: { code: 'VALIDATION_ERROR', message: error.message } }, 400);
     if (error instanceof ApiError) return json({ error: { code: error.code, message: error.message } }, error.status);
     // Database and storage errors may contain private identifiers; never serialize them.
-    console.error('Private API failure:', error?.name || 'Error');
+    console.error('Private API failure:', error?.name || 'Error', routeShape(request.method, url.pathname), `ray=${request.headers.get('Cf-Ray') || '-'}`);
     return json({ error: { code: 'INTERNAL_ERROR', message: 'The request could not be completed; check server logs before retrying work' } }, 500);
   }
 }

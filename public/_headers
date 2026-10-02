@@ -1,7 +1,9 @@
 # Cloudflare Pages 回應標頭。
 # 公開索引與私人工作台共用的靜態回應標頭；私人 API 另由 Functions 設定。
+# HSTS 只涵蓋本主機，不加 includeSubDomains／preload，以免影響 sportsmedicine.tw 其他子網域。
 
 /*
+  Strict-Transport-Security: max-age=31536000
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY

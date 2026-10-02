@@ -1,5 +1,8 @@
 import ReviewsIndex from "./ReviewsIndex.tsx";
-import Workbench from "./Workbench";
+import { lazy, Suspense } from "react";
+
+// The private workbench is ~40% of the bundle; public readers never download it.
+const Workbench = lazy(() => import("./Workbench"));
 
 // 公開閱覽站：外層提供 skip link、製作者署名與 main landmark，內容全在 ReviewsIndex。
 export default function App() {
@@ -48,7 +51,7 @@ export default function App() {
       </div>
 
       <main id="main-content" tabIndex={-1} className="mx-auto max-w-5xl px-4 pb-6 focus:outline-none">
-        {isWorkbench ? <Workbench /> : <ReviewsIndex />}
+        {isWorkbench ? <Suspense fallback={<p role="status" className="px-4 py-8 text-center">正在載入工作台…</p>}><Workbench /></Suspense> : <ReviewsIndex />}
       </main>
     </div>
   );
