@@ -95,7 +95,7 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
       if (action === "draft") { setBaseline(JSON.stringify(result.job.draft)); setDraft(current => JSON.stringify(current) === sentDraft ? result.job.draft : current); setRevision(result.job.revision); setSavedAt(result.job.draftSavedAt || new Date().toISOString()); setSaveBlocked(false); setUncertainSave(false); }
       if (action === "render") { setDesign(result.job.design); setDesignBaseline(JSON.stringify(result.job.design)); }
       onUpdate(result.job);
-      setNotice(action === "draft" ? "文字已儲存。製作前請確認目前版本已完成審核。" : action === "render" ? "已排入圖文製作。Mac 完成後即可預覽與下載。" : action === "review" ? "已排入重新審核，將核對目前已儲存版本。" : action === "cancel" ? "任務已取消。" : "已重新排入佇列。");
+      setNotice(action === "draft" ? "文字已儲存。製作前請確認目前版本已完成審核。" : action === "render" ? "已排入圖文製作。Mac 完成後即可預覽與下載。" : action === "review" ? "已排入重新審核，將核對目前已儲存版本。" : action === "cancel" ? "任務已取消。" : result.job.status === "needs_review" ? "已回到待你審閱；草稿未重新執行，製作前會重新檢查。" : "已重新排入佇列。");
     } catch (cause) { if (!controller.signal.aborted && isPrivateSessionActive()) { setError(errorText(cause)); if (action === "draft") { setSaveBlocked(true); setUncertainSave(true); } } }
     finally { request.current = null; pendingDraft.current = null; if (!controller.signal.aborted && isPrivateSessionActive()) setBusy(""); }
   };
@@ -115,6 +115,9 @@ export default function WorkbenchJob({ job, onUpdate, onDelete, cache, owner }: 
   const gate = draft ? gateResult(draft, job) : null;
   const findings = draft ? placeFindings(draft, job.metadata.reviews) : new Map();
   const openPrimary = gate?.errors.some(issue => issue.code === "PRIMARY_FINDINGS_OPEN" || issue.code === "PRIMARY_REVIEW_MISSING") ?? false;
+  // A confirmation covers exactly the warnings shown; any change to them needs a new one.
+  const softIssues = JSON.stringify(gate?.errors.filter(issue => issue.overridable).map(issue => [issue.code, issue.where, issue.message]) ?? []);
+  useEffect(() => { setGateAccepted(false); }, [softIssues]);
   const gateBlocked = Boolean(gate && (gate.errors.some(issue => !issue.overridable) || (gate.errors.some(issue => issue.overridable) && !gateAccepted)));
   return <div className="wb-job" aria-busy={Boolean(busy)}>
     <section className="wb-panel">

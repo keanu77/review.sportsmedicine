@@ -89,7 +89,7 @@ test('failed or cancelled review retains the saved draft and an explicit retry s
   assert.equal((await f.claim()).job, null);
 });
 
-test('retry after a completed review creates a new run for the current saved draft', async t => {
+test('after a completed review, cancel→retry returns to review and an explicit re-review creates a new run', async t => {
   const f = await fixture(); t.after(f.close);
   const job = await ready(f);
   await f.call(`/jobs/${job.id}/review`, { method: 'POST', data: { revision: job.revision } });
@@ -101,11 +101,16 @@ test('retry after a completed review creates a new run for the current saved dra
     return (await response.json()).job;
   }
   const first = await completeReview('first-review');
+  assert.equal(first.phase, 'research', 'a finished review is no longer pending');
   const edited = (await (await f.call(`/jobs/${job.id}/draft`, { method: 'PATCH', data: { revision: first.revision, draft: { ...first.draft, notes: 'Updated after review' } } })).json()).job;
   await f.call(`/jobs/${job.id}/cancel`, { method: 'POST' });
   const retry = (await (await f.call(`/jobs/${job.id}/retry`, { method: 'POST' })).json()).job;
-  assert.notEqual(retry.metadata.reviewRequest.runId, first.metadata.reviewRunId);
-  assert.equal(retry.metadata.reviewRequest.draftRevision, edited.draftRevision);
+  assert.equal(retry.status, 'needs_review');
+  assert.equal(retry.draft.notes, 'Updated after review');
+  assert.equal((await f.claim({ reviewDraft: true })).job, null, 'retry does not silently re-run the review');
+  const requested = (await (await f.call(`/jobs/${job.id}/review`, { method: 'POST', data: { revision: retry.revision } })).json()).job;
+  assert.notEqual(requested.metadata.reviewRequest.runId, first.metadata.reviewRunId);
+  assert.equal(requested.metadata.reviewRequest.draftRevision, edited.draftRevision);
   const second = await completeReview('second-review');
   assert.equal(second.metadata.reviewsDraftRevision, edited.draftRevision);
   const runs = (await (await f.call(`/jobs/${job.id}/reviews`)).json()).runs;
@@ -134,11 +139,10 @@ test('migration preserves existing completed drafts/artifacts and does not inven
   } finally { db.close(); }
 });
 
-test('research retry returning identical text binds reviews to the existing draft snapshot', async t => {
+test('fresh research returning identical text binds reviews to the existing draft snapshot', async t => {
   const f = await fixture(); t.after(f.close);
   const job = await ready(f);
-  await f.call(`/jobs/${job.id}/cancel`, { method: 'POST' });
-  await f.call(`/jobs/${job.id}/retry`, { method: 'POST' });
+  assert.equal((await f.call(`/jobs/${job.id}/restart`, { method: 'POST', data: { revision: job.revision } })).status, 200);
   const claim = await f.claim(); await f.upload(job.id, claim.leaseToken, 'retry-source');
   const response = await f.call(`/jobs/${job.id}/complete`, { method: 'POST', role: 'worker', data: { leaseToken: claim.leaseToken, artifacts: ['retry-source'], draft: job.draft, metadata: { reviews: [] } } });
   assert.equal(response.status, 200);

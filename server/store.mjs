@@ -10,6 +10,15 @@ const iso = (value) => new Date(value).toISOString();
 export function publicArtifact(row) {
   return { id: row.id, name: row.name, contentType: row.content_type, size: row.size, sha256: row.sha256 };
 }
+// Owner decisions and server bookkeeping; a worker result never writes these.
+const OWNER_METADATA_KEYS = ['claimReview', 'gateAcceptance', 'primaryRejections', 'manualSource', 'reviewRequest', 'restartRequest',
+  'reviewDispositions', 'reviewRunId', 'reviewsDraftRevision', 'reviewsStale', 'gatedDraftRevision', 'cancelledFrom'];
+function workerMetadata(metadata = {}) {
+  const allowed = Object.fromEntries(Object.entries(metadata).filter(([key]) => !OWNER_METADATA_KEYS.includes(key)));
+  // A finished revision may only clear its request.
+  if (allowed.reviseRequest !== undefined && allowed.reviseRequest !== null) delete allowed.reviseRequest;
+  return allowed;
+}
 // The private storage key of an uploaded source stays server-side.
 function ownerMetadata(metadata) {
   if (!metadata.manualSource) return metadata;
@@ -63,7 +72,8 @@ export function createStore(db, clock = Date.now) {
       // A reconciliation checkpoint revokes an older uncertain write without changing text/history/reviews.
       return changed(prepare("UPDATE jobs SET revision=revision+1,updated_at=? WHERE id=? AND revision=? AND status IN ('needs_review','completed') RETURNING *", clock(), id, revision));
     }
-    return changed(prepare(`UPDATE jobs SET draft=?,restored_from=?,status='needs_review',stage='needs_review',revision=revision+1,updated_at=?,
+    // A changed draft is no longer the gated one, so it leaves the render phase.
+    return changed(prepare(`UPDATE jobs SET draft=?,restored_from=?,status='needs_review',stage='needs_review',phase='research',revision=revision+1,updated_at=?,
       metadata=CASE WHEN json_type(metadata,'$.reviews') IS NOT NULL AND json_type(metadata,'$.reviews')<>'null'
         THEN json_set(metadata,'$.reviewsStale',json('true')) ELSE metadata END
       WHERE id=? AND revision=? AND status IN ('needs_review','completed') RETURNING *`, JSON.stringify(draft), restoredFrom, clock(), id, revision));
@@ -72,6 +82,31 @@ export function createStore(db, clock = Date.now) {
     const value = await first('SELECT * FROM draft_versions WHERE job_id=? AND revision=?', id, revision);
     if (!value) throw new ApiError(404, 'NOT_FOUND', 'Draft version not found');
     return { revision: value.revision, draft: parse(value.draft), createdAt: iso(value.created_at), restoredFrom: value.restored_from };
+  }
+  // Writes finding dispositions and their metadata mirror in one transaction. Every
+  // statement is guarded by the job state read here, so a concurrent change writes nothing.
+  async function settle(id, runId, provider, entries) {
+    const snapshot = await first('SELECT revision FROM draft_versions WHERE job_id=? ORDER BY revision DESC LIMIT 1', id);
+    if (!snapshot) throw conflict();
+    const current = await row(id), metadata = parse(current.metadata, {}), now = clock();
+    const mirrored = metadata.reviewRunId === runId;
+    const decisions = { ...(metadata.reviewDispositions ?? {}) };
+    for (const { index, status, reason } of entries) {
+      if (status === 'pending') delete decisions[`${provider}:${index}`];
+      else decisions[`${provider}:${index}`] = { status, reason };
+    }
+    const guard = 'EXISTS (SELECT 1 FROM jobs WHERE id=? AND revision=? AND updated_at=?)';
+    const results = await db.batch([
+      ...entries.map(({ index, status, reason }) => prepare(`INSERT INTO review_dispositions(run_id,provider,finding_index,status,reason,draft_revision,updated_at)
+        SELECT ?,?,?,?,?,?,? WHERE ${guard}
+        ON CONFLICT(run_id,provider,finding_index) DO UPDATE SET status=excluded.status,reason=excluded.reason,draft_revision=excluded.draft_revision,updated_at=excluded.updated_at`,
+      runId, provider, index, status, reason, snapshot.revision, now, id, current.revision, current.updated_at)),
+      prepare('UPDATE jobs SET metadata=?,updated_at=? WHERE id=? AND revision=? AND updated_at=? RETURNING *',
+        mirrored ? JSON.stringify({ ...metadata, reviewDispositions: decisions }) : current.metadata, mirrored ? now : current.updated_at, id, current.revision, current.updated_at),
+    ]);
+    const value = results.at(-1).results?.[0];
+    if (!value) throw conflict();
+    return serialize(value);
   }
   return {
     expire, get, row, lease, edit, version,
@@ -92,16 +127,7 @@ export function createStore(db, clock = Date.now) {
     async disposition(id, runId, provider, index, status, reason) {
       const review = await first('SELECT * FROM review_runs WHERE job_id=? AND id=?', id, runId);
       if (!review || !parse(review.reviews, []).find(r => r.provider === provider)?.findings?.[index]) throw new ApiError(404, 'NOT_FOUND', 'Review finding not found');
-      const snapshot = await first('SELECT revision FROM draft_versions WHERE job_id=? ORDER BY revision DESC LIMIT 1', id);
-      await run(`INSERT INTO review_dispositions(run_id,provider,finding_index,status,reason,draft_revision,updated_at) VALUES(?,?,?,?,?,?,?)
-        ON CONFLICT(run_id,provider,finding_index) DO UPDATE SET status=excluded.status,reason=excluded.reason,draft_revision=excluded.draft_revision,updated_at=excluded.updated_at`, runId, provider, index, status, reason, snapshot.revision, clock());
-      const current = await row(id), metadata = parse(current.metadata, {});
-      if (metadata.reviewRunId !== runId) return serialize(current);
-      const decisions = { ...(metadata.reviewDispositions ?? {}) };
-      if (status === 'pending') delete decisions[`${provider}:${index}`];
-      else decisions[`${provider}:${index}`] = { status, reason };
-      return changed(prepare('UPDATE jobs SET metadata=?,updated_at=? WHERE id=? AND revision=? AND updated_at=? RETURNING *',
-        JSON.stringify({ ...metadata, reviewDispositions: decisions }), clock(), id, current.revision, current.updated_at));
+      return settle(id, runId, provider, [{ index, status, reason }]);
     },
     // Per-seat review record for the monthly seat review: a resolved finding counts
     // as confirmed, a rejected one as a false alarm.
@@ -153,14 +179,17 @@ export function createStore(db, clock = Date.now) {
       const describe = issues => issues.slice(0, 4).map(issue => `${issue.where}：${issue.message}`).join('；') + (issues.length > 4 ? `；另有 ${issues.length - 4} 項` : '');
       if (hard.length) throw new ApiError(409, 'QUALITY_GATE', `製作前檢查未通過：${describe(hard)}`);
       if (soft.length && !acceptWarnings) throw new ApiError(409, 'QUALITY_GATE', `需要確認後才能製作：${describe(soft)}`);
-      return { acceptedCodes: [...new Set(soft.map(issue => issue.code))], rejections: primaryRejections(metadata.reviews, metadata.reviewDispositions) };
+      return { acceptedCodes: [...new Set(soft.map(issue => issue.code))], rejections: primaryRejections(metadata.reviews, metadata.reviewDispositions),
+        checkedAt: current.updated_at, draftRevision: snapshot?.revision ?? null };
     },
     // The primary rejection list is frozen with the render so the ZIP shows what the doctor approved.
-    render(id, revision, design, { acceptedCodes = [], rejections = [] } = {}) {
+    // Queueing requires the exact state the gate checked: a claim or finding decision
+    // made in between keeps the revision but changes updated_at.
+    render(id, revision, design, { acceptedCodes = [], rejections = [], checkedAt, draftRevision = null } = {}) {
       const acceptance = acceptedCodes.length ? JSON.stringify({ codes: acceptedCodes, at: new Date(clock()).toISOString() }) : null;
       return changed(prepare(`UPDATE jobs SET status='queued',phase='render',review_requested=0,stage='queued',design=?,revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
-        metadata=json_set(CASE WHEN ? IS NULL THEN json_remove(metadata,'$.gateAcceptance') ELSE json_set(metadata,'$.gateAcceptance',json(?)) END,'$.primaryRejections',json(?))
-        WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, JSON.stringify(design), clock(), acceptance, acceptance, JSON.stringify(rejections), id, revision));
+        metadata=json_set(CASE WHEN ? IS NULL THEN json_remove(metadata,'$.gateAcceptance') ELSE json_set(metadata,'$.gateAcceptance',json(?)) END,'$.primaryRejections',json(?),'$.gatedDraftRevision',?)
+        WHERE id=? AND revision=? AND updated_at=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, JSON.stringify(design), clock(), acceptance, acceptance, JSON.stringify(rejections), draftRevision, id, revision, checkedAt ?? -1));
     },
     // Gate A decision on one claim. It keeps the job revision so unsaved editor
     // text is not flagged as conflicting; updated_at guards concurrent writes.
@@ -192,9 +221,8 @@ export function createStore(db, clock = Date.now) {
       const findings = parse(review?.reviews, []).find(r => r.provider === provider)?.findings;
       if (!findings) throw new ApiError(404, 'NOT_FOUND', 'Review not found');
       const settled = new Set((await all("SELECT finding_index FROM review_dispositions WHERE run_id=? AND provider=? AND status IN ('resolved','rejected')", runId, provider)).map(d => d.finding_index));
-      let job = await get(id);
-      for (let index = 0; index < findings.length; index++) if (!settled.has(index)) job = await this.disposition(id, runId, provider, index, 'resolved', '一鍵標為已修正');
-      return job;
+      const open = findings.map((_, index) => index).filter(index => !settled.has(index));
+      return open.length ? settle(id, runId, provider, open.map(index => ({ index, status: 'resolved', reason: '一鍵標為已修正' }))) : get(id);
     },
     // Model revision of the saved draft: keeps locked claims verbatim, drops rejected
     // ones and applies the owner's chosen findings. Findings are copied from the
@@ -220,12 +248,19 @@ export function createStore(db, clock = Date.now) {
         WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, clock(), JSON.stringify(request), id, revision));
     },
     cancel(id) {
-      return changed(prepare("UPDATE jobs SET status='cancelled',stage='cancelled',revision=revision+1,lease_hash=NULL,lease_expires_at=NULL,updated_at=? WHERE id=? AND status IN ('queued','running','needs_review') RETURNING *", clock(), id));
+      return changed(prepare(`UPDATE jobs SET status='cancelled',stage='cancelled',revision=revision+1,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
+        metadata=json_set(metadata,'$.cancelledFrom',status) WHERE id=? AND status IN ('queued','running','needs_review') RETURNING *`, clock(), id));
     },
+    // Retry repeats queued work only. A draft cancelled while awaiting review, or a
+    // render whose draft differs from the gated one, goes back to review and must
+    // pass the gate again; it is never re-researched over the owner's edits.
     retry(id) {
-      return changed(prepare(`UPDATE jobs SET status='queued',stage='queued',revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
-        metadata=CASE WHEN review_requested=1 AND EXISTS(SELECT 1 FROM review_runs WHERE job_id=jobs.id AND id=json_extract(jobs.metadata,'$.reviewRequest.runId'))
-          THEN json_set(metadata,'$.reviewRequest',json_object('runId',?,'draftRevision',(SELECT max(revision) FROM draft_versions WHERE job_id=jobs.id))) ELSE metadata END
+      const back = `draft IS NOT NULL AND (json_extract(metadata,'$.cancelledFrom')='needs_review'
+        OR (phase='render' AND coalesce(json_extract(metadata,'$.gatedDraftRevision'),-1)<>coalesce((SELECT max(revision) FROM draft_versions WHERE job_id=jobs.id),-2)))`;
+      return changed(prepare(`UPDATE jobs SET status=CASE WHEN ${back} THEN 'needs_review' ELSE 'queued' END,stage=CASE WHEN ${back} THEN 'needs_review' ELSE 'queued' END,
+        phase=CASE WHEN ${back} THEN 'research' ELSE phase END,revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
+        metadata=json_remove(CASE WHEN review_requested=1 AND EXISTS(SELECT 1 FROM review_runs WHERE job_id=jobs.id AND id=json_extract(jobs.metadata,'$.reviewRequest.runId'))
+          THEN json_set(metadata,'$.reviewRequest',json_object('runId',?,'draftRevision',(SELECT max(revision) FROM draft_versions WHERE job_id=jobs.id))) ELSE metadata END,'$.cancelledFrom')
         WHERE id=? AND status IN ('failed','cancelled') RETURNING *`, clock(), crypto.randomUUID(), id));
     },
     // Deletes every database record of a job that is not running; returns false on a stale revision.
@@ -290,7 +325,8 @@ export function createStore(db, clock = Date.now) {
       // Research does not need an image tool. Image-based rendering does, and a
       // missing/unverified capability must never silently downgrade the design.
       const canGenerateImages = capabilities?.imageGeneration?.available === true ? 1 : 0;
-      const value = await first(`UPDATE jobs SET status='running',stage=phase,attempt_id=?,lease_hash=?,lease_expires_at=?,worker_id=?,updated_at=?
+      const value = await first(`UPDATE jobs SET status='running',stage=phase,attempt_id=?,lease_hash=?,lease_expires_at=?,worker_id=?,updated_at=?,
+        metadata=json_remove(metadata,'$.cancelledFrom')
         WHERE id=(SELECT id FROM jobs WHERE status='queued'
           AND (review_requested=0 OR ?=1)
           AND (phase='research' OR (phase='render' AND (json_extract(design,'$.imageStyle')='none' OR ?=1)))
@@ -342,7 +378,7 @@ export function createStore(db, clock = Date.now) {
       const reviewing = active.review_requested === 1;
       const draft = active.phase === 'research' && !reviewing ? JSON.stringify(payload.draft) : active.draft;
       const previousMetadata = parse(active.metadata, {});
-      const nextMetadata = { ...previousMetadata, ...(reviewing ? {} : (payload.metadata || {})) };
+      const nextMetadata = { ...previousMetadata, ...(reviewing ? {} : workerMetadata(payload.metadata)) };
       const hasReviews = active.phase === 'research' && Array.isArray(payload.metadata?.reviews);
       const runId = reviewing ? previousMetadata.reviewRequest?.runId : crypto.randomUUID();
       const previousVersion = await first('SELECT revision FROM draft_versions WHERE job_id=? ORDER BY revision DESC LIMIT 1', id);
@@ -371,7 +407,7 @@ export function createStore(db, clock = Date.now) {
         prepare(`UPDATE artifacts SET committed=1 WHERE job_id=? AND attempt_id=? AND id IN (${placeholders}) AND EXISTS (SELECT 1 FROM jobs WHERE id=? AND status='running' AND lease_hash=? AND lease_expires_at>?)`, id, active.attempt_id, ...ids, id, hash, now),
         ...(hasReviews ? [prepare(`INSERT INTO review_runs(id,job_id,draft_revision,reviews,created_at)
           SELECT ?,?,?,?,? WHERE EXISTS(SELECT 1 FROM jobs WHERE id=? AND status='running' AND lease_hash=? AND lease_expires_at>?)`, runId, id, draftRevision, JSON.stringify(payload.metadata.reviews), now, id, hash, now)] : []),
-        prepare(`UPDATE jobs SET status=?,stage=?,draft=?,restored_from=NULL,metadata=?,revision=revision+1,error=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?
+        prepare(`UPDATE jobs SET status=?,stage=?,draft=?,restored_from=NULL,metadata=?,review_requested=0,revision=revision+1,error=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?
           WHERE id=? AND status='running' AND lease_hash=? AND lease_expires_at>?
           AND (SELECT count(*) FROM artifacts WHERE job_id=? AND attempt_id=? AND committed=1 AND id IN (${placeholders}))=? RETURNING *`,
         status, status, draft, metadata, now, id, hash, now, id, active.attempt_id, ...ids, ids.length),
