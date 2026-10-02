@@ -47,8 +47,11 @@ export async function apiFixture(page: Page, jobs: Job[] = [sampleJob()]) {
       }
       if (match[2] === "review") { job.status = "queued"; job.stage = "queued"; job.phase = "review"; }
       if (match[2] === "render") { job.design = body.design; job.status = "queued"; job.stage = "queued"; job.phase = "render"; }
-      if (match[2] === "cancel") { job.status = "cancelled"; job.stage = "cancelled"; }
-      if (match[2] === "retry") { job.status = "queued"; job.stage = "queued"; }
+      if (match[2] === "cancel") { job.metadata = { ...job.metadata, cancelledFrom: job.status }; job.status = "cancelled"; job.stage = "cancelled"; }
+      if (match[2] === "retry") {
+        const back = job.metadata.cancelledFrom === "needs_review";
+        job.status = back ? "needs_review" : "queued"; job.stage = job.status;
+      }
       job.revision++;
       return route.fulfill({ json: { job } });
     }
@@ -215,6 +218,37 @@ test("cancel and retry change job state through the API", async ({ page }) => {
   await page.getByRole("button", { name: "重試任務", exact: true }).click();
   await expect(page.getByText("已重新排入佇列。", { exact: true })).toBeVisible();
   expect(state.mutations.map(item => item.path)).toEqual(["/jobs/job-test-1/cancel", "/jobs/job-test-1/retry"]);
+});
+
+test("retrying a cancelled review returns to review instead of queueing work", async ({ page }) => {
+  const state = await apiFixture(page, [sampleJob({ status: "needs_review", stage: "needs_review" })]); await page.goto("/workbench/");
+  await page.getByRole("button", { name: "取消任務", exact: true }).click();
+  await page.getByRole("button", { name: "重試任務", exact: true }).click();
+  await expect(page.getByText("已回到待你審閱；草稿未重新執行，製作前會重新檢查。", { exact: true })).toBeVisible();
+  expect(state.jobs[0].status).toBe("needs_review");
+});
+
+test("a warning confirmation does not carry over to different warnings", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const state = await apiFixture(page, [sampleJob({ status: "completed", stage: "completed", metadata: { ...sampleJob().metadata, sourceNumbers: ["12"] } })]);
+  await page.goto("/workbench/");
+  const render = page.getByRole("button", { name: /製作圖文/ });
+  const confirm = page.getByLabel("我已回原文逐條確認，這些項目沒有問題");
+  await openTab(page, "草稿");
+  await page.getByLabel("Facebook 貼文").fill("約85%在8週內回場");
+  await page.getByRole("button", { name: "儲存文字", exact: true }).click();
+  await reviewCurrent(page, state);
+  await openTab(page, "製作與下載");
+  await confirm.check();
+  await expect(render).toBeEnabled();
+  await openTab(page, "草稿");
+  await page.getByLabel("Facebook 貼文").fill("約86%在8週內回場");
+  await page.getByRole("button", { name: "儲存文字", exact: true }).click();
+  await reviewCurrent(page, state);
+  await openTab(page, "製作與下載");
+  await expect(page.getByText(/數字「86%」在已核對的原文中找不到/)).toBeVisible();
+  await expect(confirm).not.toBeChecked();
+  await expect(render).toBeDisabled();
 });
 
 test("completed output remains current after completion increments revision, then becomes previous output on edits", async ({ page }) => {
