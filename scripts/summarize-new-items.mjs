@@ -13,6 +13,7 @@
 // 用法：node scripts/summarize-new-items.mjs public/data/new-items.json [--model qwen3.8:27b-mlx]
 
 import { readFileSync, writeFileSync } from "node:fs";
+import { unsupportedNumbers } from "./lib/summary-checks.mjs";
 
 const [filePath] = process.argv.slice(2).filter((a) => !a.startsWith("--"));
 const modelArg = process.argv.indexOf("--model");
@@ -94,13 +95,8 @@ function validate(text, abstract, title) {
   // 摘要裡查無實據的數字視為編造——這道檢查是為了擋掉模型自行生出效果量。
   // 但要比對得準：模型常把 15.3% 寫成 15%、把年份寫進共識名稱，
   // 所以允許小數截斷，並一併比對標題。
-  const source = `${abstract} ${title}`;
-  for (const num of clean.match(/\d+(?:\.\d+)?/g) ?? []) {
-    const found =
-      source.includes(num) ||
-      new RegExp(`(?<!\\d)${num.replace(".", "\\.")}(?:\\.\\d+)?(?!\\d)`).test(source);
-    if (!found) return null;
-  }
+  // 比對的是完整數值，來源的 115 不能替 15 背書。
+  if (unsupportedNumbers(clean, `${abstract} ${title}`).length) return null;
   return clean;
 }
 
