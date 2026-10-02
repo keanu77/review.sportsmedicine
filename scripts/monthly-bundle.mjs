@@ -9,7 +9,9 @@ import { validateBibliography, validateNewItems, validateReviews } from './valid
 import { buildFeed } from './build-feed.mjs';
 
 const dataFiles = ['public/data/reviews-index.json', 'public/data/new-items.json', 'public/data/bibliography.json', 'public/feed.xml'];
-const reportPath = /^docs\/maintenance\/\d{4}-(?:0[1-9]|1[0-2])\.md$/;
+// Day 1 (sync) and day 2 (maintenance) each own a report file, so neither overwrites the other.
+const reportPaths = { sync: /^docs\/maintenance\/\d{4}-(?:0[1-9]|1[0-2])\.md$/, maintenance: /^docs\/maintenance\/\d{4}-(?:0[1-9]|1[0-2])-maintenance\.md$/ };
+export const reportFile = (mode, month) => `docs/maintenance/${month}${mode === 'maintenance' ? '-maintenance' : ''}.md`;
 const fail = () => { throw new Error('Monthly artifact rejected: invalid content or publish scope'); };
 const packageName = /^(?:@[a-z0-9_-][a-z0-9._-]*\/)?[a-z0-9_-][a-z0-9._-]*$/;
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -115,6 +117,7 @@ export function validateBundle(bundle, { base, mode, pkg, newItems }) {
   const entries = Object.entries(bundle.files);
   if (entries.length > 6) fail();
   let proposedItems, proposedFeed;
+  const reportPath = reportPaths[mode];
   for (const [name, content] of entries) {
     if (typeof content !== 'string' || content.includes('\0') || content.length > (reportPath.test(name) ? 100000 : 10000000)) fail();
     if (reportPath.test(name)) continue;
@@ -152,7 +155,7 @@ export function main([command, mode, artifact], env = process.env) {
   if (mode === 'sync') { assertSafePath(dataFiles[1]); newItems = JSON.parse(readFileSync(dataFiles[1], 'utf8')); }
   if (command === 'pack') {
     const month = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date()).slice(0, 7);
-    const paths = [...(mode === 'maintenance' ? ['package-lock.json'] : dataFiles), `docs/maintenance/${month}.md`];
+    const paths = [...(mode === 'maintenance' ? ['package-lock.json'] : dataFiles), reportFile(mode, month)];
     const files = {};
     for (const name of paths) {
       assertSafePath(name);

@@ -9,7 +9,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.maintenance.json",
-    "summarize": "node scripts/summarize-new-items.mjs public/data/new-items.json",
+    "summarize": "node scripts/summarize-new-items.mjs public/data/new-items.json && npm run feed",
     "summaries": "node scripts/build-summaries.mjs",
     "feed": "node scripts/build-feed.mjs",
     "test:smoke": "playwright test",

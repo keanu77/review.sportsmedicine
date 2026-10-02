@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "types": ["node"] },
-  "include": ["scripts/monthly-report.ts", "scripts/overlay-health.ts"]
+  "compilerOptions": { "types": ["node"], "lib": ["ES2022"] },
+  "include": ["scripts/*.ts"]
 }
