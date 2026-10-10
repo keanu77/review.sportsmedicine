@@ -26,23 +26,30 @@ test('title duplicates with conflicting DOI or PMID are different papers', () =>
   assert.equal(identifiersConflict(a, { title: 'Concussion', url: 'https://x.org', pmid: '2' }), true);
   assert.equal(identifiersConflict(a, { title: 'Concussion', url: 'https://publisher.org/article' }), false);
   assert.equal(identifiersConflict(a, { title: 'Concussion', url: 'https://doi.org/10.1000/AAA' }), false);
+  // 出版社網址的 query／fragment 不屬於 DOI，同一篇不能因此被判成兩篇。
+  assert.equal(identifiersConflict(a, { title: 'Concussion', url: 'https://journals.example.com/doi/full/10.1000/aaa?ai=1&mi=2' }), false);
+  assert.equal(identifiersConflict(a, { title: 'Concussion', url: 'https://doi.org/10.1000/aaa#abstract' }), false);
 });
 
 test('transient PubMed failures are not cached as "no PMID"', async () => {
   const item = { title: 'Swimmer shoulder pain', url: 'https://doi.org/10.1000/abc' };
   const failing = async () => { throw new Error('HTTP 429'); };
-  assert.deepEqual(await resolvePmid(item, 'k', {}, failing), { pmid: null, cacheable: false });
+  assert.deepEqual(await resolvePmid(item, 'k', {}, failing), { pmid: null, cacheable: false, failed: true });
 
   const empty = async () => [];
-  assert.deepEqual(await resolvePmid(item, 'k', {}, empty), { pmid: null, cacheable: true });
+  assert.deepEqual(await resolvePmid(item, 'k', {}, empty), { pmid: null, cacheable: true, failed: false });
 
   let calls = 0;
   const doiFailsTitleEmpty = async (term) => { calls++; if (term.endsWith('[DOI]')) throw new Error('down'); return []; };
-  assert.deepEqual(await resolvePmid(item, 'k', {}, doiFailsTitleEmpty), { pmid: null, cacheable: false });
+  assert.deepEqual(await resolvePmid(item, 'k', {}, doiFailsTitleEmpty), { pmid: null, cacheable: false, failed: true });
   assert.equal(calls, 2);
 
-  assert.deepEqual(await resolvePmid(item, 'k', { k: '42' }, failing), { pmid: '42', cacheable: false });
-  assert.deepEqual(await resolvePmid({ ...item, pmid: '7' }, 'k', {}, failing), { pmid: '7', cacheable: false });
+  assert.deepEqual(await resolvePmid(item, 'k', { k: '42' }, failing), { pmid: '42', cacheable: false, failed: false });
+  assert.deepEqual(await resolvePmid({ ...item, pmid: '7' }, 'k', {}, failing), { pmid: '7', cacheable: false, failed: false });
+
+  // DOI 查詢失敗但標題反查成功：拿到 PMID 就不算外部錯誤。
+  const doiFailsTitleHits = async (term) => { if (term.endsWith('[DOI]')) throw new Error('down'); return ['99']; };
+  assert.deepEqual(await resolvePmid(item, 'k', {}, doiFailsTitleHits), { pmid: '99', cacheable: true, failed: false });
 });
 
 test('--all rebuild only replaces the published summaries after a clean run', () => {

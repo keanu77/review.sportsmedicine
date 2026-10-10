@@ -92,11 +92,13 @@ async function esearch(term) {
 /**
  * 解析一篇文獻的 PMID。`cacheable` 只有在每一次查詢都確實完成時才為 true——
  * 429／網路中斷若被記成「無 PMID」，之後每次執行都會直接略過這篇，永遠補不回來。
+ * `failed` 表示因查詢失敗而沒有 PMID：呼叫端要把它算進外部錯誤，否則 `--all`
+ * 會把少了這篇的候選檔當成完整結果替換正式檔。
  */
 export async function resolvePmid(item, key, cache, search, pause = async () => {}) {
-  if (item.pmid) return { pmid: String(item.pmid), cacheable: false };
-  if (key in cache && cache[key]) return { pmid: cache[key], cacheable: false };
-  if (key in cache) return { pmid: null, cacheable: false };
+  if (item.pmid) return { pmid: String(item.pmid), cacheable: false, failed: false };
+  if (key in cache && cache[key]) return { pmid: cache[key], cacheable: false, failed: false };
+  if (key in cache) return { pmid: null, cacheable: false, failed: false };
 
   let failed = false;
   const lookup = async (term) => {
@@ -117,20 +119,23 @@ export async function resolvePmid(item, key, cache, search, pause = async () => 
     ids = await lookup(`${String(item.title ?? "").replace(/[[\]]/g, " ")}[Title]`);
   }
   const pmid = ids[0] ?? null;
-  return { pmid, cacheable: pmid !== null || !failed };
+  return { pmid, cacheable: pmid !== null || !failed, failed: pmid === null && failed };
 }
 
+/** 回傳因 PubMed 查詢失敗而沒有 PMID 的篇數。 */
 async function resolvePmids(todo, pmidCache) {
   let resolved = 0;
   let lookups = 0;
+  let failures = 0;
   let cache = pmidCache;
   for (const p of todo) {
-    const { pmid, cacheable } = await resolvePmid(p.item, p.key, cache, esearch, async () => {
+    const { pmid, cacheable, failed } = await resolvePmid(p.item, p.key, cache, esearch, async () => {
       lookups++;
       await sleep(NCBI_GAP);
     });
     p.pmid = pmid;
     if (pmid) resolved++;
+    if (failed) failures++;
     if (cacheable) cache = { ...cache, [p.key]: pmid };
     if (lookups && lookups % 25 === 0) {
       writeFileSync(PMID_CACHE, JSON.stringify(cache));
@@ -139,6 +144,8 @@ async function resolvePmids(todo, pmidCache) {
   }
   writeFileSync(PMID_CACHE, JSON.stringify(cache));
   console.log(`\r  PMID 解析完成：${resolved}/${todo.length} 篇有 PMID          `);
+  if (failures) console.log(`  ⚠️ ${failures} 篇因 PubMed 查詢失敗沒有 PMID，計入外部錯誤`);
+  return failures;
 }
 
 // ---------------------------------------------------------------- 摘要抓取
@@ -238,10 +245,10 @@ async function main() {
   const todo = papers.filter(({ key }) => !out.summaries[key]).slice(0, LIMIT);
   console.log(`唯一文獻 ${papers.length} 篇｜待處理 ${todo.length} 篇｜模型 ${MODEL}`);
 
-  await resolvePmids(todo, readJson(PMID_CACHE, {}));
+  const pmidFailures = await resolvePmids(todo, readJson(PMID_CACHE, {}));
 
-  // 外部錯誤（PubMed 批次失敗、ollama 失敗）會讓 --all 少掉本來有的摘要，必須計數。
-  let externalErrors = 0;
+  // 外部錯誤（PubMed 查詢／批次失敗、ollama 失敗）會讓 --all 少掉本來有的摘要，必須計數。
+  let externalErrors = pmidFailures;
   const withPmid = todo.filter((p) => p.pmid);
   const abstracts = new Map();
   for (let i = 0; i < withPmid.length; i += 150) {
