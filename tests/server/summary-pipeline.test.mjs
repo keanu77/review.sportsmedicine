@@ -47,9 +47,9 @@ test('transient PubMed failures are not cached as "no PMID"', async () => {
   assert.deepEqual(await resolvePmid(item, 'k', { k: '42' }, failing), { pmid: '42', cacheable: false, failed: false });
   assert.deepEqual(await resolvePmid({ ...item, pmid: '7' }, 'k', {}, failing), { pmid: '7', cacheable: false, failed: false });
 
-  // DOI 查詢失敗但標題反查成功：拿到 PMID 就不算外部錯誤。
+  // 標題命中只是候選；DOI 的失敗要等 efetch 驗證標題後才能解除，也不能先寫快取。
   const doiFailsTitleHits = async (term) => { if (term.endsWith('[DOI]')) throw new Error('down'); return ['99']; };
-  assert.deepEqual(await resolvePmid(item, 'k', {}, doiFailsTitleHits), { pmid: '99', cacheable: true, failed: false });
+  assert.deepEqual(await resolvePmid(item, 'k', {}, doiFailsTitleHits), { pmid: '99', cacheable: false, failed: true });
 });
 
 test('--all rebuild only replaces the published summaries after a clean run', () => {

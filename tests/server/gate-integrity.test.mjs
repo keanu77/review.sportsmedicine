@@ -9,6 +9,23 @@ const edit = async (f, job, draft) => (await (await f.call(`/jobs/${job.id}/draf
 const post = (f, job, action, data) => f.call(`/jobs/${job.id}/${action}`, { method: 'POST', ...(data ? { data } : {}) });
 const rowOf = (f, id) => f.env.DB.prepare('SELECT * FROM jobs WHERE id=?').bind(id).first();
 
+// Deterministically interleave a real second writer after one read returns its snapshot.
+function afterRead(db, prefix, method, effect) {
+  let armed = true;
+  return { ...db, prepare(sql) {
+    const statement = db.prepare(sql);
+    if (!sql.startsWith(prefix)) return statement;
+    return { bind(...args) {
+      const bound = statement.bind(...args);
+      return { ...bound, async [method]() {
+        const value = await bound[method]();
+        if (armed) { armed = false; await effect(); }
+        return value;
+      } };
+    } };
+  } };
+}
+
 async function drafted(f, metadata = { source: 'full-text', reviews: [primaryReview()] }) {
   const job = await f.create(); const { leaseToken } = await f.claim();
   await f.upload(job.id, leaseToken);
@@ -77,6 +94,57 @@ test('a decision changed between the gate and queueing invalidates the render', 
   assert.equal((await read(f, job.id)).status, 'needs_review');
 });
 
+for (const backwards of [0, -1000]) {
+  test(`claim and finding decisions invalidate gates when the clock moves by ${backwards} ms`, async t => {
+    const f = await fixture(); t.after(f.close);
+    const finding = { severity: 'high', claim: 'c', reason: 'r', suggestion: '', locator: '', quote: '', sourceVerified: false };
+    const job = await drafted(f, { source: 'full-text', reviews: [primaryReview([finding])] });
+    const before = await rowOf(f, job.id);
+    const store = createStore(f.env.DB, () => before.updated_at + backwards);
+    const runId = job.metadata.reviewRunId;
+    await store.lockRemainingClaims(job.id);
+    await store.disposition(job.id, runId, 'codex', 0, 'resolved', '');
+    let checked = await store.gate(job.id, job.revision, false);
+    await store.decideClaim(job.id, claimKey(fixtureDraft.claims[0]), 'pending', '');
+    await assert.rejects(store.render(job.id, job.revision, {}, checked), error => error.status === 409);
+    await store.lockRemainingClaims(job.id);
+    checked = await store.gate(job.id, job.revision, false);
+    await store.disposition(job.id, runId, 'codex', 0, 'pending', '');
+    await assert.rejects(store.render(job.id, job.revision, {}, checked), error => error.status === 409);
+    const after = await rowOf(f, job.id);
+    assert.ok(after.updated_at > before.updated_at);
+    assert.equal(after.revision, before.revision, 'review decisions do not invalidate unsaved editor text');
+    assert.equal(after.status, 'needs_review');
+  });
+}
+
+for (const kind of ['claims', 'findings', 'bulk claims']) {
+  test(`concurrent ${kind} writes at the same millisecond cannot silently overwrite decisions`, async t => {
+    const f = await fixture(); t.after(f.close);
+    const finding = { severity: 'high', claim: 'c', reason: 'r', suggestion: '', locator: '', quote: '', sourceVerified: false };
+    const job = await drafted(f, { source: 'full-text', reviews: [primaryReview([finding, finding])] });
+    const before = await rowOf(f, job.id);
+    const store = createStore(f.env.DB, () => before.updated_at);
+    const key = claimKey(fixtureDraft.claims[0]);
+    const writes = kind === 'findings'
+      ? [store.disposition(job.id, job.metadata.reviewRunId, 'codex', 0, 'resolved', ''),
+        store.disposition(job.id, job.metadata.reviewRunId, 'codex', 1, 'resolved', '')]
+      : [kind === 'bulk claims' ? store.lockRemainingClaims(job.id) : store.decideClaim(job.id, key, 'locked', ''),
+        store.decideClaim(job.id, key, 'rejected', 'owner decision')];
+    const results = await Promise.allSettled(writes);
+    assert.equal(results.filter(result => result.status === 'fulfilled').length, 1);
+    assert.equal(results.find(result => result.status === 'rejected')?.reason.status, 409);
+    const current = await read(f, job.id);
+    assert.equal(current.revision, job.revision);
+    if (kind === 'findings') {
+      const history = await store.reviews(job.id);
+      assert.equal(history[0].dispositions.length, 1, 'losing transaction leaves no history-only decision');
+      assert.equal(Object.keys(current.metadata.reviewDispositions).length, 1);
+      assert.equal(current.metadata.reviewDispositions[`codex:${history[0].dispositions[0].findingIndex}`].status, 'resolved');
+    }
+  });
+}
+
 test('a review disposition with no draft snapshot is a conflict, not a server error', async t => {
   const f = await fixture(); t.after(f.close);
   const job = await drafted(f, { source: 'full-text', reviews: [primaryReview([{ severity: 'high', claim: 'c', reason: 'r', suggestion: '', locator: '', quote: '', sourceVerified: false }])] });
@@ -114,6 +182,41 @@ test('resolving every remaining finding writes all of them in one step', async t
   const result = await (await f.call(`/jobs/${job.id}/reviews/${runId}/findings/codex/resolve-remaining`, { method: 'POST', data: {} })).json();
   assert.deepEqual(Object.keys(result.job.metadata.reviewDispositions).sort(), ['codex:0', 'codex:1', 'codex:2']);
   assert.equal(result.runs[0].dispositions.length, 3);
+});
+
+test('bulk resolution cannot overwrite a rejection made after reading pending findings', async t => {
+  const f = await fixture(); t.after(f.close);
+  const finding = { severity: 'high', claim: 'c', reason: 'r', suggestion: '', locator: '', quote: '', sourceVerified: false };
+  const job = await drafted(f, { source: 'full-text', reviews: [primaryReview([finding, finding])] });
+  const before = await rowOf(f, job.id);
+  const store = createStore(f.env.DB, () => before.updated_at);
+  const runId = job.metadata.reviewRunId;
+  const racing = afterRead(f.env.DB, 'SELECT finding_index FROM review_dispositions', 'all',
+    () => store.disposition(job.id, runId, 'codex', 0, 'rejected', '醫師確認應保留'));
+  await assert.rejects(createStore(racing, () => before.updated_at).resolveRemaining(job.id, runId, 'codex'), error => error.status === 409);
+  assert.deepEqual((await read(f, job.id)).metadata.reviewDispositions, { 'codex:0': { status: 'rejected', reason: '醫師確認應保留' } });
+  const history = await store.reviews(job.id);
+  assert.equal(history[0].dispositions.length, 1, 'stale bulk action writes no partial resolutions');
+  assert.equal(history[0].dispositions[0].reason, '醫師確認應保留');
+  await store.resolveRemaining(job.id, runId, 'codex');
+  const decisions = (await read(f, job.id)).metadata.reviewDispositions;
+  assert.equal(decisions['codex:0'].status, 'rejected');
+  assert.equal(decisions['codex:1'].status, 'resolved', 'retry resolves only findings still open');
+});
+
+test('revision queueing refuses a concurrent claim lock and a retry captures it', async t => {
+  const f = await fixture(); t.after(f.close);
+  const job = await drafted(f);
+  const before = await rowOf(f, job.id);
+  const store = createStore(f.env.DB, () => before.updated_at);
+  const racing = afterRead(f.env.DB, 'SELECT * FROM jobs WHERE id=?', 'first',
+    () => store.decideClaim(job.id, claimKey(fixtureDraft.claims[0]), 'locked', ''));
+  await assert.rejects(createStore(racing, () => before.updated_at).revise(job.id, job.revision, [], '改寫'), error => error.status === 409);
+  const unchanged = await read(f, job.id);
+  assert.equal(unchanged.status, 'needs_review');
+  assert.equal(unchanged.metadata.reviseRequest, undefined);
+  const queued = await store.revise(job.id, job.revision, [], '改寫');
+  assert.deepEqual(queued.metadata.reviseRequest.lockedClaims, fixtureDraft.claims);
 });
 
 test('a completed re-review clears the review request flag', async t => {

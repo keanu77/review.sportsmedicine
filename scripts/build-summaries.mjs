@@ -92,8 +92,8 @@ async function esearch(term) {
 /**
  * 解析一篇文獻的 PMID。`cacheable` 只有在每一次查詢都確實完成時才為 true——
  * 429／網路中斷若被記成「無 PMID」，之後每次執行都會直接略過這篇，永遠補不回來。
- * `failed` 表示因查詢失敗而沒有 PMID：呼叫端要把它算進外部錯誤，否則 `--all`
- * 會把少了這篇的候選檔當成完整結果替換正式檔。
+ * `failed` 保留任何查詢失敗，直到 efetch 的候選標題通過驗證；僅取得 PMID 不代表
+ * 找到正確文獻。未驗證的失敗結果不能快取，否則下一輪會丟失失敗狀態。
  */
 export async function resolvePmid(item, key, cache, search, pause = async () => {}) {
   if (item.pmid) return { pmid: String(item.pmid), cacheable: false, failed: false };
@@ -119,10 +119,10 @@ export async function resolvePmid(item, key, cache, search, pause = async () => 
     ids = await lookup(`${String(item.title ?? "").replace(/[[\]]/g, " ")}[Title]`);
   }
   const pmid = ids[0] ?? null;
-  return { pmid, cacheable: pmid !== null || !failed, failed: pmid === null && failed };
+  return { pmid, cacheable: !failed, failed };
 }
 
-/** 回傳因 PubMed 查詢失敗而沒有 PMID 的篇數。 */
+/** 回傳尚未由已驗證候選恢復的查詢失敗篇數。 */
 async function resolvePmids(todo, pmidCache) {
   let resolved = 0;
   let lookups = 0;
@@ -134,6 +134,7 @@ async function resolvePmids(todo, pmidCache) {
       await sleep(NCBI_GAP);
     });
     p.pmid = pmid;
+    p.lookupFailed = failed;
     if (pmid) resolved++;
     if (failed) failures++;
     if (cacheable) cache = { ...cache, [p.key]: pmid };
@@ -144,7 +145,7 @@ async function resolvePmids(todo, pmidCache) {
   }
   writeFileSync(PMID_CACHE, JSON.stringify(cache));
   console.log(`\r  PMID 解析完成：${resolved}/${todo.length} 篇有 PMID          `);
-  if (failures) console.log(`  ⚠️ ${failures} 篇因 PubMed 查詢失敗沒有 PMID，計入外部錯誤`);
+  if (failures) console.log(`  ⚠️ ${failures} 篇有 PubMed 查詢失敗，候選標題驗證通過前計入外部錯誤`);
   return failures;
 }
 
@@ -287,11 +288,14 @@ async function main() {
     if (!p.item.pmid) {
       const a = titleKey(record.title);
       const b = titleKey(p.item.title);
-      if (!a.startsWith(b.slice(0, 40)) && !b.startsWith(a.slice(0, 40))) {
+      if (!a || !b || (!a.startsWith(b.slice(0, 40)) && !b.startsWith(a.slice(0, 40)))) {
         skipped++;
         continue;
       }
     }
+    // DOI 查詢雖失敗，已驗證的 fallback 才能解除該篇的查詢錯誤。
+    // 缺少 record／標題不符時仍保留錯誤，阻止 --all 覆蓋正式檔。
+    if (p.lookupFailed) externalErrors--;
     try {
       const summary = validate(await summarize(p.item.title, record.abstract), record.abstract, p.item.title);
       if (!summary) {
