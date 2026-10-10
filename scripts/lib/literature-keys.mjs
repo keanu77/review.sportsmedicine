@@ -6,7 +6,7 @@
 export const titleKey = (title) => String(title ?? "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "");
 
 export function doiOf(url) {
-  const m = String(url ?? "").match(/(?:doi\.org\/|\/doi\/(?:abs|full|pdf)\/)(10\.\d{4,9}\/\S+)/i);
+  const m = String(url ?? "").match(/(?:doi\.org\/|\/doi\/(?:abs|full|pdf)\/)(10\.\d{4,9}\/[^?#\s]+)/i);
   if (!m) return null;
   try {
     return decodeURIComponent(m[1]).replace(/[).]+$/, "");

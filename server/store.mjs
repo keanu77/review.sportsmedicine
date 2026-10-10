@@ -41,6 +41,9 @@ const unreferenced = `NOT EXISTS (SELECT 1 FROM review_runs WHERE job_id=? AND d
     coalesce(json_extract(j.metadata,'$.render.draftRevision'),-1), coalesce(json_extract(j.metadata,'$.reviewRequest.draftRevision'),-1),
     coalesce(json_extract(j.metadata,'$.reviseRequest.draftRevision'),-1), coalesce(j.restored_from,-1)))`;
 export function createStore(db, clock = Date.now) {
+  // Review decisions keep the editor revision. Their CAS token must still change
+  // within one millisecond and when the wall clock moves backwards.
+  const decisionTime = current => Math.max(clock(), current.updated_at + 1);
   const prepare = (sql, ...args) => db.prepare(sql).bind(...args);
   const first = (sql, ...args) => prepare(sql, ...args).first();
   const all = async (sql, ...args) => (await prepare(sql, ...args).all()).results;
@@ -116,10 +119,11 @@ export function createStore(db, clock = Date.now) {
   }
   // Writes finding dispositions and their metadata mirror in one transaction. Every
   // statement is guarded by the job state read here, so a concurrent change writes nothing.
-  async function settle(id, runId, provider, entries) {
+  async function settle(id, runId, provider, entries, current = null) {
+    current ??= await row(id);
     const snapshot = await first('SELECT revision FROM draft_versions WHERE job_id=? ORDER BY revision DESC LIMIT 1', id);
     if (!snapshot) throw conflict();
-    const current = await row(id), metadata = parse(current.metadata, {}), now = clock();
+    const metadata = parse(current.metadata, {}), now = decisionTime(current);
     const mirrored = metadata.reviewRunId === runId;
     const decisions = { ...(metadata.reviewDispositions ?? {}) };
     for (const { index, status, reason } of entries) {
@@ -133,7 +137,7 @@ export function createStore(db, clock = Date.now) {
         ON CONFLICT(run_id,provider,finding_index) DO UPDATE SET status=excluded.status,reason=excluded.reason,draft_revision=excluded.draft_revision,updated_at=excluded.updated_at`,
       runId, provider, index, status, reason, snapshot.revision, now, id, current.revision, current.updated_at)),
       prepare('UPDATE jobs SET metadata=?,updated_at=? WHERE id=? AND revision=? AND updated_at=? RETURNING *',
-        mirrored ? JSON.stringify({ ...metadata, reviewDispositions: decisions }) : current.metadata, mirrored ? now : current.updated_at, id, current.revision, current.updated_at),
+        mirrored ? JSON.stringify({ ...metadata, reviewDispositions: decisions }) : current.metadata, now, id, current.revision, current.updated_at),
     ]);
     const value = results.at(-1).results?.[0];
     if (!value) throw conflict();
@@ -233,7 +237,7 @@ export function createStore(db, clock = Date.now) {
     },
     // The primary rejection list is frozen with the render so the ZIP shows what the doctor approved.
     // Queueing requires the exact state the gate checked: a claim or finding decision
-    // made in between keeps the revision but changes updated_at.
+    // made in between keeps the revision but strictly advances updated_at.
     render(id, revision, design, { acceptedCodes = [], rejections = [], checkedAt, draftRevision = null } = {}) {
       const acceptance = acceptedCodes.length ? JSON.stringify({ codes: acceptedCodes, at: new Date(clock()).toISOString() }) : null;
       return changed(prepare(`UPDATE jobs SET status='queued',phase='render',review_requested=0,stage='queued',design=?,revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
@@ -241,7 +245,7 @@ export function createStore(db, clock = Date.now) {
         WHERE id=? AND revision=? AND updated_at=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, JSON.stringify(design), clock(), acceptance, acceptance, JSON.stringify(rejections), draftRevision, id, revision, checkedAt ?? -1));
     },
     // Gate A decision on one claim. It keeps the job revision so unsaved editor
-    // text is not flagged as conflicting; updated_at guards concurrent writes.
+    // text is not flagged as conflicting; monotonic updated_at guards concurrent writes.
     async decideClaim(id, key, status, note) {
       const current = await row(id);
       if (current.draft === null || !['needs_review','completed'].includes(current.status)) throw conflict();
@@ -251,7 +255,7 @@ export function createStore(db, clock = Date.now) {
       if (status === 'pending') delete decisions[key];
       else decisions[key] = { status, ...(note ? { note } : {}), decidedAt: new Date(clock()).toISOString() };
       return changed(prepare("UPDATE jobs SET metadata=?,updated_at=? WHERE id=? AND revision=? AND updated_at=? AND status IN ('needs_review','completed') RETURNING *",
-        JSON.stringify({ ...metadata, claimReview: { decisions } }), clock(), id, current.revision, current.updated_at));
+        JSON.stringify({ ...metadata, claimReview: { decisions } }), decisionTime(current), id, current.revision, current.updated_at));
     },
     // One-click Gate A: locks every claim the owner has not decided yet; rejections stay.
     async lockRemainingClaims(id) {
@@ -261,17 +265,20 @@ export function createStore(db, clock = Date.now) {
       const at = new Date(clock()).toISOString();
       for (const claim of parse(current.draft).claims) decisions[claimKey(claim)] ??= { status: 'locked', decidedAt: at };
       return changed(prepare("UPDATE jobs SET metadata=?,updated_at=? WHERE id=? AND revision=? AND updated_at=? AND status IN ('needs_review','completed') RETURNING *",
-        JSON.stringify({ ...metadata, claimReview: { decisions } }), clock(), id, current.revision, current.updated_at));
+        JSON.stringify({ ...metadata, claimReview: { decisions } }), decisionTime(current), id, current.revision, current.updated_at));
     },
     // One-click resolve for one reviewer: marks every finding not yet settled as resolved.
     // Rejections need a reason, so they are never made in bulk.
     async resolveRemaining(id, runId, provider) {
+      // The pending list and the write must share a CAS token. A new rejection
+      // between these reads must not be silently turned into a bulk resolution.
+      const current = await row(id);
       const review = await first('SELECT * FROM review_runs WHERE job_id=? AND id=?', id, runId);
       const findings = parse(review?.reviews, []).find(r => r.provider === provider)?.findings;
       if (!findings) throw new ApiError(404, 'NOT_FOUND', 'Review not found');
       const settled = new Set((await all("SELECT finding_index FROM review_dispositions WHERE run_id=? AND provider=? AND status IN ('resolved','rejected')", runId, provider)).map(d => d.finding_index));
       const open = findings.map((_, index) => index).filter(index => !settled.has(index));
-      return open.length ? settle(id, runId, provider, open.map(index => ({ index, status: 'resolved', reason: '一鍵標為已修正' }))) : get(id);
+      return open.length ? settle(id, runId, provider, open.map(index => ({ index, status: 'resolved', reason: '一鍵標為已修正' })), current) : get(id);
     },
     // Model revision of the saved draft: keeps locked claims verbatim, drops rejected
     // ones and applies the owner's chosen findings. Findings are copied from the
@@ -294,7 +301,7 @@ export function createStore(db, clock = Date.now) {
         gateIssues: [...errors, ...warnings].filter(issue => !issue.code.startsWith('CLAIM')).slice(0, 30).map(issue => `${issue.where}：${issue.message}`) };
       return changed(prepare(`UPDATE jobs SET status='queued',phase='research',review_requested=0,stage='queued',revision=revision+1,error=NULL,attempt_id=NULL,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
         metadata=json_set(metadata,'$.reviseRequest',json(?))
-        WHERE id=? AND revision=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, clock(), JSON.stringify(request), id, revision));
+        WHERE id=? AND revision=? AND updated_at=? AND draft IS NOT NULL AND status IN ('needs_review','completed') RETURNING *`, clock(), JSON.stringify(request), id, revision, current.updated_at));
     },
     cancel(id) {
       return changed(prepare(`UPDATE jobs SET status='cancelled',stage='cancelled',revision=revision+1,lease_hash=NULL,lease_expires_at=NULL,updated_at=?,
