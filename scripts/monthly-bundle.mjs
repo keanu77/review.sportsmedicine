@@ -70,7 +70,7 @@ function validateLock(lock, pkg) {
   keys(root, rootKeys);
   for (const key of rootKeys) if (!isDeepStrictEqual(root[key], pkg[key])) fail();
   const allowed = ['name', 'version', 'resolved', 'integrity', 'dependencies', 'optionalDependencies', 'peerDependencies',
-    'peerDependenciesMeta', 'engines', 'dev', 'optional', 'devOptional', 'peer', 'license', 'funding', 'cpu', 'os', 'libc', 'bin', 'hasInstallScript'];
+    'peerDependenciesMeta', 'bundleDependencies', 'engines', 'dev', 'optional', 'devOptional', 'peer', 'license', 'funding', 'cpu', 'os', 'libc', 'bin', 'hasInstallScript'];
   for (const [location, item] of Object.entries(lock.packages)) {
     if (!location) continue;
     const names = location.split(/(?:^|\/)node_modules\//);
@@ -84,6 +84,9 @@ function validateLock(lock, pkg) {
     if (url.origin !== 'https://registry.npmjs.org' || url.username || url.password || url.search || url.hash
       || decodeURIComponent(item.resolved) !== expected) fail();
     for (const key of ['dependencies', 'optionalDependencies', 'peerDependencies']) if (Object.hasOwn(item, key)) dependencyMap(item[key]);
+    if (Object.hasOwn(item, 'bundleDependencies')) {
+      if (!Array.isArray(item.bundleDependencies) || item.bundleDependencies.some(name => typeof name !== 'string' || !packageName.test(name) || ['__proto__', 'prototype', 'constructor'].includes(name))) fail();
+    }
     if (Object.hasOwn(item, 'engines')) stringMap(item.engines);
     for (const key of ['dev', 'optional', 'devOptional', 'peer', 'hasInstallScript']) if (Object.hasOwn(item, key) && typeof item[key] !== 'boolean') fail();
     if (Object.hasOwn(item, 'license')) text(item.license);

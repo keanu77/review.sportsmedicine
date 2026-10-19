@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { EMPTY_FACETS, FACETS, type FacetState } from "./facets";
 import { parsePublicationPeriod, type PublicationPeriod } from "./publicationDate";
 
 // 把檢索狀態綁到 URL query string。
@@ -9,7 +10,7 @@ import { parsePublicationPeriod, type PublicationPeriod } from "./publicationDat
 //
 // 用 replaceState 寫入（不汙染上一頁歷史），只有使用者真的換過條件才 pushState。
 
-export interface ViewState {
+export interface ViewState extends FacetState {
   q: string;
   axis: string;
   free: boolean;
@@ -20,12 +21,16 @@ export interface ViewState {
   page: number;
 }
 
-const DEFAULTS: ViewState = { q: "", axis: "region", free: false, year: "", period: "", type: "", sort: "relevance", page: 1 };
+const DEFAULTS: ViewState = { ...EMPTY_FACETS, q: "", axis: "region", free: false, year: "", period: "", type: "", sort: "relevance", page: 1 };
 
 function parse(search: string): ViewState {
   const params = new URLSearchParams(search);
   const page = Number(params.get("page"));
   return {
+    region: params.get("region") ?? "",
+    disease: params.get("disease") ?? "",
+    theme: params.get("theme") ?? "",
+    population: params.get("population") ?? "",
     q: params.get("q") ?? DEFAULTS.q,
     axis: params.get("axis") ?? DEFAULTS.axis,
     free: params.get("free") === "1",
@@ -39,6 +44,7 @@ function parse(search: string): ViewState {
 
 function serialize(state: ViewState): string {
   const params = new URLSearchParams();
+  for (const key of FACETS) if (state[key]) params.set(key, state[key]);
   if (state.q.trim()) params.set("q", state.q.trim());
   if (state.axis !== DEFAULTS.axis) params.set("axis", state.axis);
   if (state.free) params.set("free", "1");
@@ -46,7 +52,7 @@ function serialize(state: ViewState): string {
   if (state.period) params.set("period", state.period);
   if (state.type) params.set("type", state.type);
   if (state.sort === "latest") params.set("sort", state.sort);
-  if (state.q.trim() && state.page > 1) params.set("page", String(state.page));
+  if ((state.q.trim() || FACETS.some(key => state[key]) || state.free || state.year || state.period || state.type) && state.page > 1) params.set("page", String(state.page));
   const query = params.toString();
   return query ? `?${query}` : window.location.pathname;
 }

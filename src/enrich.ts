@@ -1,5 +1,6 @@
 import { compatibleIdentifiers, identifiersOf, normalizedTitle, paperAliases, paperKey } from "./identity";
 import type { BibliographyEntry, Item, TagsData } from "./types";
+import { publicHttpsUrl, verifiedAbstract, verifiedFullText } from "./sourceMetadata";
 
 export type BibliographyLookup = BibliographyEntry[] | ReadonlyMap<string, readonly BibliographyEntry[]>;
 
@@ -64,6 +65,14 @@ export function enrichItem(item: Item, summaries: Record<string, string>, tags: 
     issue: record.issue || item.issue, pages: record.pages || item.pages, year: record.year ?? item.year,
     firstPublicationDate: record.firstPublicationDate ?? item.firstPublicationDate,
     bibliography: record, identityAliases: paperAliases(item) } : item;
+  const fullText = verifiedFullText(record?.fullText, record);
+  const abstract = verifiedAbstract(record?.abstract, record?.sourceUrl);
+  next = { ...next, abstract,
+    fullText: fullText ?? { status: item.free ? "inferred" : "unknown", url: item.free ? publicHttpsUrl(item.freeUrl) : undefined,
+      sourceUrl: record?.fullText?.sourceUrl, verifiedAt: record?.fullText?.verifiedAt,
+      license: record?.fullText?.license,
+      reason: item.free ? "upstream-free-access-heuristic" : record?.fullText?.reason || "not-yet-source-checked" },
+    ...(fullText ? { free: true, freeUrl: fullText.url } : {}) };
   next = !blocked.has(key) && summaries[key] ? { ...next, tldr: summaries[key], tldrSource: "local-llm" } : next;
   for (const tag of Object.values(tags)) {
     const current = next[tag.axis] ?? [];

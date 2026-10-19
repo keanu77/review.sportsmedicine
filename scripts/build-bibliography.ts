@@ -1,14 +1,14 @@
-/** Refresh durable public bibliography. Never writes reviews-index.json or changes free/full-text claims.
- * node --import tsx scripts/build-bibliography.ts [--limit N] [--refresh]
+/** Refresh durable public bibliography and source-listed access metadata. Never writes reviews-index.json.
+ * node --import tsx scripts/build-bibliography.ts [--limit N] [--refresh | --reprocess]
  * Cache contains public API responses only; an explicit --refresh bypasses the 30-day positive cache.
  */
 import { appendFile, readFile, writeFile, mkdir, rename } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-import { tmpdir } from "node:os";
 import { identifiersOf, paperAliases, canonicalPaperId, uniquePapers, normalizedTitle } from "../src/identity.ts";
 import { createBibliographyIndex, selectBibliography } from "../src/enrich.ts";
-import { resolveCandidates, type EuropePmcResult } from "./bibliography-source.ts";
+import { publicBibliographyRecord, resolveCandidates, type EuropePmcResult } from "./bibliography-source.ts";
+import { bibliographyCacheDir, fullSourceCachePath } from "./source-cache.ts";
 import type { BibliographyData, BibliographyEntry, Item, ReviewsData } from "../src/types.ts";
 
 const root = new URL("../", import.meta.url);
@@ -19,25 +19,32 @@ const limitArg = args.indexOf("--limit");
 const limit = limitArg < 0 ? Infinity : Number(args[limitArg + 1]);
 if (!(limit > 0)) throw new Error("--limit must be positive");
 const refresh = args.includes("--refresh");
-const cacheDir = process.env.BIBLIOGRAPHY_CACHE_DIR || join(tmpdir(), "review-public-bibliography-cache-v1");
+const reprocess = args.includes("--reprocess"); // Rebuild every record from fresh cached responses when parser rules change.
+const cacheDir = bibliographyCacheDir;
 await mkdir(cacheDir, { recursive: true });
 const now = new Date().toISOString();
+const cacheTtl = 30 * 24 * 60 * 60 * 1000;
 let previous: BibliographyData = { version: 1, generatedAt: now, records: [], unresolved: [] };
 try { previous = JSON.parse(await readFile(output, "utf8")); } catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
 if (previous.version !== 1 || !Array.isArray(previous.records)) throw new Error("Unsupported bibliography overlay");
-const records = [...previous.records];
+const records = previous.records.map(publicBibliographyRecord);
+let sourceRecords = new Map<string, BibliographyEntry>();
+try {
+  const saved = JSON.parse(await readFile(fullSourceCachePath, "utf8"));
+  sourceRecords = new Map(saved.records.map((record: BibliographyEntry) => [record.sourceUrl, record]));
+} catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
 const unresolved = new Map(previous.unresolved.map(entry => [entry.key, entry]));
 const allItems = uniquePapers(input.items);
 const initialIndex = createBibliographyIndex(records);
 const pending = allItems.filter(item => {
   const existing = selectBibliography(item, initialIndex);
   // Backfill older overlays once; explicit null means the source did not provide a date.
-  return refresh || !existing || !Object.hasOwn(existing, "firstPublicationDate");
+  return refresh || reprocess || !existing || !Object.hasOwn(existing, "firstPublicationDate") || !Object.hasOwn(existing, "abstract") || !existing.fullText
+    || !Number.isFinite(Date.parse(existing.verifiedAt)) || Date.now() - Date.parse(existing.verifiedAt) >= cacheTtl;
 }).slice(0, limit);
 let requests = 0, cached = 0, examined = 0, matched = 0, nextRequestAt = 0, sourceFailures = 0, consecutiveFailures = 0;
 let savedSignature = JSON.stringify({ records: previous.records, unresolved: previous.unresolved });
 const pause = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const cacheTtl = 30 * 24 * 60 * 60 * 1000;
 
 async function querySource(query: string): Promise<{ result: EuropePmcResult[]; verifiedAt: string }> {
   const key = createHash("sha256").update(query).digest("hex");
@@ -79,6 +86,8 @@ async function querySource(query: string): Promise<{ result: EuropePmcResult[]; 
 }
 
 function addRecord(item: Item, record: BibliographyEntry) {
+  sourceRecords.set(record.sourceUrl, record);
+  record = publicBibliographyRecord(record);
   const old = records.findIndex(existing => existing.sourceUrl === record.sourceUrl && normalizedTitle(existing.title) === normalizedTitle(record.title));
   if (old >= 0) records[old] = record; else records.push(record);
   unresolved.delete(canonicalPaperId(item));
@@ -89,6 +98,8 @@ function markUnresolved(item: Item, reason: string, checkedAt?: string) {
   unresolved.set(key, { key, title: item.title, reason, checkedAt: checkedAt || (old?.reason === reason ? old.checkedAt : new Date().toISOString()) });
 }
 async function save() {
+  await writeFile(`${fullSourceCachePath}.tmp`, JSON.stringify({ version: 1, records: [...sourceRecords.values()] }));
+  await rename(`${fullSourceCachePath}.tmp`, fullSourceCachePath);
   const signature = JSON.stringify({ records, unresolved: [...unresolved.values()] });
   if (signature === savedSignature) return;
   const data: BibliographyData = { version: 1, generatedAt: new Date().toISOString(), records, unresolved: [...unresolved.values()] };
@@ -146,8 +157,7 @@ console.log(JSON.stringify({ totalRaw: input.items.length, totalUnique: allItems
   matchedByTitleYear: resolvedItems.filter(item => selectBibliography(item, finalIndex)?.matchMethod === "exact-title-year").length,
   durableRecords: records.length, requests, cached, sourceFailures,
   previouslySavedAliases: resolvedItems.reduce((count, item) => count + paperAliases(item).length, 0), output: output.pathname }, null, 2));
-// Europe PMC outages publish the verified overlay anyway: records are never removed, and every
-// paper marked source-unavailable has no record, so the next run queries it again.
+// Europe PMC outages preserve the last verified overlay. Unresolved and stale records are retried.
 if (sourceFailures) {
   const unavailable = [...unresolved.values()].filter(entry => entry.reason.startsWith("source-unavailable")).length;
   const message = `Europe PMC 有 ${sourceFailures} 次查詢失敗；已發布已驗證書目，${unavailable} 篇標記 source-unavailable，下次執行重查。`;

@@ -28,17 +28,71 @@ function url(v) {
   const parsed = new URL(v);
   if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) fail();
 }
+function publicHttps(v) {
+  url(v);
+  const parsed = new URL(v), host = parsed.hostname.toLowerCase();
+  if (parsed.protocol !== 'https:' || (parsed.port && parsed.port !== '443') || !/^[a-z\d.-]+\.[a-z]{2,}$/i.test(host)
+    || /(?:^|\.)(?:localhost|local|internal|test|invalid|example)$/.test(host)) fail();
+}
+function sourceUrl(v) {
+  publicHttps(v);
+  const parsed = new URL(v);
+  if (!((parsed.hostname === 'europepmc.org' && /^\/article\/(?:MED|PMC|PPR)\/[a-z\d]+$/i.test(parsed.pathname))
+    || (parsed.hostname === 'pubmed.ncbi.nlm.nih.gov' && /^\/\d+\/?$/.test(parsed.pathname)))) fail();
+}
+function fullText(v, record) {
+  shape(v, ['status', 'url', 'pdfUrl', 'sourceUrl', 'verifiedAt', 'license', 'licenseUrl', 'reason']);
+  if (!['verified', 'inferred', 'unknown'].includes(v.status)) fail();
+  for (const key of ['url', 'pdfUrl', 'licenseUrl']) optional(v, key, publicHttps, false);
+  for (const key of ['license', 'reason']) optional(v, key, string, false);
+  optional(v, 'sourceUrl', sourceUrl, false); optional(v, 'verifiedAt', timestamp, false);
+  if (v.status === 'verified') {
+    if (!v.url && !v.pdfUrl) fail();
+    sourceUrl(v.sourceUrl); timestamp(v.verifiedAt);
+  }
+  if (record && v.sourceUrl && (v.sourceUrl !== record.sourceUrl || v.verifiedAt !== record.verifiedAt)) fail();
+  if (record) for (const link of [v.url, v.pdfUrl].filter(Boolean)) {
+    const parsed = new URL(link);
+    if (parsed.hostname === 'europepmc.org') {
+      const pmcid = parsed.pathname.match(/^\/articles\/(PMC\d+)\/?$/i)?.[1]?.toUpperCase();
+      if (!pmcid || pmcid !== record.pmcid?.toUpperCase()) fail();
+    }
+    if (parsed.hostname === 'pmc.ncbi.nlm.nih.gov') {
+      const pmcid = parsed.pathname.match(/^\/articles\/(PMC\d+)\/?(?:pdf\/.*)?$/i)?.[1]?.toUpperCase();
+      if (!pmcid || pmcid !== record.pmcid?.toUpperCase()) fail();
+    }
+  }
+}
+function abstract(v, record) {
+  shape(v, ['text', 'sections', 'source', 'sourceUrl', 'verifiedAt', 'excerptOnly', 'license']);
+  string(v.text, false); sourceUrl(v.sourceUrl); timestamp(v.verifiedAt);
+  if (!['Europe PMC', 'PubMed'].includes(v.source) || typeof v.excerptOnly !== 'boolean') fail();
+  optional(v, 'license', string, false);
+  if (record && (v.sourceUrl !== record.sourceUrl || v.verifiedAt !== record.verifiedAt)) fail();
+  if (v.excerptOnly) {
+    if (v.text.split(/\s+/).length > 25 || Object.hasOwn(v, 'sections')) fail();
+  } else {
+    const license = (v.license || '').toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+    if (!/^(?:cc by|cc by sa|cc0)(?: \d+(?:\.\d+)?)?$/.test(license) || (record && v.license !== record.fullText?.license)) fail();
+  }
+  optional(v, 'sections', sections => {
+    if (!Array.isArray(sections) || sections.length > 100) fail();
+    for (const section of sections) { shape(section, ['label', 'text']); string(section.label, false); string(section.text, false); }
+  }, false);
+}
 const citationStrings = ['doi', 'pmid', 'pmcid', 'journal', 'volume', 'issue', 'pages'];
-const bibliographyKeys = ['title', 'year', 'firstPublicationDate', ...citationStrings, 'authors', 'source', 'sourceUrl', 'verifiedAt', 'matchMethod'];
+const bibliographyKeys = ['title', 'year', 'firstPublicationDate', ...citationStrings, 'authors', 'source', 'sourceUrl', 'verifiedAt', 'matchMethod', 'fullText', 'abstract'];
 function bibliographyRecord(v) {
   shape(v, bibliographyKeys); string(v.title, false); year(v.year); strings(v.authors);
   if (v.title.length > 3000 || !['Europe PMC', 'Crossref'].includes(v.source) || !['identifier', 'exact-title-year'].includes(v.matchMethod)) fail();
   url(v.sourceUrl); timestamp(v.verifiedAt);
   for (const key of citationStrings) optional(v, key, string);
   optional(v, 'firstPublicationDate', date);
+  optional(v, 'fullText', value => fullText(value, v), false);
+  optional(v, 'abstract', value => abstract(value, v));
 }
 const itemKeys = ['title', 'year', 'firstPublicationDate', 'url', 'source', 'tldr', 'free', 'freeUrl', ...citationStrings,
-  'authors', 'bibliography', 'identityAliases', 'impactFactor', 'origin', 'region', 'disease', 'themes', 'populations', 'diseases', 'tldrSource'];
+  'authors', 'bibliography', 'identityAliases', 'impactFactor', 'origin', 'region', 'disease', 'themes', 'populations', 'diseases', 'tldrSource', 'fullText', 'abstract'];
 function item(v) {
   shape(v, itemKeys); string(v.title, false); year(v.year); url(v.url);
   if (v.title.length > 3000 || typeof v.free !== 'boolean') fail();
@@ -50,6 +104,8 @@ function item(v) {
   optional(v, 'freeUrl', value => { if (value !== '') url(value); });
   optional(v, 'firstPublicationDate', date);
   optional(v, 'bibliography', bibliographyRecord, false);
+  optional(v, 'fullText', value => fullText(value, v.bibliography), false);
+  optional(v, 'abstract', value => abstract(value, v.bibliography), false);
   optional(v, 'tldrSource', string, false);
   optional(v, 'impactFactor', value => { if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) fail(); });
   optional(v, 'origin', value => { if (!['kb', 'pubmed'].includes(value)) fail(); }, false);

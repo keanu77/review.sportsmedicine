@@ -1,0 +1,38 @@
+name: Feature or search term / 功能與搜尋用語
+description: Propose a concrete improvement to public literature discovery and reading.
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Traditional Chinese is welcome. Describe the reading or contribution workflow this would improve. Do not include patient information or private documents.
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem / 使用情境與問題
+      description: What are you trying to find or do, and what currently gets in the way?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior / 建議行為
+      description: Give a concrete example. For a search term, include both languages when available and explain the intended clinical meaning.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Examples and boundaries / 範例與界線
+      description: Link relevant papers or sources. For search terms, include desired matches and terms that must stay distinct.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: How to verify / 如何驗證
+      description: What observable result would show that this improvement works?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Current workaround / 現有替代方式

@@ -1,6 +1,14 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss" source(none);
+@config "../tailwind.config.js";
+@source "./";
+
+/* Preserve the existing transparent focus outline in forced-colors mode. */
+@utility outline-none { outline: 2px solid transparent; outline-offset: 2px; }
+
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button { border-color: #e5e7eb; }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+}
 
 html {
   scroll-behavior: smooth;
@@ -29,6 +37,21 @@ body {
   .tone-text { color: var(--tone-text-dark); }
   .tone-dot { background: var(--tone-dot-dark); }
   .tone-edge { border-left-color: var(--tone-dot-dark); }
+}
+
+/* Motion marks a completed action; content is always visible without animation. */
+@keyframes feedback-enter {
+  from { opacity: 0.7; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes saved-feedback {
+  50% { transform: scale(1.12); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .motion-feedback { animation: feedback-enter 160ms ease-out; }
+  .motion-action { transition: transform 160ms ease-out; }
+  .motion-action:active { transform: scale(0.97); }
+  .motion-action[aria-pressed="true"] svg { animation: saved-feedback 180ms ease-out; }
 }
 
 /* 使用者要求減少動態時，平滑捲動與過場一律關閉（WCAG 2.3.3）。 */

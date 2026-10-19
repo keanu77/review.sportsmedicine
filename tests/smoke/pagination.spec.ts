@@ -3,7 +3,7 @@ import { expect, test, type Page } from './fixtures';
 async function catalog(page: Page) {
   const items = Array.from({ length: 60 }, (_, i) => ({ title: `ACL review ${String(i).padStart(2, '0')}`, year: 2020 + i % 6, url: `https://doi.org/10.1234/paper${i}`, source: 'Test Journal', free: true, tldr: null, region: '膝', disease: 'ACL', themes: [], populations: [] }));
   await page.route('**/data/reviews-index.json', route => route.fulfill({ json: { meta: { updated: '2026-09-30', total: 60, freeCount: 60 }, axes: { region: [{ key: '膝', count: 60 }], theme: [], population: [] }, items } }));
-  await page.route('**/data/bibliography.json', route => route.fulfill({ json: { version: 1, records: [] } }));
+  await page.route('**/data/bibliography-index.json', route => route.fulfill({ json: { version: 1, records: [] } }));
   await page.route('**/data/summaries.json', route => route.fulfill({ json: { summaries: {} } }));
   await page.route('**/data/tags.json', route => route.fulfill({ json: { tags: {} } }));
   await page.route('**/data/new-items.json', route => route.fulfill({ status: 404 }));
@@ -35,6 +35,7 @@ test('all sorted results remain reachable, page navigation restores focus and su
   await page.goBack();
   await expect(results.getByRole('status')).toContainText('第 2 / 3 頁');
   expect(await links()).toEqual(second);
+  await page.getByRole('button', { name: /篩選與排序/ }).click();
   await page.getByRole('combobox', { name: '搜尋結果排序', exact: true }).selectOption('latest');
   await expect(results.getByRole('status')).toContainText('第 1 / 3 頁');
   await expect(page).not.toHaveURL(/page=/);

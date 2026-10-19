@@ -1,73 +1,96 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { paperAliases } from "./identity";
+import type { Item } from "./types";
+import { LIBRARY_KEY, emptyLibrary, libraryReadStatus, loadLibrary, mergeLibrary, parseLibraryBackup, refreshLibrarySnapshots, saveLibrary, serializeLibraryBackup, updateLibraryEntry } from "./libraryStorage";
+import type { LibraryData, LibraryStorage, ReadStatus, StorageResult } from "./libraryStorage";
 
-// 收藏與最近瀏覽，存在瀏覽器本機。
-//
-// 這是靜態站，沒有後端也沒有帳號——localStorage 是誠實的邊界：
-// 資料只留在這台裝置、不會同步、清除瀏覽資料就沒了，所以 UI 要說清楚。
-// 每個存取都包 try/catch：無痕視窗、封鎖網站資料的瀏覽器會直接丟例外。
-
-const STAR_KEY = "review.stars";
-const RECENT_KEY = "review.recent";
-const RECENT_MAX = 20;
-
-function read(key: string): string[] {
-  try {
-    const raw = localStorage.getItem(key);
-    const parsed = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
-  } catch {
-    return [];
-  }
+const EMPTY_CATALOG: Item[] = [];
+function browserStorage(): LibraryStorage | null {
+  try { return window.localStorage; } catch { return null; }
 }
 
-function write(key: string, value: string[]) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* 容量已滿或被封鎖時靜默略過——這是加值功能，不該讓頁面壞掉 */
-  }
-}
+/** Browser-local library. markRead preserves its legacy meaning: record a visit, not reading completion. */
+export function useLibrary(catalog: Item[] = EMPTY_CATALOG) {
+  const [data, setData] = useState<LibraryData>(emptyLibrary);
+  const [storage, setStorage] = useState<StorageResult>({ status: "loading", message: null });
+  const dataRef = useRef(data);
+  const catalogRef = useRef(catalog);
+  const loaded = useRef(false);
+  catalogRef.current = catalog;
 
-export function useLibrary() {
-  const [stars, setStars] = useState<string[]>([]);
-  const [recent, setRecent] = useState<string[]>([]);
-
-  // 首次 render 後才讀，避免 SSR／預渲染時碰 localStorage
-  useEffect(() => {
-    setStars(read(STAR_KEY));
-    setRecent(read(RECENT_KEY));
+  const commit = useCallback((next: LibraryData) => {
+    dataRef.current = next;
+    setData(next);
+    setStorage(saveLibrary(browserStorage(), next));
   }, []);
 
-  // 同一個站開多個分頁時保持一致
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === STAR_KEY) setStars(read(STAR_KEY));
-      if (e.key === RECENT_KEY) setRecent(read(RECENT_KEY));
+    const restore = () => {
+      const result = loadLibrary(browserStorage());
+      const next = refreshLibrarySnapshots(result.data, catalogRef.current);
+      dataRef.current = next;
+      setData(next);
+      loaded.current = true;
+      // Do not silently replace unreadable storage with an empty library.
+      setStorage(result.status === "saved" ? saveLibrary(browserStorage(), next) : result);
+    };
+    restore();
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === null || event.key === LIBRARY_KEY || event.key === "review.stars" || event.key === "review.recent") {
+        const result = loadLibrary(browserStorage());
+        if (result.status !== "saved") { setStorage(result); return; }
+        // Storage events must not write again: that causes ping-pong across tabs.
+        const next = refreshLibrarySnapshots(result.data, catalogRef.current);
+        dataRef.current = next;
+        setData(next);
+        setStorage(result);
+      }
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  const toggleStar = useCallback((key: string, aliases: string[] = [key]) => {
-    setStars((prev) => {
-      const next = prev.some(value => aliases.includes(value)) ? prev.filter(value => !aliases.includes(value)) : [key, ...prev];
-      write(STAR_KEY, next);
-      return next;
-    });
-  }, []);
+  useEffect(() => {
+    if (!loaded.current) return;
+    const next = refreshLibrarySnapshots(dataRef.current, catalog);
+    if (next !== dataRef.current) commit(next);
+  }, [catalog, commit]);
 
-  const markRead = useCallback((key: string) => {
-    setRecent((prev) => {
-      const next = [key, ...prev.filter((k) => k !== key)].slice(0, RECENT_MAX);
-      write(RECENT_KEY, next);
-      return next;
-    });
+  const changeEntry = useCallback((key: string, aliases: string[], item: Item | undefined, change: "toggle-star" | "visit" | ReadStatus) => {
+    try {
+      commit(updateLibraryEntry(dataRef.current, key, aliases, item, change));
+    } catch (error) {
+      setStorage(previous => ({ ...previous, message: error instanceof Error ? error.message : "無法更新文獻庫，請先匯出備份。" }));
+    }
+  }, [commit]);
+  const toggleStar = useCallback((key: string, aliases: string[] = [key], item?: Item) => {
+    changeEntry(key, aliases, item, "toggle-star");
+  }, [changeEntry]);
+  const markRead = useCallback((key: string, item?: Item) => {
+    changeEntry(key, item ? paperAliases(item) : [key], item, "visit");
+  }, [changeEntry]);
+  const setReadStatus = useCallback((key: string, status: ReadStatus, item?: Item) => {
+    changeEntry(key, item ? paperAliases(item) : [key], item, status);
+  }, [changeEntry]);
+  const getReadStatus = useCallback((key: string, aliases: string[] = [key]): ReadStatus => {
+    return libraryReadStatus(dataRef.current, key, aliases);
   }, []);
-
   const clearRecent = useCallback(() => {
-    setRecent([]);
-    write(RECENT_KEY, []);
-  }, []);
-
-  return { stars, recent, toggleStar, markRead, clearRecent };
+    commit({ ...dataRef.current, recent: [], entries: dataRef.current.entries.filter(entry => entry.starred || entry.readStatus === "read") });
+  }, [commit]);
+  const exportBackup = useCallback(() => serializeLibraryBackup(dataRef.current), []);
+  const importBackup = useCallback((raw: string): { ok: boolean; message: string } => {
+    try {
+      const imported = parseLibraryBackup(raw);
+      const next = refreshLibrarySnapshots(mergeLibrary(dataRef.current, imported), catalogRef.current);
+      commit(next);
+      return { ok: true, message: `已合併備份中的 ${imported.entries.filter(entry => entry.starred).length} 篇收藏；相同文獻不會重複加入。` };
+    } catch (error) {
+      return { ok: false, message: error instanceof Error ? error.message : "匯入失敗，原有文獻庫未變更。" };
+    }
+  }, [commit]);
+  const stars = useMemo(() => data.entries.filter(entry => entry.starred).map(entry => entry.id), [data.entries]);
+  return { stars, recent: data.recent, entries: data.entries, storageStatus: storage.status, storageMessage: storage.message,
+    toggleStar, markRead, clearRecent, setReadStatus, getReadStatus, exportBackup, importBackup };
 }
+export type LibraryApi = ReturnType<typeof useLibrary>;

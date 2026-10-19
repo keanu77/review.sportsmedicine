@@ -64,6 +64,8 @@ test('lock metadata cannot carry lifecycle code, hidden install sources or bin e
     ['bin command traversal', l => { l.packages['node_modules/react'].bin = { '../git': 'index.js' }; }],
     ['non-registry dependency', l => { l.packages['node_modules/react'].dependencies = { payload: 'file:../../scripts' }; }],
     ['prototype key', l => { l.packages['node_modules/react'].engines = JSON.parse('{"__proto__":"bad"}'); }],
+    ['bundled traversal', l => { l.packages['node_modules/react'].bundleDependencies = ['../../scripts']; }],
+    ['bundled object', l => { l.packages['node_modules/react'].bundleDependencies = { scripts: 'payload' }; }],
     ['wrong metadata types', l => { l.packages['node_modules/react'].hasInstallScript = 'yes'; }],
   ]) {
     const next = structuredClone(actualLock); edit(next);
