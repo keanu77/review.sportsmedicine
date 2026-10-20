@@ -2,6 +2,12 @@ import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from "r
 import { createBibliographyIndex, enrichItems } from "./enrich";
 import { canonicalPaperId, paperAliases, uniquePapers } from "./identity";
 import PaperDetails from "./PaperDetails";
+import LibraryPanel from "./LibraryPanel";
+import FacetFilters from "./FacetFilters";
+import Topics, { TOPICS, TopicLinks } from "./Topics";
+import DataHealth from "./DataHealth";
+import { EMPTY_FACETS, FACETS, FACET_LABELS, matchesFacets } from "./facets";
+import { paperLink, paperSlug, paperSlugFromPath, safeIndexReturn } from "./paperRoutes";
 import { studyTypeOf } from "./studyType";
 import NewThisMonth from "./NewThisMonth";
 import ReviewRow from "./ReviewRow";
@@ -84,10 +90,13 @@ interface AxisGroup {
 }
 
 export default function ReviewsIndex() {
-  const [data, setData] = useState<ReviewsData | null>(null);
+  const [initialPaper] = useState<Item | undefined>(() => {
+    try { return JSON.parse(document.getElementById("paper-data")?.textContent || "null") || undefined; } catch { return undefined; }
+  });
+  const [data, setData] = useState<ReviewsData | null>(initialPaper ? { meta: { updated: "", total: 1, freeCount: initialPaper.free ? 1 : 0 }, axes: { region: [], theme: [], population: [] }, items: [initialPaper] } : null);
   const [summaries, setSummaries] = useState<Record<string, string>>({});
   const [tags, setTags] = useState<TagsData["tags"]>({});
-  const [bibliography, setBibliography] = useState<BibliographyEntry[]>([]);
+  const [bibliography, setBibliography] = useState<BibliographyEntry[]>(initialPaper?.bibliography ? [initialPaper.bibliography] : []);
   const bibliographyIndex = useMemo(() => createBibliographyIndex(bibliography), [bibliography]);
   const [err, setErr] = useState<string | null>(null);
   const [view, setView] = useUrlState();
@@ -99,9 +108,10 @@ export default function ReviewsIndex() {
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
-  const { stars, recent, toggleStar, markRead, clearRecent } = useLibrary();
   const searchRef = useRef<HTMLInputElement>(null);
   const searchId = useId();
+  const advancedId = useId();
+  const [advancedFilters, setAdvancedFilters] = useState(false);
 
   const axis = (["region", "theme", "population"] as const).includes(
     view.axis as Axis,
@@ -116,10 +126,12 @@ export default function ReviewsIndex() {
   const deferredQ = useDeferredValue(view.q);
   const isSearching = view.q !== deferredQ;
   const tokens = useMemo(() => tokenize(deferredQ), [deferredQ]);
-  const hasQuery = tokens.length > 0;
+  const hasQuery = tokens.length > 0 || FACETS.some(key => view[key]) || Boolean(view.year || view.type || view.period || view.free || showStarred);
 
   useEffect(() => {
-    fetch(`${import.meta.env.BASE_URL}data/bibliography.json`)
+    if (initialPaper) return;
+    fetch(`${import.meta.env.BASE_URL}data/bibliography-index.json`)
+      .then(response => response.ok && response.headers.get("content-type")?.includes("json") ? response : fetch(`${import.meta.env.BASE_URL}data/bibliography.json`))
       .then(response => response.ok ? response.json() : null)
       .then((data: BibliographyData | null) => {
         if (data?.version === 1 && Array.isArray(data.records)) setBibliography(data.records);
@@ -184,6 +196,22 @@ export default function ReviewsIndex() {
     return enrichItems(data.items, summaries, tags, bibliographyIndex);
   }, [data, summaries, tags, bibliographyIndex]);
 
+  const library = useLibrary(merged);
+  const { stars, recent, toggleStar, markRead, clearRecent } = library;
+  const markOpened = (key: string) => markRead(key, merged.find(item => paperAliases(item).includes(key)));
+  const currentSlug = paperSlugFromPath(window.location.pathname);
+  let selectedId = paperHash.startsWith("#paper=") ? paperHash.slice(7) : "";
+  try { selectedId = decodeURIComponent(selectedId); } catch { /* Invalid legacy link. */ }
+  const savedItems = library.entries.flatMap(entry => entry.snapshot ? [entry.snapshot] : []);
+  const selectedPaper = currentSlug ? [...merged, ...savedItems].find(item => paperSlug(item) === currentSlug) : selectedId ? uniqueItems([...merged, ...savedItems]).find(item => paperAliases(item).includes(selectedId)) : undefined;
+  useEffect(() => {
+    if (!currentSlug || selectedPaper || !data) return;
+    document.title = "找不到文獻｜運動醫學 Review 索引";
+    const robots = document.createElement("meta"); robots.name = "robots"; robots.content = "noindex";
+    document.head.appendChild(robots);
+    return () => robots.remove();
+  }, [currentSlug, selectedPaper, data]);
+
   const starSet = useMemo(() => {
     const saved = new Set(stars);
     const expanded = new Set<string>();
@@ -194,11 +222,12 @@ export default function ReviewsIndex() {
     return expanded;
   }, [stars, merged]);
   const togglePaper = (key: string) => {
-    const item = merged.find(candidate => canonicalPaperId(candidate) === key) ?? merged.find(candidate => paperAliases(candidate).includes(key));
-    toggleStar(item ? canonicalPaperId(item) : key, item ? paperAliases(item) : [key]);
+    const candidates = [...merged, ...savedItems];
+    const item = candidates.find(candidate => canonicalPaperId(candidate) === key) ?? candidates.find(candidate => paperAliases(candidate).includes(key));
+    toggleStar(item ? canonicalPaperId(item) : key, item ? paperAliases(item) : [key], item);
   };
 
-  const filtered: Item[] = useMemo(
+  const beforeFacets: Item[] = useMemo(
     () =>
       merged.filter((it) => {
         if (!matchesPublicationWindow(it.firstPublicationDate, dateFrom && dateTo ? { from: dateFrom, to: dateTo } : null)) return false;
@@ -210,6 +239,8 @@ export default function ReviewsIndex() {
       }),
     [merged, tokens, freeOnly, showStarred, starSet, view.year, view.type, dateFrom, dateTo],
   );
+
+  const filtered = useMemo(() => beforeFacets.filter(item => matchesFacets(item, view)), [beforeFacets, view.region, view.disease, view.theme, view.population]);
 
   // 最近瀏覽：以唯一文獻為單位，保持點擊當下的順序
   const recentItems = useMemo(() => {
@@ -304,7 +335,7 @@ export default function ReviewsIndex() {
       >
         資料載入失敗：{err}
         <div className="mt-1 text-sm">
-          預期檔案：<code>data/reviews-index.json</code>
+          請重新整理頁面，或稍後再試。<button type="button" className="ml-2 min-h-11 underline" onClick={() => window.location.reload()}>重新載入</button>
         </div>
       </div>
     );
@@ -317,74 +348,35 @@ export default function ReviewsIndex() {
     );
 
   const jcrYear = data.meta.ifJcrYear ?? "2023";
-  if (paperHash.startsWith("#paper=")) {
-    let id = paperHash.slice(7);
-    try { id = decodeURIComponent(id); } catch { /* Unknown identifier. */ }
-    return <PaperDetails item={uniqueItems(merged).find(item => paperAliases(item).includes(id))} />;
+  if (currentSlug || selectedId) {
+    return <PaperDetails item={selectedPaper} returnHref={currentSlug ? safeIndexReturn(window.location.search) : "#"} starred={selectedPaper ? stars.includes(canonicalPaperId(selectedPaper)) || starSet.has(canonicalPaperId(selectedPaper)) : false} onToggleStar={selectedPaper ? () => togglePaper(canonicalPaperId(selectedPaper)) : undefined} readStatus={selectedPaper ? library.getReadStatus(canonicalPaperId(selectedPaper), paperAliases(selectedPaper)) : "pending"} onReadStatus={selectedPaper ? status => library.setReadStatus(canonicalPaperId(selectedPaper), status, selectedPaper) : undefined} />;
+  }
+
+  const topic = TOPICS.find(entry => window.location.pathname.replace(/\/$/, "") === `/topics/${entry.slug}`);
+  if (topic) {
+    const topicTokens = tokenize(topic.query);
+    const matches = rankResults(uniqueItems(merged).filter(item => matchesQuery(item, topicTokens)), topicTokens, "relevance");
+    return <Topics data={{ ...topic, items: matches.slice(0, 12), total: matches.length, updated: data.meta.updated }} />;
   }
 
   return (
     <div className="space-y-5">
-      {/* Hero：品牌漸層底 + 右上光暈，資訊由上而下是「這是什麼 → 規模 → 直接開始找」 */}
-      <header className="relative overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-wash-from via-surface to-wash-to p-6 dark:border-line-dark dark:from-surface-dark dark:via-surface-dark dark:to-surface-altdark sm:p-8 print:rounded-none print:border-0 print:bg-none print:p-0">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full bg-wash-edge opacity-70 blur-3xl dark:bg-brand/20 print:hidden"
-        />
-        <div className="relative">
-          <p className="text-xs font-semibold tracking-[0.18em] text-brand dark:text-brand-dark">
-            SPORTS MEDICINE · REVIEW INDEX
-          </p>
-          <h1 className="mt-2 font-display text-4xl font-bold tracking-tight text-ink dark:text-ink-dark sm:text-5xl">
-            運動醫學 Review 索引
-          </h1>
-          <p className="mt-1 text-base font-medium text-brand dark:text-brand-dark">
-            系統性回顧 · 統合分析 · 臨床指引
-          </p>
-          <p className="mt-3 max-w-2xl text-sm leading-relaxed text-body dark:text-body-dark">
-            從知識庫的運動醫學／復健文獻，加上 PubMed
-            權威期刊（BJSM、AJSM、JOSPT、KSSTA、Cochrane…）的近年綜述，
-            可依<span className="font-semibold">部位、臨床主題、族群</span>瀏覽。
-          </p>
-
-          {/* 數據帶：分格呈現，與說明文字明確分層 */}
-          <dl className="mt-6 grid max-w-xl grid-cols-3 overflow-hidden rounded-xl border border-line bg-surface/80 dark:border-line-dark dark:bg-surface-dark/60">
-            <StatCell n={stats.reviewCount} label={hasQuery ? "篇符合" : "篇文獻"} />
-            <StatCell n={stats.freeCount} label="免費全文" accent />
-            <StatCell
-              n={hasQuery ? flatResults.length : stats.groupCount}
-              label={hasQuery ? "篇結果" : AXIS_LABEL[axis].replace("依", "") + "分類"}
-              last
-            />
-          </dl>
-
-          <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 print:hidden">
-            <span className="text-xs font-medium text-muted dark:text-muted-dark">
-              熱門檢索
-            </span>
-            {QUICK_SEARCHES.map((term) => (
-              <button
-                key={term}
-                type="button"
-                onClick={() => setView({ q: term })}
-                className="cursor-pointer rounded-full border border-brand/30 bg-surface/70 px-3 py-1 text-xs font-medium text-brand transition-colors hover:bg-brand hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:border-brand-dark/40 dark:bg-surface-dark/50 dark:text-brand-dark dark:hover:bg-brand-dark dark:hover:text-ink"
-              >
-                {term}
-              </button>
-            ))}
-            {data.meta.updated && (
-              <span className="ml-auto text-xs text-muted dark:text-muted-dark">
-                更新：{data.meta.updated}
-              </span>
-            )}
+      <header className="border-b border-line py-4 dark:border-line-dark sm:py-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            {!hasQuery && <p className="text-xs font-semibold tracking-[0.16em] text-brand dark:text-brand-dark">SPORTS MEDICINE · EVIDENCE LIBRARY</p>}
+            <h1 className={`font-display font-bold tracking-tight text-ink dark:text-ink-dark ${hasQuery ? "text-2xl" : "mt-2 text-3xl sm:text-4xl"}`}>運動醫學 Review 索引</h1>
+            {!hasQuery && <p className="mt-2 text-sm text-body dark:text-body-dark">從臨床問題出發，查找系統性回顧、統合分析與臨床指引。</p>}
           </div>
+          <dl className="flex items-center gap-4 text-xs text-muted dark:text-muted-dark">
+            <div><dt>收錄文獻</dt><dd><span className="font-display text-2xl font-semibold text-ink dark:text-ink-dark">{totalUnique}</span> 篇</dd></div>
+            <div><dt>索引更新</dt><dd className="mt-1">{data.meta.updated || "日期未提供"}</dd></div>
+          </dl>
         </div>
       </header>
 
-      <NewThisMonth catalog={data.items} jcrYear={jcrYear} summaries={summaries} tags={tags} bibliography={bibliographyIndex} starSet={starSet} onToggleStar={togglePaper} onOpen={markRead} />
-
       {/* Toolbar：行動裝置不 sticky，避免動態高度的工具列遮住錨點目標 */}
-      <div className="z-10 space-y-3 rounded-lg border border-line bg-surface/95 p-3 backdrop-blur dark:border-line-dark dark:bg-surface-dark/95 sm:sticky sm:top-0 print:hidden">
+      <div className="space-y-4 rounded-lg border border-line bg-surface p-4 dark:border-line-dark dark:bg-surface-dark print:hidden">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1">
             <label
@@ -430,24 +422,28 @@ export default function ReviewsIndex() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          {hasQuery && <label className="flex min-w-0 flex-1 items-center gap-2 text-xs sm:flex-none">排序
+        {!view.q && <div className="flex flex-wrap items-center gap-2 text-xs"><span className="text-muted dark:text-muted-dark">常用檢索</span>{QUICK_SEARCHES.map(term => <button key={term} type="button" onClick={() => setView({ q: term })} className="min-h-9 rounded border border-line px-3 text-brand hover:bg-surface-alt dark:border-line-dark dark:text-brand-dark dark:hover:bg-surface-altdark">{term}</button>)}</div>}
+        <button type="button" aria-expanded={advancedFilters} aria-controls={advancedId} onClick={() => setAdvancedFilters(value => !value)} className="min-h-11 w-full text-left text-sm font-medium text-brand sm:hidden dark:text-brand-dark">篩選與排序 {advancedFilters ? "−" : "+"}</button>
+        <div id={advancedId} className={advancedFilters ? "space-y-4" : "hidden space-y-4 sm:block"}>
+        <FacetFilters items={beforeFacets} value={view} onChange={(key, value) => setView({ [key]: value, ...(key === "region" ? { disease: "" } : {}) })} />
+        <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap">
+          {hasQuery && <label className="flex min-w-0 flex-col items-stretch gap-1 text-xs sm:flex-row sm:items-center sm:gap-2">排序
             <select aria-label="搜尋結果排序" value={view.sort} onChange={event => setView({ sort: event.target.value === "latest" ? "latest" : "relevance" })} className="min-h-11 min-w-0 flex-1 rounded border border-linestrong bg-surface px-2 text-sm dark:bg-surface-altdark dark:border-linestrong-dark">
               <option value="relevance">相關度</option><option value="latest">最新年份</option>
             </select>
           </label>}
-          <label className="flex min-w-0 flex-1 items-center gap-2 text-xs sm:flex-none">發表時間
+          <label className="flex min-w-0 flex-col items-stretch gap-1 text-xs sm:flex-row sm:items-center sm:gap-2">發表時間
             <select aria-label="發表時間" value={view.period} onChange={event => setView({ period: parsePublicationPeriod(event.target.value) })} className="min-h-11 min-w-0 flex-1 rounded border border-linestrong bg-surface px-2 text-sm dark:bg-surface-altdark dark:border-linestrong-dark">
               {PUBLICATION_PERIODS.map(period => <option key={period.value} value={period.value}>{period.label}</option>)}
             </select>
           </label>
-          <label className="flex min-w-0 flex-1 items-center gap-2 text-xs sm:flex-none">年份
+          <label className="flex min-w-0 flex-col items-stretch gap-1 text-xs sm:flex-row sm:items-center sm:gap-2">年份
             <select aria-label="年份" value={view.year} onChange={e => setView({ year: e.target.value })} className="min-h-11 min-w-0 flex-1 rounded border border-linestrong bg-surface px-2 text-sm dark:bg-surface-altdark dark:border-linestrong-dark">
               <option value="">所有年份</option>
               {[...new Set(merged.flatMap(item => item.year ? [item.year] : []))].sort((a, b) => b - a).map(year => <option key={year} value={year}>{year}</option>)}
             </select>
           </label>
-          <label className="flex min-w-0 flex-1 items-center gap-2 text-xs sm:flex-none">文體
+          <label className="flex min-w-0 flex-col items-stretch gap-1 text-xs sm:flex-row sm:items-center sm:gap-2">文體
             <select aria-label="文體（由標題推測）" value={view.type} onChange={e => setView({ type: e.target.value })} className="min-h-11 min-w-0 flex-1 rounded border border-linestrong bg-surface px-2 text-sm dark:bg-surface-altdark dark:border-linestrong-dark">
               <option value="">所有文體</option>
               {["系統性回顧", "統合分析", "傘狀回顧", "範疇回顧", "敘述性回顧", "指引", "共識"].map(type => <option key={type}>{type}</option>)}
@@ -455,6 +451,9 @@ export default function ReviewsIndex() {
           </label>
           {(view.period || view.year || view.type) && <button type="button" className="min-h-11 rounded px-2 text-sm text-brand dark:text-brand-dark" onClick={() => setView({ period: "", year: "", type: "" })}>清除時間、年份與文體</button>}
         </div>
+        </div>
+        {FACETS.some(key => view[key]) && <div className="flex flex-wrap gap-2" aria-label="已選篩選條件">{FACETS.filter(key => view[key]).map(key => <button key={`${key}:${view[key]}`} type="button" onClick={() => setView({ [key]: "" })} className="motion-feedback min-h-9 rounded-full border border-line bg-surface-alt px-3 text-xs text-brand dark:border-line-dark dark:bg-surface-altdark dark:text-brand-dark" aria-label={`移除${FACET_LABELS[key]}篩選：${view[key]}`}>{view[key]} ×</button>)}</div>}
+        {(FACETS.some(key => view[key]) || freeOnly || view.year || view.period || view.type || showStarred) && <button type="button" className="min-h-9 text-xs text-brand underline dark:text-brand-dark" onClick={() => { setView({ ...EMPTY_FACETS, free: false, year: "", type: "", period: "" }); setShowStarred(false); }}>清除所有篩選</button>}
         {dateWindow && <p className="text-xs text-muted dark:text-muted-dark" role="status">
           {PUBLICATION_PERIODS.find(period => period.value === view.period)?.label}：{dateWindow.from} 至 {dateWindow.to}（含當日）。依 Europe PMC 首次發表日期篩選，部分日期由來源推定；未提供日期的文獻不納入。
         </p>}
@@ -484,6 +483,14 @@ export default function ReviewsIndex() {
         )}
       </div>
 
+      {!hasQuery && <NewThisMonth catalog={data.items} jcrYear={jcrYear} summaries={summaries} tags={tags} bibliography={bibliographyIndex} starSet={starSet} onToggleStar={togglePaper} onOpen={markOpened} />}
+      <details className="rounded-lg border border-line p-3 dark:border-line-dark"><summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">我的文獻庫（{stars.length} 篇） · 閱讀狀態與備份</summary>
+      <LibraryPanel library={library} onOpen={item => { markRead(canonicalPaperId(item), item); const live = merged.find(candidate => canonicalPaperId(candidate) === canonicalPaperId(item)); window.location.assign(live ? paperLink(live) : `#paper=${encodeURIComponent(canonicalPaperId(item))}`); }} />
+      </details>
+      {library.storageMessage && <p role="alert" className="text-sm">{library.storageMessage}</p>}
+      {!hasQuery && <DataHealth />}
+      {!hasQuery && <TopicLinks />}
+
       {/* 結果數變動要讓螢幕閱讀器知道（WCAG 4.1.3） */}
       <p role="status" aria-live="polite" aria-busy={isSearching} className="sr-only">
         {hasQuery
@@ -504,8 +511,9 @@ export default function ReviewsIndex() {
           jcrYear={jcrYear}
           starSet={starSet}
           onToggleStar={togglePaper}
-          onOpen={markRead}
+          onOpen={markOpened}
           onClear={() => setView({ q: "" })}
+          onSuggestion={query => setView({ q: query })}
           onClearFree={() => setView({ free: false })}
         />
       ) : (
@@ -585,7 +593,7 @@ export default function ReviewsIndex() {
               onToggle={toggle}
               starSet={starSet}
               onToggleStar={togglePaper}
-              onOpen={markRead}
+              onOpen={markOpened}
             />
           ))}
         </>
@@ -611,6 +619,7 @@ function SearchResults({
   onOpen,
   onClear,
   onClearFree,
+  onSuggestion,
 }: {
   results: Item[];
   page: number;
@@ -626,6 +635,7 @@ function SearchResults({
   onOpen: (key: string) => void;
   onClear: () => void;
   onClearFree: () => void;
+  onSuggestion: (query: string) => void;
 }) {
   const sectionRef = useRef<HTMLElement>(null);
   const focusAfterPage = useRef(false);
@@ -645,11 +655,11 @@ function SearchResults({
     return (
       <div className="rounded-lg border border-line p-6 dark:border-line-dark">
         <p className="text-body dark:text-body-dark">
-          找不到「{query}」的文獻。
+          {query ? `找不到「${query}」的文獻。` : "目前沒有符合篩選條件的文獻。"}
         </p>
         {suggestions.length > 0 && (
           <p className="mt-2 text-sm text-body dark:text-body-dark">
-            你是不是要找：{suggestions.join(" · ")}
+            你是不是要找：{suggestions.map(term => <button key={term} type="button" className="mr-2 min-h-11 text-brand underline dark:text-brand-dark" onClick={() => onSuggestion(term.replace(/（\d+）$/, ""))}>{term}</button>)}
           </p>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
@@ -680,7 +690,7 @@ function SearchResults({
         <span className="font-semibold tabular-nums text-ink dark:text-ink-dark">
           {results.length}
         </span>{" "}
-        / {total} 篇符合「{query}」{freeOnly && "（限免費全文）"} · {searchSortLabel(sort)}
+        / {total} 篇符合「{query || "目前篩選"}」{freeOnly && "（限免費全文）"} · {searchSortLabel(sort)}
       </p>
       <p role="status" className="mb-2 text-xs text-muted dark:text-muted-dark">第 {currentPage} / {pageCount} 頁 · 顯示第 {start + 1}–{Math.min(start + pageSize, results.length)} 篇</p>
       {pageCount > 1 && <SearchPagination page={currentPage} count={pageCount} position="上方" onChange={changePage} />}
@@ -823,40 +833,12 @@ function Footer({ jcrYear }: { jcrYear: string }) {
         摘要原文濃縮而成，同樣未經人工核對，臨床判讀請以原始文獻為準。
       </p>
       <p>
-        免費全文為啟發式判定（依來源網域是否開放取用），非逐篇 Unpaywall 驗證。
+        免費全文區分來源已列出的開放連結與上游推測；來源查核日期見文獻詳情。可免費閱讀不代表可重製，授權以原始來源為準。
       </p>
       <p>
         IF 為期刊影響係數<strong>近似值</strong>（Clarivate JCR {jcrYear}），
         代表期刊而非單篇文獻的證據等級，僅供參考、逐年變動。
       </p>
     </footer>
-  );
-}
-
-function StatCell({
-  n,
-  label,
-  accent,
-  last,
-}: {
-  n: number;
-  label: string;
-  accent?: boolean;
-  last?: boolean;
-}) {
-  return (
-    <div
-      className={`px-4 py-3 ${last ? "" : "border-r border-line dark:border-line-dark"}`}
-    >
-      <dt className="sr-only">{label}</dt>
-      <dd>
-        <span
-          className={`block font-display text-3xl font-bold tabular-nums ${accent ? "text-free dark:text-free-dark" : "text-ink dark:text-ink-dark"}`}
-        >
-          {n.toLocaleString("en-US")}
-        </span>
-        <span className="text-xs text-muted dark:text-muted-dark">{label}</span>
-      </dd>
-    </div>
   );
 }

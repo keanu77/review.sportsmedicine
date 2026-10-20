@@ -22,6 +22,9 @@ export interface Item {
   issue?: string | null;
   pages?: string | null;
   bibliography?: BibliographyEntry;
+  /** Source-listed access is distinct from an upstream free-access heuristic. */
+  fullText?: FullTextMetadata;
+  abstract?: SourceAbstract;
   /** Frontend merge aliases; keeps old title bookmarks resolvable after metadata enrichment. */
   identityAliases?: string[];
   impactFactor?: number | null;
@@ -34,6 +37,30 @@ export interface Item {
   diseases?: string[];
   /** 摘要來源。"local-llm" 代表由本機模型自 PubMed 摘要生成，UI 會標示 */
   tldrSource?: "local-llm" | string;
+}
+
+export interface FullTextMetadata {
+  status: "verified" | "inferred" | "unknown";
+  url?: string;
+  pdfUrl?: string;
+  sourceUrl?: string;
+  verifiedAt?: string;
+  /** A source-reported license; free access alone does not imply a reuse license. */
+  license?: string;
+  licenseUrl?: string;
+  reason?: string;
+}
+
+export interface SourceAbstract {
+  text: string;
+  /** Original source headings only; missing sections are never generated. */
+  sections?: { label: string; text: string }[];
+  source: "Europe PMC" | "PubMed";
+  sourceUrl: string;
+  verifiedAt: string;
+  /** Non-reusable abstracts are publicly limited to a short source excerpt. */
+  excerptOnly?: boolean;
+  license?: string;
 }
 
 /** Durable source metadata, independent of the monthly upstream index. */
@@ -54,6 +81,8 @@ export interface BibliographyEntry {
   sourceUrl: string;
   verifiedAt: string;
   matchMethod: "identifier" | "exact-title-year";
+  fullText?: FullTextMetadata;
+  abstract?: SourceAbstract | null;
 }
 
 export interface BibliographyData {
@@ -90,7 +119,43 @@ export interface SummariesData {
   model: string;
   count: number;
   summaries: Record<string, string>;
+  provenance?: Record<string, { sourceUrl: string; sourceVerifiedAt: string; generatedAt: string; model: string;
+    sourceEdit?: { editedAt: string; reason: string } }>;
+  attempts?: Record<string, { status: "generated" | "blocked" | "failed"; reason?: string; checkedAt: string }>;
 }
+
+export interface ReadinessRecord {
+  key: string;
+  title: string;
+  bibliography: "verified" | "unresolved";
+  abstract: "verified" | "missing";
+  summary: "available" | "pending" | "blocked";
+  summaryOverlay: "available" | "pending" | "blocked";
+  fullText: FullTextMetadata["status"];
+  missing: string[];
+  reasons: string[];
+  sourceUrl?: string;
+}
+
+export interface ReadinessData {
+  version: 1;
+  generatedAt: string;
+  sourceUpdated: string;
+  indexUpdated: string;
+  summaryGeneratedAt: string | null;
+  counts: {
+    total: number; bibliographyVerified: number; bibliographyUnresolved: number;
+    abstractVerified: number; abstractMissing: number; abstractFull: number; abstractExcerpt: number;
+    summariesAvailable: number; summaryBacklog: number; summaryReady: number; summaryBlocked: number;
+    overlaySummariesAvailable: number; overlaySummaryBacklog: number;
+    missingAuthors: number; missingIdentifiers: number; missingDate: number;
+    fullTextVerified: number; fullTextInferred: number; fullTextUnknown: number;
+    conflictedTitleKeys: number;
+  };
+  papers: ReadinessRecord[];
+}
+
+export type DataReadiness = ReadinessData;
 
 /**
  * 自訂標籤疊加層 public/data/tags.json。與 summaries.json 同理獨立成檔——

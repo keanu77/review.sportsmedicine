@@ -97,3 +97,44 @@ export async function copyText(text: string): Promise<boolean> {
     return false;
   }
 }
+
+/** RIS records use one physical line per field; imported text cannot inject extra tags. */
+export function toRIS(item: Item): string {
+  const line = (value: string | number) => String(value).replace(/[\r\n\u0000-\u001f\u007f]+/g, " ").trim();
+  const fields: [string, string | number][] = [["TY", "JOUR"], ["TI", item.title]];
+  for (const author of item.authors ?? []) if (author.trim()) fields.push(["AU", author]);
+  const journal = journalOf(item);
+  if (journal) fields.push(["JO", journal]);
+  if (item.year) fields.push(["PY", item.year]);
+  if (item.volume) fields.push(["VL", item.volume]);
+  if (item.issue) fields.push(["IS", item.issue]);
+  if (item.pages) {
+    const range = item.pages.match(/^(.+?)\s*[-–—]\s*(.+)$/);
+    fields.push(["SP", range ? range[1] : item.pages]);
+    if (range) fields.push(["EP", range[2]]);
+  }
+  const doi = doiOf(item);
+  if (doi) fields.push(["DO", doi]);
+  if (item.pmid) fields.push(["AN", `PMID:${item.pmid}`]);
+  if (item.pmcid) fields.push(["AN", item.pmcid]);
+  fields.push(["UR", item.freeUrl || item.url]);
+  return [...fields.map(([key, value]) => `${key}  - ${line(value)}`), "ER  -"].join("\r\n");
+}
+
+export function toRISBatch(items: Item[]): string {
+  return items.map(toRIS).join("\r\n\r\n") + (items.length ? "\r\n" : "");
+}
+
+/** Stable, collision-free keys within each exported collection, including non-Latin titles. */
+export function toBibTeXBatch(items: Item[]): string {
+  const keys = new Set<string>();
+  return items.map((item, index) => {
+    const original = toBibTeX(item);
+    const base = original.match(/^@article\{([^,]*),/)?.[1]?.replace(/[^a-zA-Z0-9:_-]/g, "") || `review${index + 1}`;
+    let key = base;
+    let suffix = 2;
+    while (keys.has(key)) key = `${base}_${suffix++}`;
+    keys.add(key);
+    return original.replace(/^@article\{[^,]*,/, `@article{${key},`);
+  }).join("\n\n");
+}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { copyText, toBibTeX, toVancouver } from "./citation";
 import { studyTypeLabel } from "./studyType";
-import { canonicalPaperId } from "./identity";
+import { paperLink } from "./paperRoutes";
 import type { Item } from "./types";
 
 // 單篇文獻列。主索引的疾病展開清單、搜尋結果與「本月新增」共用。
@@ -142,15 +142,15 @@ export default function ReviewRow({
           </p>
 
           <div className="mt-1.5 flex flex-wrap items-center gap-2 print:hidden">
-            <a href={`#paper=${encodeURIComponent(canonicalPaperId(item))}`} className={`${ACTION_CLASS} border border-linestrong text-body hover:bg-surface-alt dark:text-body-dark dark:border-linestrong-dark`} onClick={onOpen}>文獻詳情</a>
+            <a href={paperLink(item)} className={`${ACTION_CLASS} border border-linestrong text-body hover:bg-surface-alt dark:text-body-dark dark:border-linestrong-dark`} onClick={onOpen}>文獻詳情</a>
             {item.free && (
               <a
-                href={item.freeUrl || item.url}
+                href={item.fullText?.url || item.freeUrl || item.url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className={`${ACTION_CLASS} bg-free text-white hover:bg-free/90 focus-visible:ring-free`}
               >
-                免費全文 <ExternalIcon />
+                {item.fullText?.status === "verified" ? "免費全文" : "可能有免費全文"} <ExternalIcon />
                 <span className="sr-only">（另開新分頁）</span>
               </a>
             )}
@@ -187,7 +187,7 @@ export default function ReviewRow({
                 type="button"
                 onClick={onToggleStar}
                 aria-pressed={starred}
-                className={`${ACTION_CLASS} cursor-pointer border focus-visible:ring-brand ${
+                className={`${ACTION_CLASS} motion-action cursor-pointer border focus-visible:ring-brand ${
                   starred
                     ? "border-brand bg-brand/10 text-brand dark:border-brand-dark dark:text-brand-dark"
                     : "border-linestrong text-body hover:bg-surface-alt dark:border-linestrong-dark dark:text-body-dark dark:hover:bg-surface-altdark"

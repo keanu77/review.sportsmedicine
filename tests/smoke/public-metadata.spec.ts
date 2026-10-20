@@ -6,7 +6,7 @@ const TITLE = "Optimal resistance training prescriptions to improve muscle stren
 async function openSearch(page: Page, query: string) {
   // Use the shipped overlay, and wait for it to arrive before checking identifier/author behavior.
   await Promise.all([
-    page.waitForResponse(response => new URL(response.url()).pathname.endsWith("/data/bibliography.json") && response.ok()),
+    page.waitForResponse(response => new URL(response.url()).pathname.endsWith("/data/bibliography-index.json") && response.ok()),
     page.goto(`/?${new URLSearchParams({ q: query })}`),
   ]);
   await expect(page.getByRole("searchbox")).toHaveValue(query);
@@ -38,12 +38,13 @@ test("作者搜尋可開啟含書目來源、查核日期與卷期頁碼的詳�
 
   const details = page.getByRole("region", { name: "文獻詳情", exact: true });
   await expect(details.getByRole("heading", { level: 1 })).toContainText(TITLE);
+  await details.getByText("書目、來源與全文狀態", { exact: true }).click();
   await expect(details.getByText("Yan R, Chen Y, Zhang R, He J, Lin W, Sun J, Li D", { exact: true })).toBeVisible();
   await expect(details.getByText("41212331 / PMC12602684", { exact: true })).toBeVisible();
   await expect(details.getByText("37 ／ 1 ／ 320", { exact: true })).toBeVisible();
   await expect(details.getByRole("link", { name: "Europe PMC", exact: true })).toHaveAttribute("href", "https://europepmc.org/article/MED/41212331");
   await expect(details.locator("dl")).toContainText(/Europe PMC · \d{4}-\d{2}-\d{2}/);
-  await expect(details.getByText("僅核對書目欄位；不代表已查核全文內容、研究品質或授權。", { exact: true })).toBeVisible();
+  await expect(details.getByText("僅核對書目欄位與來源連結；不代表已評讀研究品質。", { exact: true })).toBeVisible();
   await expect(details.getByText(/2025;37\(1\):320\./)).toBeVisible();
 });
 

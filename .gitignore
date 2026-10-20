@@ -24,3 +24,6 @@ launchagent-output/
 # Session handoffs record private operational details; never publish
 /.claude/HANDOFF.md
 /docs/handoffs/
+
+# Derived completeness snapshot; regenerated for dev/build from checked-in sources
+/public/data/readiness.json

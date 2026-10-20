@@ -36,8 +36,9 @@ test("public details have stable identifiers and distinguish free flags from ver
   const results = page.getByRole("region", { name: "搜尋結果" });
   await expect(results.getByText("傘狀回顧", { exact: true })).toBeVisible();
   await results.getByRole("link", { name: "文獻詳情", exact: true }).click();
-  await expect(page).toHaveURL(/#paper=doi%3A10\.1234%2Fprior/);
-  await expect(page.getByText(/尚未逐篇驗證 PDF 與再利用授權/)).toBeVisible();
+  await expect(page).toHaveURL(/\/papers\/doi-10-1234-prior-[a-f0-9]+\//);
+  await page.getByText("書目、來源與全文狀態", { exact: true }).click();
+  await expect(page.getByText(/上游標示可能有免費全文，尚待來源確認/)).toBeVisible();
   await expect(page.locator('a[href*="workbench"]')).toHaveCount(0);
   await page.reload();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("An Umbrella Review Following PRIOR Guideline");
@@ -55,8 +56,8 @@ test("same-title papers with different DOIs keep separate sources and favorites"
   await expect(rows).toHaveCount(2);
   await expect(rows.getByText('共用中文疊加摘要', { exact: false })).toHaveCount(0);
   await expect(rows.getByText('新增復健主題', { exact: true })).toHaveCount(0);
-  await expect(rows.nth(0).getByRole("link", { name: "文獻詳情" })).toHaveAttribute("href", /doi%3A10\.1234%2Fsecond/);
-  await expect(rows.nth(1).getByRole("link", { name: "文獻詳情" })).toHaveAttribute("href", /doi%3A10\.1234%2Ffirst/);
+  await expect(rows.nth(0).getByRole("link", { name: "文獻詳情" })).toHaveAttribute("href", /doi-10-1234-second-/);
+  await expect(rows.nth(1).getByRole("link", { name: "文獻詳情" })).toHaveAttribute("href", /doi-10-1234-first-/);
   await rows.nth(0).getByRole("button", { name: "收藏", exact: true }).click();
   await expect(rows.nth(0).getByRole("button", { name: "已收藏", exact: true })).toBeVisible();
   await expect(rows.nth(1).getByRole("button", { name: "收藏", exact: true })).toBeVisible();

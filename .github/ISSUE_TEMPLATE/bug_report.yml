@@ -1,0 +1,53 @@
+name: Bug or data correction / 錯誤與資料修正
+description: Report a reproducible public-index bug or a source-backed data correction.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English or Traditional Chinese is welcome. Do not include patient information, credentials, private drafts, or personal library backups. For data corrections, provide an original-source link. This tracker does not provide medical advice.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area / 影響範圍
+      options:
+        - Search or filters / 搜尋與篩選
+        - Metadata or source access / 書目與全文來源
+        - Local library or export / 本機收藏與匯出
+        - Accessibility or layout / 無障礙與版面
+        - Documentation or setup / 文件與啟動
+        - Other / 其他
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction / 重現方式
+      description: Include the page URL, search query or paper identifier, and exact steps. Use synthetic data for import issues.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior / 預期結果
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior / 實際結果
+      description: Include the visible error or a screenshot with private information removed.
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source evidence, if correcting data / 資料修正依據
+      description: DOI/PMID, incorrect field, proposed value, and publisher or source-database link. Do not paste a full article.
+  - type: input
+    id: environment
+    attributes:
+      label: Environment / 使用環境
+      description: Browser, device or viewport, operating system, and live site versus local checkout.
+    validations:
+      required: true

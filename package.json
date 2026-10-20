@@ -1,16 +1,16 @@
 {
   "name": "review-sportsmedicine",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "運動醫學 Review 索引 — 公開閱覽靜態站",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev": "npm run data:readiness && vite",
+    "build": "tsc && npm run data:readiness && vite build && npm run build:pages",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.maintenance.json",
     "summarize": "node scripts/summarize-new-items.mjs public/data/new-items.json && npm run feed",
-    "summaries": "node scripts/build-summaries.mjs",
+    "summaries": "node --import tsx scripts/build-summaries.mjs",
     "feed": "node scripts/build-feed.mjs",
     "test:smoke": "playwright test",
     "tags": "node scripts/build-tags.mjs",
@@ -24,7 +24,9 @@
     "dev:private": "wrangler pages dev dist",
     "worker:doctor": "node worker/cli.mjs doctor",
     "test:frontend": "node --import tsx --test tests/frontend/*.test.ts",
-    "test:integration": "node --test tests/integration/*.test.mjs"
+    "test:integration": "node --test tests/integration/*.test.mjs",
+    "data:readiness": "node --import tsx scripts/build-readiness.ts",
+    "build:pages": "vite build --ssr scripts/build-public-pages.tsx --outDir dist-ssr && node dist-ssr/build-public-pages.js"
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.1",
@@ -37,13 +39,13 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^24.19.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^6.1.1",
-    "autoprefixer": "^10.6.1",
     "postcss": "^8.5.28",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^5.6.3",
     "vite": "^8.3.0",
