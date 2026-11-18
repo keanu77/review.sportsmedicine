@@ -1,0 +1,1841 @@
+{
+  "schemaVersion": 1,
+  "version": "pilot-2026-11-19-v1",
+  "generatedAt": "2026-11-18T17:53:54.345103Z",
+  "sourceUpdated": "2026-10-01",
+  "selectionNote": "30 篇固定便利樣本，非完整系統性搜尋。PRP 膝骨關節炎與 ACL 重返運動各從現有 Review 目錄選取 10 篇具 PMID 的回顧；五十肩保留原有 2 篇並由 Europe PMC 補入 8 篇候選。本次使用 Ethanai 全文搜尋抽樣對應，未命中不代表知識庫沒有收錄。所有臨床結果與偏差風險均待逐篇評讀。",
+  "cards": [
+    {
+      "id": "doi:10.1186/s40001-025-03253-4",
+      "topic": "prp-knee",
+      "title": "Efficacy and safety of platelet-rich plasma injections for the treatment of knee osteoarthritis: a systematic review and meta-analysis of randomized controlled trials.",
+      "doi": "10.1186/s40001-025-03253-4",
+      "pmid": "41107915",
+      "year": 2025,
+      "sourceUrl": "https://europepmc.org/article/MED/41107915",
+      "sourceCheckedAt": "2026-11-18T17:52:28.354656Z",
+      "reviewUrl": "/papers/doi-10-1186-s40001-025-03253-4-121ece2c/",
+      "kbRefs": [
+        {
+          "namespace": "ethanai",
+          "id": "13271"
+        }
+      ],
+      "identityStatus": "conflict",
+      "evidenceStatus": "quarantined",
+      "sourceFingerprint": "024ff1176a4672c7a4f0a1e578de6b46ce684488c5ba1adbc3d4d1d3b06ed3a0",
+      "question": "這篇回顧研究哪一群膝骨關節炎患者？PRP 製備與對照是否可比較？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "膝骨關節炎；年齡、疾病嚴重度與排除條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41107915",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "PRP；製備方式、濃度、注射次數及合併治療待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41107915",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41107915",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41107915",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41107915",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "warnings": [
+        "知識庫 Ethanai 13271 的全文屬於另一篇文獻（DOI 10.1177/03635465241249996；查核 2026-11-18）。已隔離該來源，未採用其全文或臨床結論。"
+      ]
+    },
+    {
+      "id": "doi:10.3389/fsurg.2026.1725534",
+      "topic": "prp-knee",
+      "title": "The efficacy and safety of platelet rich plasma and hyaluronic acid in the treatment of knee osteoarthritis: a meta-analysis.",
+      "doi": "10.3389/fsurg.2026.1725534",
+      "pmid": "41890142",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/41890142",
+      "sourceCheckedAt": "2026-11-18T17:52:20.790698Z",
+      "reviewUrl": "/papers/doi-10-3389-fsurg-2026-1725534-27a0588c/",
+      "kbRefs": [
+        {
+          "namespace": "ethanai",
+          "id": "12045"
+        }
+      ],
+      "identityStatus": "matched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "04c121a58dbfd151dd7341d3035927fb05393663b3b2c8fd33ad37f9352c3327",
+      "question": "這篇回顧研究哪一群膝骨關節炎患者？PRP 製備與對照是否可比較？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "膝骨關節炎；年齡、疾病嚴重度與排除條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41890142",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "PRP；製備方式、濃度、注射次數及合併治療待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41890142",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41890142",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41890142",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41890142",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Purpose To investigate the efficacy and safety of intra-articular injection ratio of platelet rich plasma (PRP) and hyaluronic acid (HA), and provide evidence-based strategies for",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1186/s13018-026-07042-5",
+      "topic": "prp-knee",
+      "title": "Comparative efficacy of platelet-rich plasma monotherapy versus combination therapies for knee osteoarthritis: a systematic review and network meta-analysis.",
+      "doi": "10.1186/s13018-026-07042-5",
+      "pmid": "42343396",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42343396",
+      "sourceCheckedAt": "2026-11-18T17:52:27.238364Z",
+      "reviewUrl": "/papers/doi-10-1186-s13018-026-07042-5-d7279890/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "a25fc8d2f86d594aad1ca77f5eed5f31a44803bfcfb51a273363affedcd756a2",
+      "question": "這篇回顧研究哪一群膝骨關節炎患者？PRP 製備與對照是否可比較？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "膝骨關節炎；年齡、疾病嚴重度與排除條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42343396",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "PRP；製備方式、濃度、注射次數及合併治療待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42343396",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42343396",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42343396",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42343396",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background Platelet-rich plasma (PRP) is widely used as an intra-articular treatment for knee osteoarthritis (KOA), but whether combining PRP with hyaluronic acid (HA), mesenchymal stem",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.3389/fpain.2026.1791542",
+      "topic": "prp-knee",
+      "title": "Platelet-rich plasma for treatment of knee osteoarthritis: a narrative review.",
+      "doi": "10.3389/fpain.2026.1791542",
+      "pmid": "41878117",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/41878117",
+      "sourceCheckedAt": "2026-11-18T17:52:20.781185Z",
+      "reviewUrl": "/papers/doi-10-3389-fpain-2026-1791542-d8bf81fd/",
+      "kbRefs": [
+        {
+          "namespace": "ethanai",
+          "id": "12923"
+        }
+      ],
+      "identityStatus": "matched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "973bffa82b1e08c4f0ba3b257bc5dc9f6f204c614e28c70d82f79ccf698ab3d8",
+      "question": "這篇回顧研究哪一群膝骨關節炎患者？PRP 製備與對照是否可比較？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "膝骨關節炎；年齡、疾病嚴重度與排除條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41878117",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "PRP；製備方式、濃度、注射次數及合併治療待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41878117",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41878117",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41878117",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41878117",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Osteoarthritis is the most common cause of arthritis, a pervasive condition affecting various joints within the human body. The culmination of various factors resulting in",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1186/s43019-026-00318-4",
+      "topic": "prp-knee",
+      "title": "Influence of platelet-rich plasma composition on pain and functional performance in knee osteoarthritis: a systematic review and network meta-analysis.",
+      "doi": "10.1186/s43019-026-00318-4",
+      "pmid": "42015328",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42015328",
+      "sourceCheckedAt": "2026-11-18T17:52:29.882871Z",
+      "reviewUrl": "/papers/doi-10-1186-s43019-026-00318-4-75c241da/",
+      "kbRefs": [
+        {
+          "namespace": "ethanai",
+          "id": "7467"
+        }
+      ],
+      "identityStatus": "matched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "fcb8e961566156a3bd4225ce6927d33d61b406b37634b7f1b57b52d0518f41ab",
+      "question": "這篇回顧研究哪一群膝骨關節炎患者？PRP 製備與對照是否可比較？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "膝骨關節炎；年齡、疾病嚴重度與排除條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42015328",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "PRP；製備方式、濃度、注射次數及合併治療待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42015328",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42015328",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42015328",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42015328",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background Pain, decreased quality of life, and functional impairment are common symptoms of knee osteoarthritis (KOA), a degenerative joint disease. Surgery is reserved for advanced",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.3390/clinpract16040075",
+      "topic": "prp-knee",
+      "title": "Efficacy and Safety of Platelet-Rich Plasma in Knee Osteoarthritis: Umbrella Meta-Analysis Based on Clinical Evidence, Methodological Quality and Therapeutic Positioning.",
+      "doi": "10.3390/clinpract16040075",
+      "pmid": "42041952",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42041952",
+      "sourceCheckedAt": "2026-11-18T17:52:46.656655Z",
+      "reviewUrl": "/papers/doi-10-3390-clinpract16040075-510843e1/",
+      "kbRefs": [
+        {
+          "namespace": "ethanai",
+          "id": "3165"
+        }
+      ],
+      "identityStatus": "matched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "e1240bfb3aba2943de35f5cc5e818bb6a4c3fd5de61d2351d47b3a368bc810f6",
+      "question": "這篇回顧研究哪一群膝骨關節炎患者？PRP 製備與對照是否可比較？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "膝骨關節炎；年齡、疾病嚴重度與排除條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42041952",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "PRP；製備方式、濃度、注射次數及合併治療待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42041952",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42041952",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42041952",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42041952",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background/Objectives : Despite being a standard biological therapy for knee osteoarthritis, inconsistent results across studies-due to varied protocols-have obscured the clinical standing of platelet-rich plasma.",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1080/09638288.2026.2674613",
+      "topic": "prp-knee",
+      "title": "The effect of combined platelet-rich plasma and exercise on pain and function in knee osteoarthritis: a systematic review and meta-analysis of randomized controlled trials.",
+      "doi": "10.1080/09638288.2026.2674613",
+      "pmid": "42188836",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42188836",
+      "sourceCheckedAt": "2026-11-18T17:52:36.161081Z",
+      "reviewUrl": "/papers/doi-10-1080-09638288-2026-2674613-54d57b3d/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "f46c397aec4dfdeb441e5deb6ce831fd37c34709cbe971a2a65a24396117fdaf",
+      "question": "這篇回顧研究哪一群膝骨關節炎患者？PRP 製備與對照是否可比較？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "膝骨關節炎；年齡、疾病嚴重度與排除條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42188836",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "PRP；製備方式、濃度、注射次數及合併治療待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42188836",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42188836",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42188836",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42188836",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Purpose This meta-analysis aimed to synthesize existing research evaluating short-term ( Materials and methods Six databases were searched from inception to October 2025. Randomized controlled",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1016/j.arrct.2025.100573",
+      "topic": "prp-knee",
+      "title": "Comparative Clinical Effectiveness of Intra-Articular Leukocyte-Rich Platelet-Rich Plasma and Hyaluronic Acid in Treating Knee Osteoarthritis Pain: An Updated Systematic Review and Meta-Analysis of Randomized Controlled Trials.",
+      "doi": "10.1016/j.arrct.2025.100573",
+      "pmid": "42326600",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42326600",
+      "sourceCheckedAt": "2026-11-18T17:52:29.497881Z",
+      "reviewUrl": "/papers/doi-10-1016-j-arrct-2025-100573-9c360c68/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "e64dcc7e195bbe0c68376ef0f9b28d6a0638426eb3291b76f3e0642cbb70c1ee",
+      "question": "這篇回顧研究哪一群膝骨關節炎患者？PRP 製備與對照是否可比較？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "膝骨關節炎；年齡、疾病嚴重度與排除條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42326600",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "PRP；製備方式、濃度、注射次數及合併治療待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42326600",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42326600",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42326600",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42326600",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Objective To investigate the clinical effectiveness of intra-articular leukocyte-rich-platelet-rich plasma (LR-PRP) injections versus hyaluronic acid (HA) for pain management in patients with knee osteoarthritis (OA).",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1002/arj.70520",
+      "topic": "prp-knee",
+      "title": "Platelet-Rich Plasma Provides Small but Superior Short-term Pain Relief and Functional Improvement Compared With Hyaluronic Acid for the Treatment of Knee Osteoarthritis: A Systematic Review and Meta-analysis.",
+      "doi": "10.1002/arj.70520",
+      "pmid": "42744748",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42744748",
+      "sourceCheckedAt": "2026-11-18T17:52:31.038385Z",
+      "reviewUrl": "/papers/doi-10-1002-arj-70520-2aff3331/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "9d6ac404a4e5ab075dc10bb94d570cd6acc16c25ecd6014eec33ee6672d37953",
+      "question": "這篇回顧研究哪一群膝骨關節炎患者？PRP 製備與對照是否可比較？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "膝骨關節炎；年齡、疾病嚴重度與排除條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42744748",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "PRP；製備方式、濃度、注射次數及合併治療待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42744748",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42744748",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42744748",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42744748",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Purpose To compare the efficacy of platelet-rich plasma (PRP) versus hyaluronic acid (HA) in knee osteoarthritis and to identify preparation and application-related factors influencing outcomes.",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1002/ksa.70567",
+      "topic": "prp-knee",
+      "title": "Younger age and platelet-rich plasma characteristics influence short-term outcomes in knee osteoarthritis, but independent effects remain uncertain: A systematic review with meta-analysis and meta-regression of placebo-controlled randomised trials.",
+      "doi": "10.1002/ksa.70567",
+      "pmid": "42605960",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42605960",
+      "sourceCheckedAt": "2026-11-18T17:52:31.757235Z",
+      "reviewUrl": "/papers/doi-10-1002-ksa-70567-913fbee2/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "a62ed0eca94c10ec1ac16a430359b0dcd7b1e893bfd72b90f1a7b13463ae15b4",
+      "question": "這篇回顧研究哪一群膝骨關節炎患者？PRP 製備與對照是否可比較？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "膝骨關節炎；年齡、疾病嚴重度與排除條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42605960",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "PRP；製備方式、濃度、注射次數及合併治療待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42605960",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42605960",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42605960",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42605960",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Purpose The goal of this systematic review with meta-regression was to investigate the influence of different platelet-rich plasma (PRP) composition and administration characteristics on the",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1111/sms.70246",
+      "topic": "acl-rts",
+      "title": "Returning to Performance After ACL Injury in Competitive Alpine Skiing: A Scoping Review and Evidence- and Expert-Informed Practice Recommendations.",
+      "doi": "10.1111/sms.70246",
+      "pmid": "41797294",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/41797294",
+      "sourceCheckedAt": "2026-11-18T17:52:41.427364Z",
+      "reviewUrl": "/papers/doi-10-1111-sms-70246-904964e5/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "8e350a1c541f899590d91519af006837db03efa9005d8d42bfff034b36b0ff1b",
+      "question": "重返運動、重返原有層級與重返表現是否被分開定義？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "ACL 損傷／重建相關族群；運動層級、性別與年齡待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41797294",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "重返運動相關處置或評估；實際復健、手術及測試條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41797294",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41797294",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41797294",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41797294",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Anterior cruciate ligament (ACL) injuries are common in competitive alpine skiing and pose significant challenges for return-to-performance (RTP) pathways. The aim of this scoping review",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1177/03635465251405493",
+      "topic": "acl-rts",
+      "title": "Return to Sport After Revision Anterior Cruciate Ligament Reconstruction: A Systematic Review and Meta-analysis.",
+      "doi": "10.1177/03635465251405493",
+      "pmid": "41572915",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/41572915",
+      "sourceCheckedAt": "2026-11-18T17:52:42.442003Z",
+      "reviewUrl": "/papers/doi-10-1177-03635465251405493-fcd1c7fc/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "9391f101b212f7b34a4a5ef1f23a5dc417272d3624236e450197c5fae646f4fc",
+      "question": "重返運動、重返原有層級與重返表現是否被分開定義？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "ACL 損傷／重建相關族群；運動層級、性別與年齡待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41572915",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "重返運動相關處置或評估；實際復健、手術及測試條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41572915",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41572915",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41572915",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41572915",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background Revision anterior cruciate ligament (ACL) reconstruction (ACLR) is a well-established procedure to restore knee stability and improve function after a failed primary ACLR. In",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1097/js9.0000000000004837",
+      "topic": "acl-rts",
+      "title": "Anterior cruciate ligament reconstruction in elite and professional athletes: does graft choice influence return to sport and failure rate? A systematic review and meta-analysis.",
+      "doi": "10.1097/js9.0000000000004837",
+      "pmid": "41570285",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/41570285",
+      "sourceCheckedAt": "2026-11-18T17:52:37.342929Z",
+      "reviewUrl": "/papers/doi-10-1097-js9-0000000000004837-c41a949c/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "2cab2146291f7da97441a9068c8b38ae3cb7e5524a5c5c33b4a4e8c2be565ae1",
+      "question": "重返運動、重返原有層級與重返表現是否被分開定義？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "ACL 損傷／重建相關族群；運動層級、性別與年齡待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41570285",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "重返運動相關處置或評估；實際復健、手術及測試條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41570285",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41570285",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41570285",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41570285",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background Different grafts are used for anterior cruciate ligament (ACL) reconstruction, but their impact on return to sport (RTS) in elite and professional athletes remains",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1002/ksa.70274",
+      "topic": "acl-rts",
+      "title": "High return to play but low return to preinjury level after anterior cruciate ligament reconstruction in soccer players: A systematic review with meta-analysis.",
+      "doi": "10.1002/ksa.70274",
+      "pmid": "41566832",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/41566832",
+      "sourceCheckedAt": "2026-11-18T17:52:51.881812Z",
+      "reviewUrl": "/papers/doi-10-1002-ksa-70274-2607175b/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "e765cee99dd90696daa35cd4755c920f67f17b8486c9632fbda91a2c43bc1dfb",
+      "question": "重返運動、重返原有層級與重返表現是否被分開定義？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "ACL 損傷／重建相關族群；運動層級、性別與年齡待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41566832",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "重返運動相關處置或評估；實際復健、手術及測試條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41566832",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41566832",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41566832",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41566832",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Purpose This systematic review with meta-analysis aimed to quantify return to play (RTP) outcomes in soccer players after anterior cruciate ligament reconstruction (ACLR), including the",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.26603/001c.156105",
+      "topic": "acl-rts",
+      "title": "Variability in Terminal Phase Timing and Return-to-Sport Criteria in ACL Reconstruction Rehabilitation Protocols: A Scoping Review of U.S. Academic Institutions.",
+      "doi": "10.26603/001c.156105",
+      "pmid": "41777433",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/41777433",
+      "sourceCheckedAt": "2026-11-18T17:52:56.899485Z",
+      "reviewUrl": "/papers/doi-10-26603-001c-156105-30e0f4ae/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "eea560380224be570701d6e6b72edafdec2bea086dd4949b14551b1abb19d726",
+      "question": "重返運動、重返原有層級與重返表現是否被分開定義？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "ACL 損傷／重建相關族群；運動層級、性別與年齡待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41777433",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "重返運動相關處置或評估；實際復健、手術及測試條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41777433",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41777433",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41777433",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41777433",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background Rehabilitation following anterior cruciate ligament reconstruction (ACLR) plays a critical role in patient recovery and return to sport (RTS). However, substantial variability exists in",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1186/s40798-026-01006-z",
+      "topic": "acl-rts",
+      "title": "Return-to-Sport Outcomes and Psychological Readiness to Return to Sport After Revision Compared to the Primary Anterior Cruciate Ligament Reconstruction: A Systematic Review and Meta-Analysis.",
+      "doi": "10.1186/s40798-026-01006-z",
+      "pmid": "42008192",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42008192",
+      "sourceCheckedAt": "2026-11-18T17:52:58.431087Z",
+      "reviewUrl": "/papers/doi-10-1186-s40798-026-01006-z-85ad3176/",
+      "kbRefs": [
+        {
+          "namespace": "ethanai",
+          "id": "4985"
+        }
+      ],
+      "identityStatus": "matched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "981e3f6377ad600eac4e168df408137a142483f8618758f8d6743de211b012a6",
+      "question": "重返運動、重返原有層級與重返表現是否被分開定義？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "ACL 損傷／重建相關族群；運動層級、性別與年齡待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42008192",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "重返運動相關處置或評估；實際復健、手術及測試條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42008192",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42008192",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42008192",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42008192",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background The existing body of evidence referring to the return-to-sport (RTS) outcomes and psychological readiness to return to sport after revision compared to the primary",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1177/23259671261442968",
+      "topic": "acl-rts",
+      "title": "Comparison of Return-to-Sport and Patient-Reported Outcomes Between Primary and Revision ACL Reconstruction: An Updated Systematic Review and Meta-analysis.",
+      "doi": "10.1177/23259671261442968",
+      "pmid": "42394809",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42394809",
+      "sourceCheckedAt": "2026-11-18T17:53:03.939814Z",
+      "reviewUrl": "/papers/doi-10-1177-23259671261442968-aea867bc/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "6bc4f6b15046bea53f387ba8579a323d94ad2048a1344c2e01de52ecd8d09137",
+      "question": "重返運動、重返原有層級與重返表現是否被分開定義？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "ACL 損傷／重建相關族群；運動層級、性別與年齡待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42394809",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "重返運動相關處置或評估；實際復健、手術及測試條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42394809",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42394809",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42394809",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42394809",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background Anterior cruciate ligament (ACL) injuries are among the most common sports-related injuries worldwide. Primary ACL reconstruction (PACLR) is the standard treatment, but graft failure",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1177/03635465251386013",
+      "topic": "acl-rts",
+      "title": "No Significant Difference in Return-to-Sport Rates Between Anterior Cruciate Ligament Reconstruction With Lateral Extra-Articular Tenodesis and Isolated Anterior Cruciate Ligament Reconstruction: A Systematic Review and Meta-analysis.",
+      "doi": "10.1177/03635465251386013",
+      "pmid": "41521721",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/41521721",
+      "sourceCheckedAt": "2026-11-18T17:53:13.376936Z",
+      "reviewUrl": "/papers/doi-10-1177-03635465251386013-381edbec/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "6bee8d27306e3e88a1cc137507d37017073a07d2e8a96d5dcbe7654ff672233b",
+      "question": "重返運動、重返原有層級與重返表現是否被分開定義？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "ACL 損傷／重建相關族群；運動層級、性別與年齡待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41521721",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "重返運動相關處置或評估；實際復健、手術及測試條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41521721",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41521721",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41521721",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41521721",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background Although anterior cruciate ligament (ACL) reconstruction (ACLR) remains the standard to treat ACL ruptures, athletes remain at higher risk of graft rerupture. Concomitant lateral",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1177/03635465261448489",
+      "topic": "acl-rts",
+      "title": "Are There Sex Disparities in Return to Sport After Anterior Cruciate Ligament Reconstruction? A Systematic Review and Exploratory Meta-analysis.",
+      "doi": "10.1177/03635465261448489",
+      "pmid": "42252835",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42252835",
+      "sourceCheckedAt": "2026-11-18T17:53:06.657874Z",
+      "reviewUrl": "/papers/doi-10-1177-03635465261448489-9e667941/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "92fd88d1ab347ac4855f608fedcb54f7c051f50a1611a4234256f7637582be88",
+      "question": "重返運動、重返原有層級與重返表現是否被分開定義？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "ACL 損傷／重建相關族群；運動層級、性別與年齡待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42252835",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "重返運動相關處置或評估；實際復健、手術及測試條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42252835",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42252835",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42252835",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42252835",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background Sex disparities in return-to-sport (RTS) outcomes after anterior cruciate ligament reconstruction (ACLR) remain poorly reported. Female athletes may demonstrate higher rates of anterior cruciate",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.52965/001c.162663",
+      "topic": "acl-rts",
+      "title": "Functional and Return-to-Sport Outcomes After Biologic Augmentation in Anterior Cruciate Ligament Reconstruction: A Systematic Review and Meta-analysis.",
+      "doi": "10.52965/001c.162663",
+      "pmid": "42282137",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42282137",
+      "sourceCheckedAt": "2026-11-18T17:53:24.154908Z",
+      "reviewUrl": "/papers/doi-10-52965-001c-162663-d186feae/",
+      "kbRefs": [
+        {
+          "namespace": "ethanai",
+          "id": "17075"
+        }
+      ],
+      "identityStatus": "matched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "03deeea84ec8d1cbe793f6de4011d822121c30615eed7b8f44db8b45b330390d",
+      "question": "重返運動、重返原有層級與重返表現是否被分開定義？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "ACL 損傷／重建相關族群；運動層級、性別與年齡待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42282137",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "重返運動相關處置或評估；實際復健、手術及測試條件待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42282137",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42282137",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42282137",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42282137",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background The clinical value of biologic augmentation during anterior cruciate ligament reconstruction remains uncertain, particularly regarding functional recovery and return to sport. Existing evidence has",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.4103/tcmj.tcmj-d-25-00008",
+      "topic": "frozen-shoulder",
+      "title": "Comparison of platelet-rich plasma injection versus corticosteroid injection for the treatment of frozen shoulder in Asia: A systematic review and meta-analysis of randomized controlled trials.",
+      "doi": "10.4103/tcmj.tcmj-d-25-00008",
+      "pmid": "42131405",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42131405",
+      "sourceCheckedAt": "2026-11-18T17:53:15.730340Z",
+      "reviewUrl": "/papers/doi-10-4103-tcmj-tcmj-d-25-00008-ed0fd019/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "78c87bf0ad51896642365088241b188e37626cd18257fc1a3ec769e1278dda90",
+      "question": "研究納入哪個五十肩階段？對照治療及追蹤時間是否符合要回答的問題？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "五十肩／沾黏性肩關節囊炎；原發或續發、病程階段與共病待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42131405",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "題名所述治療或評估策略；具體方法與劑量待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42131405",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42131405",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42131405",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42131405",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "This study investigates the therapeutic performance of intra-articular platelet-rich plasma (PRP) versus intra-articular corticosteroid injections, specifically evaluating outcomes within Asian demographic groups. This review was",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1136/bjsports-2025-110539",
+      "topic": "frozen-shoulder",
+      "title": "Hydrodilatation for adhesive capsulitis: a systematic review exploring efficacy and optimal technique.",
+      "doi": "10.1136/bjsports-2025-110539",
+      "pmid": "42527106",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42527106",
+      "sourceCheckedAt": "2026-11-18T17:53:18.308814Z",
+      "reviewUrl": "/papers/doi-10-1136-bjsports-2025-110539-cd66a0bd/",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "metadata",
+      "sourceFingerprint": "01fbcd0731b8c71e7663e0579eec3f262f606ec2f38abccb8aaae4eec3da9e14",
+      "question": "研究納入哪個五十肩階段？對照治療及追蹤時間是否符合要回答的問題？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "五十肩／沾黏性肩關節囊炎；原發或續發、病程階段與共病待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42527106",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "題名所述治療或評估策略；具體方法與劑量待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42527106",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42527106",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42527106",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42527106",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1136/bmj-2026-101057",
+      "topic": "frozen-shoulder",
+      "title": "Interventions for adhesive capsulitis: systematic review and network meta-analysis of randomised controlled trials.",
+      "doi": "10.1136/bmj-2026-101057",
+      "pmid": "42982479",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42982479",
+      "sourceCheckedAt": "2026-11-18T17:53:39.344104Z",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "9bef4c7314a61678a9a48b1583696cfb098e6de9435fec538cf7c87aca580ded",
+      "question": "研究納入哪個五十肩階段？對照治療及追蹤時間是否符合要回答的問題？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "五十肩／沾黏性肩關節囊炎；原發或續發、病程階段與共病待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42982479",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "題名所述治療或評估策略；具體方法與劑量待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42982479",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42982479",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42982479",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42982479",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Objective To compare the benefits and harms of therapeutic interventions for adhesive capsulitis. Design Systematic review and network meta-analysis of randomised controlled trials. Data sources",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1177/10538127261489859",
+      "topic": "frozen-shoulder",
+      "title": "Platelet-Rich plasma for adhesive capsulitis: An umbrella review of effects on pain, function, and range of motion.",
+      "doi": "10.1177/10538127261489859",
+      "pmid": "42770395",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42770395",
+      "sourceCheckedAt": "2026-11-18T17:53:40.381508Z",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "3f63ffc00f7c9bee743c0a6bed7488df7088bcb335f6f213dcb0bffd3e99d23a",
+      "question": "研究納入哪個五十肩階段？對照治療及追蹤時間是否符合要回答的問題？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "五十肩／沾黏性肩關節囊炎；原發或續發、病程階段與共病待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42770395",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "題名所述治療或評估策略；具體方法與劑量待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42770395",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42770395",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42770395",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42770395",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "BackgroundAdhesive capsulitis is a common and disabling shoulder condition with substantial impact on pain and function, yet the role of platelet-rich plasma (PRP) injections remains",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1016/j.bj.2026.101001",
+      "topic": "frozen-shoulder",
+      "title": "Ultrasound-guided intervention in adhesive capsulitis: A comprehensive review of therapeutic strategies.",
+      "doi": "10.1016/j.bj.2026.101001",
+      "pmid": "42248412",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42248412",
+      "sourceCheckedAt": "2026-11-18T17:53:19.874010Z",
+      "kbRefs": [
+        {
+          "namespace": "ethanai",
+          "id": "1418"
+        }
+      ],
+      "identityStatus": "matched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "6c6686a9438f1ac97bb7f854510bb69bccc5132af71919d8ee9bf400351943ba",
+      "question": "研究納入哪個五十肩階段？對照治療及追蹤時間是否符合要回答的問題？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "五十肩／沾黏性肩關節囊炎；原發或續發、病程階段與共病待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42248412",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "題名所述治療或評估策略；具體方法與劑量待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42248412",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42248412",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42248412",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42248412",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Adhesive capsulitis is a painful and disabling shoulder condition characterized by progressive synovial inflammation, capsular fibrosis, and global restriction of motion. Conventional treatment strategies, including",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.7759/cureus.113139",
+      "topic": "frozen-shoulder",
+      "title": "Effects of Scapulothoracic Physical Therapy on Shoulder Function in Adhesive Capsulitis: A Systematic Review and Meta-Analysis.",
+      "doi": "10.7759/cureus.113139",
+      "pmid": "42631081",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42631081",
+      "sourceCheckedAt": "2026-11-18T17:53:44.930897Z",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "34f5108b6533461b85d70722d57e329c14791be6987c4828fca8d0ac97ca0edb",
+      "question": "研究納入哪個五十肩階段？對照治療及追蹤時間是否符合要回答的問題？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "五十肩／沾黏性肩關節囊炎；原發或續發、病程階段與共病待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42631081",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "題名所述治療或評估策略；具體方法與劑量待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42631081",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42631081",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42631081",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42631081",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Adhesive capsulitis (AC), also known as frozen shoulder (FS), is a common debilitating condition characterized by progressive pain, severe restriction of the shoulder range of",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1080/10669817.2026.2701344",
+      "topic": "frozen-shoulder",
+      "title": "Comparative efficacy of different joint mobilization techniques in shoulder adhesive capsulitis: a systematic review and meta-analysis of randomized controlled trials.",
+      "doi": "10.1080/10669817.2026.2701344",
+      "pmid": "42446287",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42446287",
+      "sourceCheckedAt": "2026-11-18T17:53:49.301784Z",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "3c36202ae1738456d4d1ab058c99d46b71766c59934836e737f5798e81d84ff3",
+      "question": "研究納入哪個五十肩階段？對照治療及追蹤時間是否符合要回答的問題？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "五十肩／沾黏性肩關節囊炎；原發或續發、病程階段與共病待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42446287",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "題名所述治療或評估策略；具體方法與劑量待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42446287",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42446287",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42446287",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42446287",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Objectives Conservative management of shoulder adhesive capsulitis primarily relies on physical therapy, with non-thrust joint mobilization representing a fundamental component. This systematic review compared the",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1007/s00590-026-04834-7",
+      "topic": "frozen-shoulder",
+      "title": "Intra-articular corticosteroid Injection combined with physical therapy versus physical therapy alone for adhesive capsulitis: a meta-analysis of randomized controlled trials.",
+      "doi": "10.1007/s00590-026-04834-7",
+      "pmid": "42340454",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/42340454",
+      "sourceCheckedAt": "2026-11-18T17:53:42.736569Z",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "40672b207be71150dbd40c37efe729029bafbfd8d5417f6c41e1bc5aed622657",
+      "question": "研究納入哪個五十肩階段？對照治療及追蹤時間是否符合要回答的問題？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "五十肩／沾黏性肩關節囊炎；原發或續發、病程階段與共病待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42340454",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "題名所述治療或評估策略；具體方法與劑量待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/42340454",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42340454",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42340454",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/42340454",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background Adhesive capsulitis causes shoulder pain and limited motion. Physical therapy (PT) helps but is slow to act. This meta-analysis compares PT alone versus PT",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1016/j.jelekin.2026.103131",
+      "topic": "frozen-shoulder",
+      "title": "Can visuomotor illusions improve shoulder pain, function and range of motion in people with adhesive capsulitis? A systematic review and meta-analysis.",
+      "doi": "10.1016/j.jelekin.2026.103131",
+      "pmid": "41780224",
+      "year": 2026,
+      "sourceUrl": "https://europepmc.org/article/MED/41780224",
+      "sourceCheckedAt": "2026-11-18T17:53:51.124275Z",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "be07ab5dc2b3456724230247e58ea14d9c958b01f3b0b9a7e6ed8b1b37b4d198",
+      "question": "研究納入哪個五十肩階段？對照治療及追蹤時間是否符合要回答的問題？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "五十肩／沾黏性肩關節囊炎；原發或續發、病程階段與共病待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41780224",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "題名所述治療或評估策略；具體方法與劑量待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/41780224",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41780224",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41780224",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/41780224",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Background Adhesive capsulitis (AC) is a shoulder musculoskeletal disorder characterized by pain and loss of movement, often lasting >1 year. Conventional therapies typically target tissular",
+      "warnings": []
+    },
+    {
+      "id": "doi:10.1002/pmrj.13376",
+      "topic": "frozen-shoulder",
+      "title": "Comparative efficacy of platelet rich plasma, hyaluronic acid, and corticosteroid injections in adhesive capsulitis management: A meta-analysis.",
+      "doi": "10.1002/pmrj.13376",
+      "pmid": "40273376",
+      "year": 2025,
+      "sourceUrl": "https://europepmc.org/article/MED/40273376",
+      "sourceCheckedAt": "2026-11-18T17:53:54.345103Z",
+      "kbRefs": [],
+      "identityStatus": "unmatched",
+      "evidenceStatus": "excerpt",
+      "sourceFingerprint": "0d4a9a236c737515f64a0c60093548e28216e1ab06ed66b81cfef03d79c824c4",
+      "question": "研究納入哪個五十肩階段？對照治療及追蹤時間是否符合要回答的問題？",
+      "fields": [
+        {
+          "key": "population",
+          "label": "研究族群與範圍",
+          "text": "五十肩／沾黏性肩關節囊炎；原發或續發、病程階段與共病待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/40273376",
+          "locator": "title"
+        },
+        {
+          "key": "intervention",
+          "label": "介入或評估",
+          "text": "題名所述治療或評估策略；具體方法與劑量待核對。",
+          "status": "title-context",
+          "sourceUrl": "https://europepmc.org/article/MED/40273376",
+          "locator": "title"
+        },
+        {
+          "key": "comparison",
+          "label": "對照與追蹤時間",
+          "text": "待逐篇核對原始方法；不從其他研究補入。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/40273376",
+          "locator": "methods — not yet reviewed"
+        },
+        {
+          "key": "outcomes",
+          "label": "效果量與結果",
+          "text": "尚未完成數據與原文位置核對，暫不提供療效結論。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/40273376",
+          "locator": "results — not yet reviewed"
+        },
+        {
+          "key": "limitations",
+          "label": "偏差風險與臨床適用性",
+          "text": "尚待人工評讀；期刊、文體及題名不代表證據品質。",
+          "status": "needs-review",
+          "sourceUrl": "https://europepmc.org/article/MED/40273376",
+          "locator": "limitations — not yet reviewed"
+        }
+      ],
+      "abstractExcerpt": "Objective To compare the efficacy of platelet-rich plasma (PRP) and hyaluronic acid (HA) against corticosteroid injections in adult patients with adhesive capsulitis (AC), in impacting",
+      "warnings": []
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "namespace": "ethanai",
+    "id": "13271",
+    "expectedDoi": "10.1186/s40001-025-03253-4",
+    "observedDoi": "10.1177/03635465241249996",
+    "summarySha256": "a0e289459779d5ef2817a8d00878cd64075cfd89c8a2669af7740a8a2b2f22ca",
+    "observedAt": "2026-11-18T17:53:54.345103Z",
+    "evidenceUrl": "https://pubmed.ncbi.nlm.nih.gov/39754417/"
+  }
+]
+
