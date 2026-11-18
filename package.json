@@ -27,6 +27,7 @@
     "test:integration": "node --test tests/integration/*.test.mjs",
     "data:readiness": "node --import tsx scripts/build-readiness.ts",
     "data:kb-pilot": "node --import tsx scripts/build-kb-pilot.ts",
+    "data:kb-learning": "node --import tsx scripts/build-kb-learning.ts",
     "build:pages": "vite build --ssr scripts/build-public-pages.tsx --outDir dist-ssr && node dist-ssr/build-public-pages.js"
   },
   "dependencies": {

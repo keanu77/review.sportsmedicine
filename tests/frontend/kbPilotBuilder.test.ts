@@ -34,9 +34,24 @@ test('committed real pilot has 30 unique papers, eight additions, and one quaran
  assert.equal(data.cards.length,30);
  for(const topic of Object.keys(titles)) assert.equal(data.cards.filter(c=>c.topic===topic).length,10);
  assert.equal(data.cards.filter(c=>!c.reviewUrl).length,8);
- assert.equal(data.cards.filter(c=>c.kbRefs.length).length,8);
+ assert.equal(data.cards.filter(c=>c.kbRefs.some(r=>r.namespace==='ethanai')).length,8);
+ assert.equal(data.cards.filter(c=>c.kbRefs.some(r=>r.namespace==='rss-kb')).length,23);
+ assert.equal(data.cards.filter(c=>c.evidenceDraft).length,29);
+ assert.equal(data.cards.find(c=>c.pmid==='42527106')?.evidenceDraft,undefined);
+ assert.ok(data.cards.find(c=>c.pmid==='42527106')?.evidenceMissingReason);
+ assert.equal(data.cards.filter(c=>c.access?.freeFullText==='verified').length,16);
+ assert.equal(data.cards.filter(c=>c.access?.oaStatus==='yes').length,15);
  assert.equal(data.cards.filter(c=>c.evidenceStatus==='quarantined').length,1);
  assert.equal(data.cards.find(c=>c.evidenceStatus==='quarantined')?.doi,'10.1186/s40001-025-03253-4');
  assert.deepEqual(feedbackSnapshot(data),JSON.parse(readFileSync(new URL('../../data/kb-pilot/feedback-snapshot.json',import.meta.url),'utf8')));
  assert.ok(data.cards.every(c=>c.fields.filter(f=>f.status==='needs-review').length>=3));
+});
+
+test('a catalog source reference alone preserves matched KB identity',()=>{
+ const s=sources[0];
+ const ref={namespace:'rss-kb' as const,id:'cmkwq373x001bzr017y89zf0z'};
+ const catalog=[{...s,url:`https://doi.org/${s.doi}`,themes:[],populations:[],region:'膝',disease:'OA',source:'test',sourceRefs:[ref]}] as Item[];
+ const result=buildPilot(meta,sources,[],catalog,[]);
+ assert.deepEqual(result.cards[0].kbRefs,[ref]);
+ assert.equal(result.cards[0].identityStatus,'matched');
 });
