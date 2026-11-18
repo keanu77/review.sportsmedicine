@@ -27,3 +27,6 @@ launchagent-output/
 
 # Derived completeness snapshot; regenerated for dev/build from checked-in sources
 /public/data/readiness.json
+
+# Raw npm audit evidence retained by CI, not source data
+/dependency-audit.json

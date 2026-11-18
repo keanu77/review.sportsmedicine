@@ -35,12 +35,14 @@ jobs:
           npm run test:integration
           npm run test:smoke -- --workers=2
           npm run test:local-api
-          npm audit --audit-level=moderate
-      - name: Retain failure evidence
-        if: failure()
+          npm run audit:security
+      - name: Retain verification and dependency-audit evidence
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: verification-failures
-          path: test-results/
+          name: verification-evidence
+          path: |
+            test-results/
+            dependency-audit.json
           if-no-files-found: ignore
           retention-days: 14

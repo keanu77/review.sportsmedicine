@@ -1,9 +1,9 @@
 name: Monthly data sync
 
-# Day 1 at 03:00 Asia/Taipei (04:00 Asia/Tokyo), with catch-up runs on day 1 at 12:00
-# and day 2 at 01:00 in case the upstream rebuild (day 1, 02:00) is late.
+# Check daily at 03:17 Asia/Taipei, plus day 1 at 12:17 for a faster catch-up.
+# Keep retrying all month if the upstream rebuild or verification is delayed.
 # scripts/sync-gate.mjs: scheduled runs accept only this month's batch, skip once synced,
-# and fail on the last catch-up if upstream still has not published.
+# and report overdue data from day 2 onward without stopping future daily attempts.
 on:
   workflow_dispatch:
     inputs:
@@ -13,11 +13,9 @@ on:
         type: boolean
         default: false
   schedule:
-    - cron: '0 3 1 * *'
+    - cron: '17 3 * * *'
       timezone: 'Asia/Taipei'
-    - cron: '0 12 1 * *'
-      timezone: 'Asia/Taipei'
-    - cron: '0 1 2 * *'
+    - cron: '17 12 1 * *'
       timezone: 'Asia/Taipei'
 permissions:
   contents: read
@@ -72,7 +70,7 @@ jobs:
           npm test
           npm run build
           npm run test:smoke -- --workers=2
-          npm audit --audit-level=moderate
+          npm run audit:security
       - name: Record monthly public data health
         if: steps.gate.outputs.run == 'true'
         run: node --import tsx scripts/monthly-report.ts >> "$GITHUB_STEP_SUMMARY"
@@ -94,6 +92,7 @@ jobs:
           path: |
             docs/maintenance/
             test-results/
+            dependency-audit.json
           retention-days: 90
   publish:
     needs: verify

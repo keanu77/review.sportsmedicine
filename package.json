@@ -26,7 +26,8 @@
     "test:frontend": "node --import tsx --test tests/frontend/*.test.ts",
     "test:integration": "node --test tests/integration/*.test.mjs",
     "data:readiness": "node --import tsx scripts/build-readiness.ts",
-    "build:pages": "vite build --ssr scripts/build-public-pages.tsx --outDir dist-ssr && node dist-ssr/build-public-pages.js"
+    "build:pages": "vite build --ssr scripts/build-public-pages.tsx --outDir dist-ssr && node dist-ssr/build-public-pages.js",
+    "audit:security": "node scripts/audit-dependencies.mjs"
   },
   "dependencies": {
     "fast-xml-parser": "^5.11.1",

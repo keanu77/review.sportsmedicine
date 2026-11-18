@@ -48,7 +48,7 @@ jobs:
           npm run test:smoke -- --workers=2
           npm run test:local-api
           npm run test:integration
-          npm audit --audit-level=moderate
+          npm run audit:security
       - name: Generate maintenance report
         run: node --import tsx scripts/monthly-report.ts maintenance >> "$GITHUB_STEP_SUMMARY"
       - name: Prepare data-only proposal
@@ -67,6 +67,7 @@ jobs:
           path: |
             docs/maintenance/
             test-results/
+            dependency-audit.json
           retention-days: 90
   publish:
     needs: verify

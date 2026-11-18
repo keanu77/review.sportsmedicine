@@ -9,7 +9,7 @@ import { validateBibliography, validateNewItems, validateReviews } from './valid
 import { buildFeed } from './build-feed.mjs';
 
 const dataFiles = ['public/data/reviews-index.json', 'public/data/new-items.json', 'public/data/bibliography.json', 'public/feed.xml'];
-// Day 1 (sync) and day 2 (maintenance) each own a report file, so neither overwrites the other.
+// Monthly sync and day-2 maintenance each own a report file, so neither overwrites the other.
 const reportPaths = { sync: /^docs\/maintenance\/\d{4}-(?:0[1-9]|1[0-2])\.md$/, maintenance: /^docs\/maintenance\/\d{4}-(?:0[1-9]|1[0-2])-maintenance\.md$/ };
 export const reportFile = (mode, month) => `docs/maintenance/${month}${mode === 'maintenance' ? '-maintenance' : ''}.md`;
 const fail = () => { throw new Error('Monthly artifact rejected: invalid content or publish scope'); };
