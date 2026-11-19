@@ -92,7 +92,20 @@ function bibliographyRecord(v) {
   optional(v, 'abstract', value => abstract(value, v));
 }
 const itemKeys = ['title', 'year', 'firstPublicationDate', 'url', 'source', 'tldr', 'free', 'freeUrl', ...citationStrings,
-  'authors', 'bibliography', 'identityAliases', 'impactFactor', 'origin', 'region', 'disease', 'themes', 'populations', 'diseases', 'tldrSource', 'fullText', 'abstract'];
+  'authors', 'bibliography', 'identityAliases', 'impactFactor', 'origin', 'region', 'disease', 'themes', 'populations', 'diseases', 'tldrSource', 'fullText', 'abstract', 'sourceRefs'];
+function sourceRefs(v) {
+  if (!Array.isArray(v) || v.length > 100) fail();
+  const seen = new Set();
+  for (const ref of v) {
+    shape(ref, ['namespace', 'id']);
+    if (typeof ref.id !== 'string' || ref.id.length > 64
+      || (ref.namespace === 'rss-kb' ? !/^c[a-z0-9]{24}$/.test(ref.id)
+        : ref.namespace === 'ethanai' ? !/^[1-9][0-9]*$/.test(ref.id) : true)) fail();
+    const key = `${ref.namespace}:${ref.id}`;
+    if (seen.has(key)) fail();
+    seen.add(key);
+  }
+}
 function item(v) {
   shape(v, itemKeys); string(v.title, false); year(v.year); url(v.url);
   if (v.title.length > 3000 || typeof v.free !== 'boolean') fail();
@@ -108,6 +121,7 @@ function item(v) {
   optional(v, 'abstract', value => abstract(value, v.bibliography), false);
   optional(v, 'tldrSource', string, false);
   optional(v, 'impactFactor', value => { if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) fail(); });
+  optional(v, 'sourceRefs', sourceRefs, false);
   optional(v, 'origin', value => { if (!['kb', 'pubmed'].includes(value)) fail(); }, false);
 }
 function items(v) { if (!Array.isArray(v)) fail(); for (const entry of v) item(entry); }
