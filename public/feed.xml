@@ -5,23 +5,199 @@
   <link href="https://review.sportsmedicine.tw/feed.xml" rel="self"/>
   <link href="https://review.sportsmedicine.tw/"/>
   <id>https://review.sportsmedicine.tw/</id>
-  <updated>2026-10-01T00:00:00Z</updated>
+  <updated>2026-11-01T00:00:00Z</updated>
   <author><name>運動醫學科 吳易澄醫師</name><uri>https://sportsmedicine.tw/</uri></author>
   <rights>書目 metadata 著作權屬各原始出版者；本 feed 僅供教育與研究參考，不構成診療建議。</rights>
   <entry>
-    <title>A Return to Performance Continuum for Football (Soccer) Players After ACL Reconstruction: Bridging Rehabilitation, Return to Play and Sustained Performance</title>
-    <link href="https://pubmed.ncbi.nlm.nih.gov/42814278/"/>
-    <id>https://review.sportsmedicine.tw/#pmid-42814278</id>
-    <updated>2026-10-01T00:00:00Z</updated>
+    <title>Emerging therapies for knee osteoarthritis</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42875481/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42875481</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>膝 · 膝骨關節炎</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Rehabilitation of Athletes With Hamstring Strain Injury: SONAFE-Brazil Clinical Practice Guideline</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42823642/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42823642</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>髖與鼠蹊 · 腿後肌拉傷</summary>
+    <category term="髖與鼠蹊"/>
+  </entry>
+  <entry>
+    <title>Is Reduced Spinal Range of Motion a Prognostic Factor for Pain Intensity, Disability, and Global Recovery in People With Specific or Nonspecific Spinal Pain? A Systematic Review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42823645/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42823645</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>腰椎 · 下背痛</summary>
+    <category term="腰椎"/>
+  </entry>
+  <entry>
+    <title>Quadriceps Tendon Autograft for Primary Anterior Cruciate Ligament Reconstruction Has No Difference in Short-Term Clinical Outcomes Between All-Soft Tissue Versus Tendon-Bone Grafts: A Systematic Review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42954106/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42954106</id>
+    <updated>2026-11-01T00:00:00Z</updated>
     <summary>膝 · 前十字韌帶損傷</summary>
     <category term="膝"/>
   </entry>
   <entry>
-    <title>Anterior opening-wedge high tibial osteotomy for restoring posterior tibial slope in PCL insufficiency and genu recurvatum: A narrative review</title>
-    <link href="https://pubmed.ncbi.nlm.nih.gov/42485054/"/>
-    <id>https://review.sportsmedicine.tw/#pmid-42485054</id>
-    <updated>2026-10-01T00:00:00Z</updated>
-    <summary>膝 · 後十字韌帶損傷</summary>
+    <title>Neuromuscular Electric Stimulation Improves Early Isometric Knee Strength After Anterior Cruciate Ligament Reconstruction and Repair: A Meta-analysis of Randomized Controlled Trials</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42876225/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42876225</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>膝 · 前十字韌帶損傷</summary>
     <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Minimal Clinically Important Difference and Patient Acceptable Symptom State Thresholds After Anterior Cruciate Ligament Reconstruction Vary Considerably Across Published Studies: A Systematic Review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42834687/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42834687</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>膝 · 前十字韌帶損傷</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Tibial Tuberosity Osteotomy for Patellar Instability Has Low Complication Rates and Favorable Patient-Reported Outcomes: A Systematic Review and Meta-analysis</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42954411/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42954411</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>膝 · 髕骨不穩定</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Meniscal Allograft Transplantation Fixation Technique Type Does Not Meaningfully Impact Patient-Reported Outcomes: A Systematic Review of Clinical Outcomes</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42928052/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42928052</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>膝 · 半月板移植</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Meniscal Centralization Improves Outcomes and Limits Extrusion After Medial Meniscus Posterior Root Repair: A Systematic Review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42954043/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42954043</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>膝 · 全膝關節置換術</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Artificial Intelligence Models Based on Medical Imaging Achieve Accurate Detection of Rotator Cuff Tear and Initial Predictive Capability for Postoperative Outcomes: A Systematic Review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42852970/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42852970</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>肩 · 旋轉肌袖撕裂</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Favorable Functional Outcomes and Low Instability Recurrence Rates After the Latarjet Procedure in Adolescent Patients: A Systematic Review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42841536/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42841536</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>肩 · 肩關節前向不穩定</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Arthroscopic Capsular Release Provides Greater Range-of-Motion Improvement Within the First 6 Months Postoperatively Than Nonoperative Management Modalities in Frozen Shoulder: A Systematic Review and Meta-analysis of Randomized Controlled Trials</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42952285/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42952285</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>肩 · 肩痛</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Hip Arthroscopy in Patients Aged 60 Years or Older Is Associated With Short-Term Improvement but Variable Arthroplasty Conversion Rates: A Systematic Review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42850952/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42850952</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>髖與鼠蹊 · 股骨髖臼夾擠症候群 · 髖關節鏡手術 · 全髖關節置換術</summary>
+    <category term="髖與鼠蹊"/>
+  </entry>
+  <entry>
+    <title>Letter to the Editor: Comparison of the efficacy of hyaluronic acid vs corticosteroids, platelet-rich plasma, and physical therapy in chronic shoulder pain: a systematic review and a frequentist network meta-analysis</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42927785/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42927785</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>肩 · 肩痛</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Persistent alterations in muscle activation patterns during landing tasks after anterior cruciate ligament reconstruction in return-to-sport cohorts: A systematic review and meta-analysis of electromyography studies</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42837112/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42837112</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>膝 · 前十字韌帶損傷</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Artificial intelligence across the continuum of care for the aging musculoskeletal patient: From longitudinal phenotyping to personalized surgery and recovery monitoring</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42879167/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42879167</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>膝 · 全膝關節置換術</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Formal consensus on fast-track hip and knee arthroplasty: ESSKA/EKA, EHS and APAS recommendations for optimised recovery pathways in joint replacement surgeries</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42748364/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42748364</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>膝 · 全膝關節置換術 · 全髖關節置換術</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>The 2026 ESSKA-ESA formal consensus on partial-thickness posterosuperior rotator cuff tears (Part 1): Definitions, classifications, etiologies, natural history and diagnosis</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42704696/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42704696</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>肩 · 旋轉肌袖撕裂</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Variation of the definition of &quot;survival&quot; in reverse total shoulder arthroplasty: a systematic review</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42901233/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42901233</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>肩 · 反式全肩關節置換術</summary>
+    <category term="肩"/>
+  </entry>
+  <entry>
+    <title>Testosterone and Anterior Cruciate Ligament Injury and Reconstruction Outcomes: A Systematic Review and Meta-analysis</title>
+    <link href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13675417/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42881560</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>膝 · 前十字韌帶損傷</summary>
+    <category term="膝"/>
+  </entry>
+  <entry>
+    <title>Current Clinical Concepts: Assessment and Management of Acetabular Dysplasia</title>
+    <link href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC13649312/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42852185</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>髖與鼠蹊 · 股骨髖臼夾擠症候群</summary>
+    <category term="髖與鼠蹊"/>
+  </entry>
+  <entry>
+    <title>The role of sleep and circadian rhythms in intervertebral disc degeneration</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42841972/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42841972</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>腰椎 · 下背痛 · 椎間盤退化</summary>
+    <category term="腰椎"/>
+  </entry>
+  <entry>
+    <title>Foot drop secondary to lumbar degenerative disease: a scoping review of recovery patterns, predictors, and research gaps</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42888261/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42888261</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>腰椎 · 腰椎退化性疾病</summary>
+    <category term="腰椎"/>
+  </entry>
+  <entry>
+    <title>Addressing limitations of previous meta-analyses of uniportal versus biportal endoscopic lumbar surgery: an umbrella review and de-duplicated, pathology-stratified meta-analysis</title>
+    <link href="https://pubmed.ncbi.nlm.nih.gov/42850346/"/>
+    <id>https://review.sportsmedicine.tw/#pmid-42850346</id>
+    <updated>2026-11-01T00:00:00Z</updated>
+    <summary>腰椎 · 腰椎椎間盤突出</summary>
+    <category term="腰椎"/>
   </entry>
 </feed>
