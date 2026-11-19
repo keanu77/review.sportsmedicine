@@ -55,3 +55,24 @@ test('a catalog source reference alone preserves matched KB identity',()=>{
  assert.deepEqual(result.cards[0].kbRefs,[ref]);
  assert.equal(result.cards[0].identityStatus,'matched');
 });
+
+test('publication rebuild uses the current index date and membership without fetching new evidence', async()=>{
+ const { mkdtemp, mkdir, copyFile, writeFile, rm }=await import('node:fs/promises');
+ const { tmpdir }=await import('node:os');const path=await import('node:path');
+ const { loadPilot }=await import('../../scripts/build-kb-pilot.ts');
+ const root=await mkdtemp(path.join(tmpdir(),'pilot-index-publication-'));
+ try {
+  await mkdir(path.join(root,'data/kb-pilot'),{recursive:true});await mkdir(path.join(root,'public/data'),{recursive:true});
+  for(const file of ['manifest','sources','kb-metadata','source-conflicts','evidence-drafts','evidence-receipts','access-metadata'])
+   await copyFile(new URL(`../../data/kb-pilot/${file}.json`,import.meta.url),path.join(root,`data/kb-pilot/${file}.json`));
+  const seeds=JSON.parse(readFileSync(new URL('../../data/kb-pilot/sources.json',import.meta.url),'utf8'));
+  const selected=seeds[20];
+  await writeFile(path.join(root,'public/data/reviews-index.json'),JSON.stringify({meta:{updated:'2026-12-01'},items:[{...selected,url:`https://doi.org/${selected.doi}`,themes:[],populations:[],region:'肩',disease:'五十肩',source:'test'}]}));
+  await writeFile(path.join(root,'public/data/bibliography.json'),JSON.stringify({records:[]}));
+  const result=await loadPilot(root);
+  assert.equal(result.sourceUpdated,'2026-12-01');
+  assert.equal(result.cards.filter(c=>c.reviewUrl).length,1);
+  assert.ok(result.cards.find(c=>c.doi===selected.doi)?.reviewUrl);
+  assert.equal(result.cards.filter(c=>c.evidenceDraft).length,29);
+ } finally {await rm(root,{recursive:true,force:true});}
+});

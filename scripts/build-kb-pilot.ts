@@ -78,7 +78,7 @@ export async function loadPilot(root=PILOT_ROOT) {
   const [drafts,receipts,access]=await Promise.all(['data/kb-pilot/evidence-drafts.json','data/kb-pilot/evidence-receipts.json','data/kb-pilot/access-metadata.json'].map(read));
   // Use actual current catalog membership; supplied source reviewUrl is not authoritative.
   const catalog=uniquePapers(enrichItems(index.items,{},{},bibliography.records));
-  return buildPilot(meta,sources,kb,catalog,mismatches,{drafts,receipts,access});
+  return buildPilot({...meta,sourceUpdated:index.meta.updated},sources,kb,catalog,mismatches,{drafts,receipts,access});
 }
 export async function writePilot(data:PilotData,root=PILOT_ROOT) {
   await mkdir(path.join(root,'public/data'),{recursive:true});

@@ -27,4 +27,4 @@ REVIEW_KB_FEEDBACK_CLI='/path/to/AIKnowSystem3.0/scripts/review_kb_feedback.py' 
 
 來源核對、摘要 canonicalization、兩處來源統計疑義及免費／OA／授權差異，見 [來源紀錄](review-kb-source-checks.md)。草稿及 receipts 更新須同時升級 `manifest.version` 並重建；數值 token 檢查不取代語意與臨床評讀。`baseline-v1.json` 僅保留 ID 與指紋，供版本差異比較。
 
-既有錯配 Ethanai 全文仍隔離；原始摘要、私人全文與本機批註均未放入公開生成物。此版本不新增 Actions 排程或模型呼叫，也不變更現有正式索引收錄範圍。
+既有錯配 Ethanai 全文仍隔離；原始摘要、私人全文與本機批註均未放入公開生成物。閱讀草稿的生成不新增模型呼叫；發布建置會由當次正式索引重算固定樣本的收錄狀態、來源 ID 與索引日期。每日輕量同步檢查承接既有月更新需求，本月完成後跳過完整檢查。
