@@ -60,14 +60,17 @@ jobs:
             node scripts/build-new-items.mjs "$RUNNER_TEMP/previous-index.json" public/data/reviews-index.json public/data/new-items.json
             npm run feed
           fi
+      - name: Verify application before source enrichment
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          npm run typecheck
+          npm test
       - name: Enrich verified bibliographic metadata
         if: steps.gate.outputs.run == 'true'
         run: node --import tsx scripts/build-bibliography.ts
       - name: Verify application and data
         if: steps.gate.outputs.run == 'true'
         run: |
-          npm run typecheck
-          npm test
           npm run build
           npm run test:smoke -- --workers=2
           npm audit --audit-level=moderate
