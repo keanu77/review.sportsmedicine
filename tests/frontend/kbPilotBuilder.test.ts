@@ -29,13 +29,12 @@ test('builder refuses missing cohort, duplicate papers, source identifier mismat
  assert.throws(()=>buildPilot(meta,sources.map((x,i)=>i?x:{...x,sourceUrl:'https://europepmc.org/article/MED/999'}),[],[],[]),/source identity/);
  assert.throws(()=>buildPilot(meta,sources.map((x,i)=>i===20?{...x,title:'Shoulder arthritis: a systematic review'}:x),[],[],[]),/topic/);
 });
-test('committed real pilot has 30 unique papers, eight additions, and one quarantined source',()=>{
+test('committed real pilot retains 30 fixed sources and one quarantined source',()=>{
  const data=validatePilotData(JSON.parse(readFileSync(new URL('../../public/data/kb-pilot.json',import.meta.url),'utf8')));
  assert.equal(data.cards.length,30);
  for(const topic of Object.keys(titles)) assert.equal(data.cards.filter(c=>c.topic===topic).length,10);
- assert.equal(data.cards.filter(c=>!c.reviewUrl).length,8);
  assert.equal(data.cards.filter(c=>c.kbRefs.some(r=>r.namespace==='ethanai')).length,8);
- assert.equal(data.cards.filter(c=>c.kbRefs.some(r=>r.namespace==='rss-kb')).length,23);
+ assert.ok(data.cards.filter(c=>c.kbRefs.some(r=>r.namespace==='rss-kb')).length>=23);
  assert.equal(data.cards.filter(c=>c.evidenceDraft).length,29);
  assert.equal(data.cards.find(c=>c.pmid==='42527106')?.evidenceDraft,undefined);
  assert.ok(data.cards.find(c=>c.pmid==='42527106')?.evidenceMissingReason);

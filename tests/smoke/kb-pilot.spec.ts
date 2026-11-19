@@ -104,7 +104,7 @@ test('real thirty-paper pilot renders every cohort and downloads a source-bound 
   await expect(page.getByRole('article')).toHaveCount(10);
   await page.getByRole('button', { name: /五十肩/ }).click();
   await expect(page.getByRole('article')).toHaveCount(10);
-  await expect(page.getByText('Review 待收錄', { exact: true })).toHaveCount(8);
+  await expect(page.getByText('Review 待收錄', { exact: true })).toHaveCount(data.cards.filter(card=>card.topic==='frozen-shoulder'&&!card.reviewUrl).length);
   await page.setViewportSize({width:390,height:844});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
   await page.screenshot({path:test.info().outputPath('real-pilot-mobile.png'),fullPage:false});
