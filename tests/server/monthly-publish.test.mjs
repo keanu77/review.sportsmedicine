@@ -152,3 +152,24 @@ test('feed must equal trusted regeneration from validated new items', () => {
   assert.equal(validateBundle(syncBundle({ 'public/feed.xml': syncFiles['public/feed.xml'] }),
     { base: sha, mode: 'sync', pkg: actualPkg, newItems: actualJson('public/data/new-items.json') }).length, 1);
 });
+
+test('publisher preserves bounded namespaced source references from the next upstream index', () => {
+  const next = actualJson('public/data/reviews-index.json');
+  const refs = [{ namespace: 'rss-kb', id: 'cmkwq373x001bzr017y89zf0z' }, { namespace: 'ethanai', id: '13271' }];
+  next.items[0].sourceRefs = refs;
+  const entries = checkSync({ 'public/data/reviews-index.json': JSON.stringify(next) });
+  assert.deepEqual(JSON.parse(entries[0][1]).items[0].sourceRefs, refs);
+  next.items[0].sourceRefs = [];
+  assert.doesNotThrow(() => checkSync({ 'public/data/reviews-index.json': JSON.stringify(next) }));
+});
+
+test('publisher refuses malformed, duplicate, excessive or unknown source references', () => {
+  const rss = { namespace: 'rss-kb', id: 'cmkwq373x001bzr017y89zf0z' };
+  for (const refs of [null, {}, 'rss-kb:123', [{ ...rss, id: 123 }], [{ ...rss, id: '13271' }],
+    [{ namespace: 'ethanai', id: '0' }], [{ namespace: 'ethanai', id: '13271\n' }],
+    [{ ...rss, namespace: 'private-db' }], [{ ...rss, summary: 'PRIVATE' }], [{ id: rss.id }],
+    [rss, rss], Array(101).fill(rss), [{ ...rss, id: rss.id+'x' }]]) {
+    const next = actualJson('public/data/reviews-index.json'); next.items[0].sourceRefs = refs;
+    assert.throws(() => checkSync({ 'public/data/reviews-index.json': JSON.stringify(next) }));
+  }
+});

@@ -127,26 +127,36 @@ test("structured recovery suggestions have executable queries and deduplicated r
   assert.equal(search.suggestQueries(items, "ACL impossiblecondition", 1).length, 1);
 });
 
-test("the current catalog finds the same frozen shoulder papers across Chinese and English queries", () => {
+test("a fixed mixed catalog finds both frozen shoulder titles and adhesive capsulitis titles", () => {
+  const items = [paper("Exercise for frozen shoulder"), paper("Treatment of adhesive capsulitis"), paper("Rotator cuff repair")];
+  const expected = items.slice(0, 2).map(item => item.title).sort();
+  for (const query of frozenShoulder) {
+    const result = uniquePapers(items.filter(item => matchesQuery(item, tokenize(query)))).map(item => item.title).sort();
+    assert.deepEqual(result, expected, query);
+  }
+});
+
+test("the current catalog returns identical frozen shoulder results across Chinese and English queries", () => {
   const catalog = JSON.parse(readFileSync(new URL("../../public/data/reviews-index.json", import.meta.url), "utf8")) as ReviewsData;
   const find = (query: string) => uniquePapers(catalog.items.filter(item => matchesQuery(item, tokenize(query)))).map(item => item.title).sort();
   const expected = find("frozen shoulder");
-  assert.ok(expected.some(title => /frozen shoulder/i.test(title)), "catalog contains a real frozen shoulder paper");
-  assert.ok(expected.some(title => /adhesive capsulitis/i.test(title)), "catalog contains a real adhesive capsulitis paper");
+  // Monthly batches may legitimately contain only one title spelling, or neither.
+  // Required positive examples belong in the fixed catalog above.
   for (const query of frozenShoulder) assert.deepEqual(find(query), expected, query);
 });
 
-test("the current catalog ranks a musculoskeletal PRP title before the alopecia paper", async () => {
+test("the current catalog preserves PRP results and ranks available musculoskeletal titles before alopecia", async () => {
   const { enrichItems } = await import("../../src/enrich.ts");
   const read = (name: string) => JSON.parse(readFileSync(new URL(`../../public/data/${name}.json`, import.meta.url), "utf8"));
   const catalog = enrichItems(read("reviews-index").items, read("summaries").summaries, read("tags").tags);
   const tokens = tokenize("PRP");
   const matches = uniquePapers(catalog.filter(item => matchesQuery(item, tokens)));
   const result = rankResults(matches, tokens, "relevance");
-  assert.ok(result.length > 0);
-  assert.match(result[0].title, /osteoarthritis|tendinopathy|muscle|rotator cuff/i);
+  const musculoskeletal = result.findIndex(item => /osteoarthritis|tendinopathy|muscle|rotator cuff/i.test(item.title));
   const alopecia = result.findIndex(item => /alopecia/i.test(item.title));
-  assert.ok(alopecia > 0, "the explicitly PRP-tagged alopecia paper remains discoverable below sports/MSK papers");
+  // Presence of either topic is a property of the current source batch.
+  // The fixed ranking fixture above always exercises both positive examples.
+  if (musculoskeletal >= 0 && alopecia >= 0) assert.ok(musculoskeletal < alopecia);
   assert.equal(result.length, matches.length, "ranking must never drop a matched paper");
 });
 
