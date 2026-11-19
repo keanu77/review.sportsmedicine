@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "observedDate": "2026-11-19",
+  "scope": "fixed-30-paper-pilot",
+  "clinicalApproval": false,
+  "productionWrite": false,
+  "sources": [
+    {
+      "kind": "upstream-candidate-snapshot",
+      "path": "data/reviews-candidates.json",
+      "sha256": "dee272226b123092c79657d0ab42d9199937fe2fdcdeb5d3f072d21495833bc2",
+      "matchedMetadataRows": 20
+    },
+    {
+      "kind": "rss-kb-readonly-search",
+      "queryTopics": [
+        "adhesive capsulitis",
+        "platelet rich plasma knee osteoarthritis review",
+        "anterior cruciate return sport review",
+        "capsulitis meta analysis",
+        "hydrodilatation capsulitis review",
+        "Variability Terminal Phase Timing",
+        "platelet plasma capsulitis umbrella",
+        "Scapulothoracic Physical Therapy Adhesive Capsulitis",
+        "joint mobilization adhesive capsulitis",
+        "corticosteroid physical therapy adhesive capsulitis",
+        "visuomotor illusions adhesive capsulitis",
+        "platelet hyaluronic knee osteoarthritis"
+      ],
+      "queryDescription": "主題與補充題名關鍵字；連接器回傳數量可能高於要求的 limit，未作完整召回率宣稱。",
+      "retainedMetadataFields": [
+        "namespace",
+        "id",
+        "title",
+        "url",
+        "observation"
+      ],
+      "retainedInputSha256": "b63e20ebc9bc604b92faa5f0ba684030a46c9856333e07df2bb9116ca4ed0ce3"
+    }
+  ],
+  "selectedRssRefs": 25,
+  "rssMatchedPapers": 23,
+  "unmatchedRssPmids": [
+    "41777433",
+    "42770395",
+    "42631081",
+    "42446287",
+    "42340454",
+    "41780224",
+    "40273376"
+  ],
+  "matchRule": "需相容的明確 DOI／PMID；只有近似題名不建立連結。未對應不代表不存在。",
+  "privateTextRetained": false
+}

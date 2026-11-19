@@ -367,6 +367,7 @@ export default function ReviewsIndex() {
             {!hasQuery && <p className="text-xs font-semibold tracking-[0.16em] text-brand dark:text-brand-dark">SPORTS MEDICINE · EVIDENCE LIBRARY</p>}
             <h1 className={`font-display font-bold tracking-tight text-ink dark:text-ink-dark ${hasQuery ? "text-2xl" : "mt-2 text-3xl sm:text-4xl"}`}>運動醫學 Review 索引</h1>
             {!hasQuery && <p className="mt-2 text-sm text-body dark:text-body-dark">從臨床問題出發，查找系統性回顧、統合分析與臨床指引。</p>}
+            <a href="/?view=kb-pilot" className="mt-1 inline-flex min-h-11 items-center rounded text-sm text-brand underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand dark:text-brand-dark">Review × 知識庫閱讀試點</a>
           </div>
           <dl className="flex items-center gap-4 text-xs text-muted dark:text-muted-dark">
             <div><dt>收錄文獻</dt><dd><span className="font-display text-2xl font-semibold text-ink dark:text-ink-dark">{totalUnique}</span> 篇</dd></div>

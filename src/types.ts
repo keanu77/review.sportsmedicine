@@ -3,6 +3,7 @@
 // new-items.json 由 scripts/build-new-items.mjs 在每月同步時比對前後快照產生。
 
 export type Axis = "region" | "theme" | "population";
+export interface SourceRef { namespace: 'rss-kb' | 'ethanai'; id: string; }
 
 export interface Item {
   title: string;
@@ -27,6 +28,8 @@ export interface Item {
   abstract?: SourceAbstract;
   /** Frontend merge aliases; keeps old title bookmarks resolvable after metadata enrichment. */
   identityAliases?: string[];
+  /** Original KB identity; does not establish fulltext validity or clinical review. */
+  sourceRefs?: SourceRef[];
   impactFactor?: number | null;
   origin?: "kb" | "pubmed";
   region: string;

@@ -6,7 +6,7 @@
   "description": "運動醫學 Review 索引 — 公開閱覽靜態站",
   "scripts": {
     "dev": "npm run data:readiness && vite",
-    "build": "tsc && npm run data:readiness && vite build && npm run build:pages",
+    "build": "tsc && npm run data:readiness && npm run data:kb-learning && vite build && npm run build:pages",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.maintenance.json",
     "summarize": "node scripts/summarize-new-items.mjs public/data/new-items.json && npm run feed",
@@ -26,6 +26,8 @@
     "test:frontend": "node --import tsx --test tests/frontend/*.test.ts",
     "test:integration": "node --test tests/integration/*.test.mjs",
     "data:readiness": "node --import tsx scripts/build-readiness.ts",
+    "data:kb-pilot": "node --import tsx scripts/build-kb-pilot.ts",
+    "data:kb-learning": "node --import tsx scripts/build-kb-learning.ts",
     "build:pages": "vite build --ssr scripts/build-public-pages.tsx --outDir dist-ssr && node dist-ssr/build-public-pages.js"
   },
   "dependencies": {

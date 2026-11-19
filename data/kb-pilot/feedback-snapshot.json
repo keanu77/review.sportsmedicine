@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "pilotVersion": "pilot-2026-11-19-v2",
+  "targets": [
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1186/s40001-025-03253-4",
+      "field": "reading_card",
+      "sha256": "28d8507c599995ada9b6bfe0745586d9cb725e38348d441fa43cc17123c35c47"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.3389/fsurg.2026.1725534",
+      "field": "reading_card",
+      "sha256": "abc16909a8b703adc5c8431b34ce94396f29443163d14510d0ffecf08f9ba35e"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1186/s13018-026-07042-5",
+      "field": "reading_card",
+      "sha256": "0dc574b98eb7ca25eb936eb64180bd7b07814381896ab38a8a31dfec9741ab51"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.3389/fpain.2026.1791542",
+      "field": "reading_card",
+      "sha256": "51d367432d3b6bdccc227922afa9d0a270b878446a2c06bc2a3b187a39c45722"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1186/s43019-026-00318-4",
+      "field": "reading_card",
+      "sha256": "1ed60ab1552775b7055ef53ab6c66bd06796973ae58b6f4a2b00fe95ceed5595"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.3390/clinpract16040075",
+      "field": "reading_card",
+      "sha256": "21711e88ba70b318bfdd093da2988efa0c9c414e704458aa130c4a0a662d42a1"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1080/09638288.2026.2674613",
+      "field": "reading_card",
+      "sha256": "1260cbc2c872b56bcb4180201f20562bf20a3f0fdc6d89763495a068a5d679b2"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1016/j.arrct.2025.100573",
+      "field": "reading_card",
+      "sha256": "3afb51ddc12727005a9adbd60cfda52af3072397637624f1d08e248c17c9e9e1"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1002/arj.70520",
+      "field": "reading_card",
+      "sha256": "9b3b6bbbb1be2a7d4ae879e41cc663400f8ad959393c28aec545c7566249a5e6"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1002/ksa.70567",
+      "field": "reading_card",
+      "sha256": "eab61007356cb0891cf3165e22eee0a3643574b6aa0098d1270780d8756eab2f"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1111/sms.70246",
+      "field": "reading_card",
+      "sha256": "8f7b61f7facf8e774ffef0afb568677e53fe87afc66644f7c8c34e9fe6798b70"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1177/03635465251405493",
+      "field": "reading_card",
+      "sha256": "ff8f8b2b41f524f5d4d8df9a43af4dfdc08b725eba823f6a696ea2cce2000661"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1097/js9.0000000000004837",
+      "field": "reading_card",
+      "sha256": "2465262864ce12abfa7ab78640222b6628f3c632e7f6d180977c732d5a81d992"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1002/ksa.70274",
+      "field": "reading_card",
+      "sha256": "41ea20107ba9156dccf655e2f6110bc9db6ab6113c3d898a6346b42fb54e2765"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.26603/001c.156105",
+      "field": "reading_card",
+      "sha256": "1de0fc74081ac691d1968e8894957eaf46d710ed701507fbcdb70b5373e0379d"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1186/s40798-026-01006-z",
+      "field": "reading_card",
+      "sha256": "c682fa3b25cfc5442a033fdcecd763a3966d6cf555491fc86db28a0331e50281"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1177/23259671261442968",
+      "field": "reading_card",
+      "sha256": "0840387da5aa26284735726ce36e7dfc5e43c8f85c280947e89a580ba205cde3"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1177/03635465251386013",
+      "field": "reading_card",
+      "sha256": "c57ed1e665645110f248ed2897f7cc8c08cb309c7db5510258919825b580203d"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1177/03635465261448489",
+      "field": "reading_card",
+      "sha256": "a46678bac0ae49f7b90261849d9cd0975df0d0a714a2a0c8655fc4ef6b4b5a95"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.52965/001c.162663",
+      "field": "reading_card",
+      "sha256": "8ed50fb84a4f33d0e096fcae726bb363b5d238aeb6aa57aa844c0f2aa18bf115"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.4103/tcmj.tcmj-d-25-00008",
+      "field": "reading_card",
+      "sha256": "4d53a6a10982bb519482d00d2c90d86d7d78dbe1b21c437147cced5542d1dbff"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1136/bjsports-2025-110539",
+      "field": "reading_card",
+      "sha256": "44aa0ed6f68b979fc3519f5f6cf229e4a08ec230567a9e790f9f7e0343d9dd42"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1136/bmj-2026-101057",
+      "field": "reading_card",
+      "sha256": "f9a59c13f58bf14d0617b1bc0cb06be9db840b1f5cc5db51a8688ff4ff062771"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1177/10538127261489859",
+      "field": "reading_card",
+      "sha256": "8df77a9e4064108e87e89876e8a53b6e2e95bb17432b13349708caf674f6d498"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1016/j.bj.2026.101001",
+      "field": "reading_card",
+      "sha256": "96d064c33fb55d57982b41c92e3cd5382ea626846f973984fa51442a53033ff1"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.7759/cureus.113139",
+      "field": "reading_card",
+      "sha256": "070ef01a128d28ce541b7bd5d84a01fbccdd2035f778bffbba80c72dec895f89"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1080/10669817.2026.2701344",
+      "field": "reading_card",
+      "sha256": "68f4ad387d78307552370053771c7b6bd0dfab07c0001b123de2c3ee306233ee"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1007/s00590-026-04834-7",
+      "field": "reading_card",
+      "sha256": "1bae2c547128f9421966872df23412c5923f5d531b741b6e4a004dd01ebc144f"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1016/j.jelekin.2026.103131",
+      "field": "reading_card",
+      "sha256": "056250a6413b9207aaa3d5a3d636883ff1c7bae175b7366cd41c7da7d4d0759e"
+    },
+    {
+      "namespace": "review-pilot",
+      "id": "doi:10.1002/pmrj.13376",
+      "field": "reading_card",
+      "sha256": "6f781024e5d8ab9209307ec1ac027afb27c0970ecf0e01b0b2967b92cb2bbac4"
+    }
+  ]
+}

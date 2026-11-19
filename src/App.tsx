@@ -5,10 +5,12 @@ import PublicShell from "./PublicShell";
 import { lazy, Suspense } from "react";
 
 const Workbench = lazy(() => import("./Workbench"));
+const KbPilot = lazy(() => import("./KbPilot.tsx"));
 export default function App() {
   const isWorkbench = /^\/workbench(?:\/|$)/.test(window.location.pathname);
+  const isKbPilot = window.location.pathname === "/" && new URLSearchParams(window.location.search).get("view") === "kb-pilot";
   let topic: TopicData | null = null;
   try { topic = JSON.parse(document.getElementById("topic-data")?.textContent || "null"); } catch { /* Invalid bootstrap falls back to the index. */ }
   const knownPath = TOPICS.some(entry => window.location.pathname.replace(/\/$/, "") === `/topics/${entry.slug}`) || window.location.pathname === "/" || /^\/papers\/[a-z0-9-]+\/?$/.test(window.location.pathname);
-  return <PublicShell isWorkbench={isWorkbench}>{isWorkbench ? <Suspense fallback={<p role="status" className="px-4 py-8 text-center">正在載入工作台…</p>}><Workbench /></Suspense> : topic ? <Topics data={topic} /> : knownPath ? <ReviewsIndex /> : <PaperDetails item={undefined} />}</PublicShell>;
+  return <PublicShell isWorkbench={isWorkbench}>{isWorkbench ? <Suspense fallback={<p role="status" className="px-4 py-8 text-center">正在載入工作台…</p>}><Workbench /></Suspense> : isKbPilot ? <Suspense fallback={<p role="status" className="px-4 py-8 text-center">正在載入閱讀試點…</p>}><KbPilot /></Suspense> : topic ? <Topics data={topic} /> : knownPath ? <ReviewsIndex /> : <PaperDetails item={undefined} />}</PublicShell>;
 }

@@ -1,4 +1,5 @@
 import type { Item } from "./types";
+import { sourceRefs } from './sourceRefs';
 
 /** Keep this alias stable: summary overlays and existing browser bookmarks use it. */
 export function paperKey(item: Pick<Item, "title" | "url">): string {
@@ -96,7 +97,7 @@ export function uniquePapers(items: Item[]): Item[] {
     }
     const group = matches[0];
     if (!group) {
-      const created = { item: { ...item, diseases: [...new Set([...(item.diseases ?? []), item.disease].filter(Boolean))] }, aliases: new Set(aliases) };
+      const created = { item: { ...item, ...(item.sourceRefs ? {sourceRefs:sourceRefs(item.sourceRefs)} : {}), diseases: [...new Set([...(item.diseases ?? []), item.disease].filter(Boolean))] }, aliases: new Set(aliases) };
       groups.add(created);
       indexGroup(created);
       continue;
@@ -104,6 +105,7 @@ export function uniquePapers(items: Item[]): Item[] {
     for (const incoming of [item, ...matches.slice(1).map(match => match.item)]) {
       const existing = group.item;
       group.item = { ...existing,
+        ...((existing.sourceRefs || incoming.sourceRefs) ? {sourceRefs:sourceRefs([...sourceRefs(existing.sourceRefs),...sourceRefs(incoming.sourceRefs)])} : {}),
         diseases: [...new Set([...(existing.diseases ?? []), ...(incoming.diseases ?? []), incoming.disease].filter(Boolean))],
         pmid: existing.pmid ?? incoming.pmid, pmcid: existing.pmcid ?? incoming.pmcid, doi: doiOf(existing) ?? doiOf(incoming),
         authors: existing.authors?.length ? existing.authors : incoming.authors,

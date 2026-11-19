@@ -1,0 +1,363 @@
+{
+  "schemaVersion": 1,
+  "pilotVersion": "pilot-2026-11-19-v2",
+  "scope": "fixed-pilot",
+  "clinicalApproval": false,
+  "productionWrite": false,
+  "counts": {
+    "total": 30,
+    "inReview": 22,
+    "reviewCandidates": 8,
+    "rssMatched": 23,
+    "ethanaiMatched": 8,
+    "anyKbMatched": 23,
+    "sourceConflicts": 1,
+    "abstractDrafts": 29,
+    "oaYes": 15,
+    "oaNo": 15,
+    "oaUnknown": 0
+  },
+  "actions": [
+    {
+      "paperId": "doi:10.1186/s40001-025-03253-4",
+      "title": "Efficacy and safety of platelet-rich plasma injections for the treatment of knee osteoarthritis: a systematic review and meta-analysis of randomized controlled trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/41107915",
+      "kind": "source-conflict",
+      "target": "ethanai",
+      "reason": "ethanai:13271 — 全文身分應另對應 DOI 10.1177/03635465241249996；該全文不作為此篇證據。"
+    },
+    {
+      "paperId": "doi:10.1186/s13018-026-07042-5",
+      "title": "Comparative efficacy of platelet-rich plasma monotherapy versus combination therapies for knee osteoarthritis: a systematic review and network meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/42343396",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1080/09638288.2026.2674613",
+      "title": "The effect of combined platelet-rich plasma and exercise on pain and function in knee osteoarthritis: a systematic review and meta-analysis of randomized controlled trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42188836",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1016/j.arrct.2025.100573",
+      "title": "Comparative Clinical Effectiveness of Intra-Articular Leukocyte-Rich Platelet-Rich Plasma and Hyaluronic Acid in Treating Knee Osteoarthritis Pain: An Updated Systematic Review and Meta-Analysis of Randomized Controlled Trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42326600",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1002/arj.70520",
+      "title": "Platelet-Rich Plasma Provides Small but Superior Short-term Pain Relief and Functional Improvement Compared With Hyaluronic Acid for the Treatment of Knee Osteoarthritis: A Systematic Review and Meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/42744748",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1002/ksa.70567",
+      "title": "Younger age and platelet-rich plasma characteristics influence short-term outcomes in knee osteoarthritis, but independent effects remain uncertain: A systematic review with meta-analysis and meta-regression of placebo-controlled randomised trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42605960",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1111/sms.70246",
+      "title": "Returning to Performance After ACL Injury in Competitive Alpine Skiing: A Scoping Review and Evidence- and Expert-Informed Practice Recommendations.",
+      "sourceUrl": "https://europepmc.org/article/MED/41797294",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1177/03635465251405493",
+      "title": "Return to Sport After Revision Anterior Cruciate Ligament Reconstruction: A Systematic Review and Meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/41572915",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1097/js9.0000000000004837",
+      "title": "Anterior cruciate ligament reconstruction in elite and professional athletes: does graft choice influence return to sport and failure rate? A systematic review and meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/41570285",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1002/ksa.70274",
+      "title": "High return to play but low return to preinjury level after anterior cruciate ligament reconstruction in soccer players: A systematic review with meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/41566832",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.26603/001c.156105",
+      "title": "Variability in Terminal Phase Timing and Return-to-Sport Criteria in ACL Reconstruction Rehabilitation Protocols: A Scoping Review of U.S. Academic Institutions.",
+      "sourceUrl": "https://europepmc.org/article/MED/41777433",
+      "kind": "kb-lookup-needed",
+      "target": "rss-kb",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.26603/001c.156105",
+      "title": "Variability in Terminal Phase Timing and Return-to-Sport Criteria in ACL Reconstruction Rehabilitation Protocols: A Scoping Review of U.S. Academic Institutions.",
+      "sourceUrl": "https://europepmc.org/article/MED/41777433",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1177/23259671261442968",
+      "title": "Comparison of Return-to-Sport and Patient-Reported Outcomes Between Primary and Revision ACL Reconstruction: An Updated Systematic Review and Meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/42394809",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1177/03635465251386013",
+      "title": "No Significant Difference in Return-to-Sport Rates Between Anterior Cruciate Ligament Reconstruction With Lateral Extra-Articular Tenodesis and Isolated Anterior Cruciate Ligament Reconstruction: A Systematic Review and Meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/41521721",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1177/03635465261448489",
+      "title": "Are There Sex Disparities in Return to Sport After Anterior Cruciate Ligament Reconstruction? A Systematic Review and Exploratory Meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/42252835",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.4103/tcmj.tcmj-d-25-00008",
+      "title": "Comparison of platelet-rich plasma injection versus corticosteroid injection for the treatment of frozen shoulder in Asia: A systematic review and meta-analysis of randomized controlled trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42131405",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1136/bjsports-2025-110539",
+      "title": "Hydrodilatation for adhesive capsulitis: a systematic review exploring efficacy and optimal technique.",
+      "sourceUrl": "https://europepmc.org/article/MED/42527106",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1136/bmj-2026-101057",
+      "title": "Interventions for adhesive capsulitis: systematic review and network meta-analysis of randomised controlled trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42982479",
+      "kind": "review-candidate",
+      "target": "review",
+      "reason": "固定樣本內的待收錄候選，需核對研究範圍與索引分類。"
+    },
+    {
+      "paperId": "doi:10.1136/bmj-2026-101057",
+      "title": "Interventions for adhesive capsulitis: systematic review and network meta-analysis of randomised controlled trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42982479",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1177/10538127261489859",
+      "title": "Platelet-Rich plasma for adhesive capsulitis: An umbrella review of effects on pain, function, and range of motion.",
+      "sourceUrl": "https://europepmc.org/article/MED/42770395",
+      "kind": "review-candidate",
+      "target": "review",
+      "reason": "固定樣本內的待收錄候選，需核對研究範圍與索引分類。"
+    },
+    {
+      "paperId": "doi:10.1177/10538127261489859",
+      "title": "Platelet-Rich plasma for adhesive capsulitis: An umbrella review of effects on pain, function, and range of motion.",
+      "sourceUrl": "https://europepmc.org/article/MED/42770395",
+      "kind": "kb-lookup-needed",
+      "target": "rss-kb",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1177/10538127261489859",
+      "title": "Platelet-Rich plasma for adhesive capsulitis: An umbrella review of effects on pain, function, and range of motion.",
+      "sourceUrl": "https://europepmc.org/article/MED/42770395",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1016/j.bj.2026.101001",
+      "title": "Ultrasound-guided intervention in adhesive capsulitis: A comprehensive review of therapeutic strategies.",
+      "sourceUrl": "https://europepmc.org/article/MED/42248412",
+      "kind": "review-candidate",
+      "target": "review",
+      "reason": "固定樣本內的待收錄候選，需核對研究範圍與索引分類。"
+    },
+    {
+      "paperId": "doi:10.7759/cureus.113139",
+      "title": "Effects of Scapulothoracic Physical Therapy on Shoulder Function in Adhesive Capsulitis: A Systematic Review and Meta-Analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/42631081",
+      "kind": "review-candidate",
+      "target": "review",
+      "reason": "固定樣本內的待收錄候選，需核對研究範圍與索引分類。"
+    },
+    {
+      "paperId": "doi:10.7759/cureus.113139",
+      "title": "Effects of Scapulothoracic Physical Therapy on Shoulder Function in Adhesive Capsulitis: A Systematic Review and Meta-Analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/42631081",
+      "kind": "kb-lookup-needed",
+      "target": "rss-kb",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.7759/cureus.113139",
+      "title": "Effects of Scapulothoracic Physical Therapy on Shoulder Function in Adhesive Capsulitis: A Systematic Review and Meta-Analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/42631081",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1080/10669817.2026.2701344",
+      "title": "Comparative efficacy of different joint mobilization techniques in shoulder adhesive capsulitis: a systematic review and meta-analysis of randomized controlled trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42446287",
+      "kind": "review-candidate",
+      "target": "review",
+      "reason": "固定樣本內的待收錄候選，需核對研究範圍與索引分類。"
+    },
+    {
+      "paperId": "doi:10.1080/10669817.2026.2701344",
+      "title": "Comparative efficacy of different joint mobilization techniques in shoulder adhesive capsulitis: a systematic review and meta-analysis of randomized controlled trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42446287",
+      "kind": "kb-lookup-needed",
+      "target": "rss-kb",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1080/10669817.2026.2701344",
+      "title": "Comparative efficacy of different joint mobilization techniques in shoulder adhesive capsulitis: a systematic review and meta-analysis of randomized controlled trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42446287",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1007/s00590-026-04834-7",
+      "title": "Intra-articular corticosteroid Injection combined with physical therapy versus physical therapy alone for adhesive capsulitis: a meta-analysis of randomized controlled trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42340454",
+      "kind": "review-candidate",
+      "target": "review",
+      "reason": "固定樣本內的待收錄候選，需核對研究範圍與索引分類。"
+    },
+    {
+      "paperId": "doi:10.1007/s00590-026-04834-7",
+      "title": "Intra-articular corticosteroid Injection combined with physical therapy versus physical therapy alone for adhesive capsulitis: a meta-analysis of randomized controlled trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42340454",
+      "kind": "kb-lookup-needed",
+      "target": "rss-kb",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1007/s00590-026-04834-7",
+      "title": "Intra-articular corticosteroid Injection combined with physical therapy versus physical therapy alone for adhesive capsulitis: a meta-analysis of randomized controlled trials.",
+      "sourceUrl": "https://europepmc.org/article/MED/42340454",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1016/j.jelekin.2026.103131",
+      "title": "Can visuomotor illusions improve shoulder pain, function and range of motion in people with adhesive capsulitis? A systematic review and meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/41780224",
+      "kind": "review-candidate",
+      "target": "review",
+      "reason": "固定樣本內的待收錄候選，需核對研究範圍與索引分類。"
+    },
+    {
+      "paperId": "doi:10.1016/j.jelekin.2026.103131",
+      "title": "Can visuomotor illusions improve shoulder pain, function and range of motion in people with adhesive capsulitis? A systematic review and meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/41780224",
+      "kind": "kb-lookup-needed",
+      "target": "rss-kb",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1016/j.jelekin.2026.103131",
+      "title": "Can visuomotor illusions improve shoulder pain, function and range of motion in people with adhesive capsulitis? A systematic review and meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/41780224",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1002/pmrj.13376",
+      "title": "Comparative efficacy of platelet rich plasma, hyaluronic acid, and corticosteroid injections in adhesive capsulitis management: A meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/40273376",
+      "kind": "review-candidate",
+      "target": "review",
+      "reason": "固定樣本內的待收錄候選，需核對研究範圍與索引分類。"
+    },
+    {
+      "paperId": "doi:10.1002/pmrj.13376",
+      "title": "Comparative efficacy of platelet rich plasma, hyaluronic acid, and corticosteroid injections in adhesive capsulitis management: A meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/40273376",
+      "kind": "kb-lookup-needed",
+      "target": "rss-kb",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    },
+    {
+      "paperId": "doi:10.1002/pmrj.13376",
+      "title": "Comparative efficacy of platelet rich plasma, hyaluronic acid, and corticosteroid injections in adhesive capsulitis management: A meta-analysis.",
+      "sourceUrl": "https://europepmc.org/article/MED/40273376",
+      "kind": "kb-lookup-needed",
+      "target": "ethanai",
+      "reason": "本次來源快照與搜尋未對應；需進一步查找，不代表知識庫未收錄。"
+    }
+  ],
+  "changes": {
+    "added": [],
+    "changed": [
+      "doi:10.1186/s40001-025-03253-4",
+      "doi:10.3389/fsurg.2026.1725534",
+      "doi:10.1186/s13018-026-07042-5",
+      "doi:10.3389/fpain.2026.1791542",
+      "doi:10.1186/s43019-026-00318-4",
+      "doi:10.3390/clinpract16040075",
+      "doi:10.1080/09638288.2026.2674613",
+      "doi:10.1016/j.arrct.2025.100573",
+      "doi:10.1002/arj.70520",
+      "doi:10.1002/ksa.70567",
+      "doi:10.1111/sms.70246",
+      "doi:10.1177/03635465251405493",
+      "doi:10.1097/js9.0000000000004837",
+      "doi:10.1002/ksa.70274",
+      "doi:10.26603/001c.156105",
+      "doi:10.1186/s40798-026-01006-z",
+      "doi:10.1177/23259671261442968",
+      "doi:10.1177/03635465251386013",
+      "doi:10.1177/03635465261448489",
+      "doi:10.52965/001c.162663",
+      "doi:10.4103/tcmj.tcmj-d-25-00008",
+      "doi:10.1136/bjsports-2025-110539",
+      "doi:10.1136/bmj-2026-101057",
+      "doi:10.1177/10538127261489859",
+      "doi:10.1016/j.bj.2026.101001",
+      "doi:10.7759/cureus.113139",
+      "doi:10.1080/10669817.2026.2701344",
+      "doi:10.1007/s00590-026-04834-7",
+      "doi:10.1016/j.jelekin.2026.103131",
+      "doi:10.1002/pmrj.13376"
+    ],
+    "unchanged": [],
+    "removed": []
+  }
+}

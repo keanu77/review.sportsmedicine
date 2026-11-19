@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "version": "pilot-2026-11-19-v1",
+  "cards": [
+    {
+      "id": "doi:10.1186/s40001-025-03253-4",
+      "sourceFingerprint": "024ff1176a4672c7a4f0a1e578de6b46ce684488c5ba1adbc3d4d1d3b06ed3a0"
+    },
+    {
+      "id": "doi:10.3389/fsurg.2026.1725534",
+      "sourceFingerprint": "04c121a58dbfd151dd7341d3035927fb05393663b3b2c8fd33ad37f9352c3327"
+    },
+    {
+      "id": "doi:10.1186/s13018-026-07042-5",
+      "sourceFingerprint": "a25fc8d2f86d594aad1ca77f5eed5f31a44803bfcfb51a273363affedcd756a2"
+    },
+    {
+      "id": "doi:10.3389/fpain.2026.1791542",
+      "sourceFingerprint": "973bffa82b1e08c4f0ba3b257bc5dc9f6f204c614e28c70d82f79ccf698ab3d8"
+    },
+    {
+      "id": "doi:10.1186/s43019-026-00318-4",
+      "sourceFingerprint": "fcb8e961566156a3bd4225ce6927d33d61b406b37634b7f1b57b52d0518f41ab"
+    },
+    {
+      "id": "doi:10.3390/clinpract16040075",
+      "sourceFingerprint": "e1240bfb3aba2943de35f5cc5e818bb6a4c3fd5de61d2351d47b3a368bc810f6"
+    },
+    {
+      "id": "doi:10.1080/09638288.2026.2674613",
+      "sourceFingerprint": "f46c397aec4dfdeb441e5deb6ce831fd37c34709cbe971a2a65a24396117fdaf"
+    },
+    {
+      "id": "doi:10.1016/j.arrct.2025.100573",
+      "sourceFingerprint": "e64dcc7e195bbe0c68376ef0f9b28d6a0638426eb3291b76f3e0642cbb70c1ee"
+    },
+    {
+      "id": "doi:10.1002/arj.70520",
+      "sourceFingerprint": "9d6ac404a4e5ab075dc10bb94d570cd6acc16c25ecd6014eec33ee6672d37953"
+    },
+    {
+      "id": "doi:10.1002/ksa.70567",
+      "sourceFingerprint": "a62ed0eca94c10ec1ac16a430359b0dcd7b1e893bfd72b90f1a7b13463ae15b4"
+    },
+    {
+      "id": "doi:10.1111/sms.70246",
+      "sourceFingerprint": "8e350a1c541f899590d91519af006837db03efa9005d8d42bfff034b36b0ff1b"
+    },
+    {
+      "id": "doi:10.1177/03635465251405493",
+      "sourceFingerprint": "9391f101b212f7b34a4a5ef1f23a5dc417272d3624236e450197c5fae646f4fc"
+    },
+    {
+      "id": "doi:10.1097/js9.0000000000004837",
+      "sourceFingerprint": "2cab2146291f7da97441a9068c8b38ae3cb7e5524a5c5c33b4a4e8c2be565ae1"
+    },
+    {
+      "id": "doi:10.1002/ksa.70274",
+      "sourceFingerprint": "e765cee99dd90696daa35cd4755c920f67f17b8486c9632fbda91a2c43bc1dfb"
+    },
+    {
+      "id": "doi:10.26603/001c.156105",
+      "sourceFingerprint": "eea560380224be570701d6e6b72edafdec2bea086dd4949b14551b1abb19d726"
+    },
+    {
+      "id": "doi:10.1186/s40798-026-01006-z",
+      "sourceFingerprint": "981e3f6377ad600eac4e168df408137a142483f8618758f8d6743de211b012a6"
+    },
+    {
+      "id": "doi:10.1177/23259671261442968",
+      "sourceFingerprint": "6bc4f6b15046bea53f387ba8579a323d94ad2048a1344c2e01de52ecd8d09137"
+    },
+    {
+      "id": "doi:10.1177/03635465251386013",
+      "sourceFingerprint": "6bee8d27306e3e88a1cc137507d37017073a07d2e8a96d5dcbe7654ff672233b"
+    },
+    {
+      "id": "doi:10.1177/03635465261448489",
+      "sourceFingerprint": "92fd88d1ab347ac4855f608fedcb54f7c051f50a1611a4234256f7637582be88"
+    },
+    {
+      "id": "doi:10.52965/001c.162663",
+      "sourceFingerprint": "03deeea84ec8d1cbe793f6de4011d822121c30615eed7b8f44db8b45b330390d"
+    },
+    {
+      "id": "doi:10.4103/tcmj.tcmj-d-25-00008",
+      "sourceFingerprint": "78c87bf0ad51896642365088241b188e37626cd18257fc1a3ec769e1278dda90"
+    },
+    {
+      "id": "doi:10.1136/bjsports-2025-110539",
+      "sourceFingerprint": "01fbcd0731b8c71e7663e0579eec3f262f606ec2f38abccb8aaae4eec3da9e14"
+    },
+    {
+      "id": "doi:10.1136/bmj-2026-101057",
+      "sourceFingerprint": "9bef4c7314a61678a9a48b1583696cfb098e6de9435fec538cf7c87aca580ded"
+    },
+    {
+      "id": "doi:10.1177/10538127261489859",
+      "sourceFingerprint": "3f63ffc00f7c9bee743c0a6bed7488df7088bcb335f6f213dcb0bffd3e99d23a"
+    },
+    {
+      "id": "doi:10.1016/j.bj.2026.101001",
+      "sourceFingerprint": "6c6686a9438f1ac97bb7f854510bb69bccc5132af71919d8ee9bf400351943ba"
+    },
+    {
+      "id": "doi:10.7759/cureus.113139",
+      "sourceFingerprint": "34f5108b6533461b85d70722d57e329c14791be6987c4828fca8d0ac97ca0edb"
+    },
+    {
+      "id": "doi:10.1080/10669817.2026.2701344",
+      "sourceFingerprint": "3c36202ae1738456d4d1ab058c99d46b71766c59934836e737f5798e81d84ff3"
+    },
+    {
+      "id": "doi:10.1007/s00590-026-04834-7",
+      "sourceFingerprint": "40672b207be71150dbd40c37efe729029bafbfd8d5417f6c41e1bc5aed622657"
+    },
+    {
+      "id": "doi:10.1016/j.jelekin.2026.103131",
+      "sourceFingerprint": "be07ab5dc2b3456724230247e58ea14d9c958b01f3b0b9a7e6ed8b1b37b4d198"
+    },
+    {
+      "id": "doi:10.1002/pmrj.13376",
+      "sourceFingerprint": "0d4a9a236c737515f64a0c60093548e28216e1ab06ed66b81cfef03d79c824c4"
+    }
+  ]
+}
